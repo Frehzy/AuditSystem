@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace AuditSystem.Shared.DTOs.Auth;
+namespace AuditSystem.Shared.DTOs.Auth.Login;
 
 public class LoginRequest
 {

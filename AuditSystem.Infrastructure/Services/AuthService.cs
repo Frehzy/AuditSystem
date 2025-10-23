@@ -1,11 +1,15 @@
-﻿using AutoMapper;
-using AuditSystem.Application.Common.Interfaces;
+﻿using AuditSystem.Application.Common.Interfaces;
 using AuditSystem.Application.Common.Models;
 using AuditSystem.Application.Features.Auth.Commands;
+using AuditSystem.Application.Features.Auth.Commands.Login;
+using AuditSystem.Application.Features.Auth.Commands.Logout;
 using AuditSystem.Application.Features.Auth.Interfaces;
 using AuditSystem.Domain.Interfaces.Repositories;
 using AuditSystem.Domain.Interfaces.Services;
 using AuditSystem.Shared.DTOs.Auth;
+using AuditSystem.Shared.DTOs.Auth.Login;
+using AuditSystem.Shared.DTOs.Auth.Logout;
+using AutoMapper;
 using System.Security.Claims;
 
 namespace AuditSystem.Infrastructure.Services;
@@ -44,6 +48,28 @@ public class AuthService(
         };
 
         return Result<LoginResponse>.Ok(response);
+    }
+
+    public async Task<Result<LogoutResponse>> LogoutAsync(LogoutCommand command)
+    {
+        var user = await userRepository.GetByIdAsync(command.UserId);
+        if (user == null)
+            return Result<LogoutResponse>.Fail("Invalid userId");
+
+        if (!user.IsActive)
+            return Result<LogoutResponse>.Fail("Account is deactivated");
+
+        user.LastLoginAt = dateTimeService.UtcNow;
+        userRepository.Update(user);
+
+        var userDto = mapper.Map<UserDto>(user);
+
+        var response = new LogoutResponse
+        {
+            User = userDto
+        };
+
+        return Result<LogoutResponse>.Ok(response);
     }
 
     public async Task<Result> ValidateTokenAsync(string token)

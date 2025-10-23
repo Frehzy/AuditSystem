@@ -1,4 +1,6 @@
 ﻿using AuditSystem.Application.Features.Auth.Commands;
+using AuditSystem.Application.Features.Auth.Commands.Login;
+using AuditSystem.Application.Features.Auth.Commands.Logout;
 using AuditSystem.Application.Features.Auth.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +12,13 @@ public class AuthController(IAuthService authService) : BaseApiController
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
         var result = await authService.LoginAsync(command);
+        return HandleResult(result);
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
+    {
+        var result = await authService.LogoutAsync(command);
         return HandleResult(result);
     }
 

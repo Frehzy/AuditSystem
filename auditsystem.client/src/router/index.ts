@@ -4,7 +4,7 @@ import { logger } from '@/core/utils/logger/logger';
 
 // Динамические импорты для code splitting
 const AuthView = () => import('@/modules/auth/views/AuthView.vue');
-const ChatView = () => import('@/modules/chat/views/ChatView.vue');
+const AuditView = () => import('@/modules/audit/views/AuditView.vue');
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -38,9 +38,9 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/chat',
-    name: 'Chat',
-    component: ChatView,
+    path: '/audit',
+    name: 'AuditSystem',
+    component: AuditView,
     meta: {
       requiresAuth: true,
       title: 'Чат - AuditSystem Client',
@@ -103,8 +103,8 @@ const authGuard = (to: any, from: any): boolean | string => {
 
   // Перенаправление авторизованных пользователей с гостевых маршрутов
   if (to.meta.requiresGuest && isAuthenticated) {
-    logger.router('Redirecting to chat - user already authenticated');
-    return '/chat';
+    logger.router('Redirecting to audit - user already authenticated');
+    return '/audit';
   }
 
   return true;

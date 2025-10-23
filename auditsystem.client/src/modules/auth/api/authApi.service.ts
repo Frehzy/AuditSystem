@@ -70,9 +70,15 @@ class AuthApiService {
 
       const response = await requestPromise;
 
-      // Проверка обязательных полей
+      // Упрощенная проверка ответа - бекенд возвращает данные напрямую
+      if (!response || typeof response !== 'object') {
+        throw errorHandler.create('Invalid response format', 'INVALID_RESPONSE');
+      }
+
+      // Проверяем наличие обязательных полей в ответе
       if (!response.token || !response.user) {
-        throw errorHandler.create('Invalid response format: missing token or user data', 'INVALID_RESPONSE');
+        this.logger.warn('Response missing token or user data', { response });
+        throw errorHandler.create('Invalid response: missing token or user data', 'INVALID_RESPONSE');
       }
 
       this.logger.auth('Login successful', {

@@ -64,7 +64,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("AllowFrontend");
 
-app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseMiddleware<AuditSystem.Server.Middleware.ExceptionHandlerMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<JwtMiddleware>();
 

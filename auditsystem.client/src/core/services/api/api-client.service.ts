@@ -63,36 +63,40 @@ class ApiClientImpl implements ApiClient {
     const config = this.buildRequestConfig(method, data, options);
 
     try {
-      const response = await httpService.request<ApiResponse<T>>(method, url, data, config);
+      const response = await httpService.request<any>(method, url, data, config);
 
-      if (!response.data) {
-        throw errorHandler.create('Empty response from server', 'EMPTY_RESPONSE', { url, method });
+      // Упрощенная обработка ответа - принимаем любой успешный ответ
+      // Бекенд может возвращать данные в разных форматах
+      if (response.status >= 200 && response.status < 300) {
+        // Если ответ содержит поле data - используем его, иначе весь ответ
+        const responseData = response.data;
+
+        this.logger.api('API request successful', {
+          method,
+          endpoint,
+          status: response.status,
+          url
+        });
+
+        // Проверяем структуру ответа для стандартизированных API ответов
+        if (responseData && typeof responseData === 'object') {
+          // Если это стандартный API response с полем data
+          if ('data' in responseData) {
+            return responseData.data as T;
+          }
+          // Если это стандартный API response с полем success
+          if ('success' in responseData && responseData.success === true && 'data' in responseData) {
+            return responseData.data as T;
+          }
+        }
+
+        // Возвращаем данные как есть (прямой ответ от бекенда)
+        return responseData as T;
+
+      } else {
+        // Обработка HTTP ошибок
+        throw this.createApiError(response, method, url);
       }
-
-      const apiResponse = response.data;
-
-      if (!apiResponse.success) {
-        throw errorHandler.create(
-          apiResponse.message || 'API request failed',
-          'API_ERROR',
-          {
-            errors: apiResponse.errors,
-            statusCode: apiResponse.statusCode,
-            url,
-            method
-          },
-          apiResponse.statusCode
-        );
-      }
-
-      this.logger.api('API request successful', {
-        method,
-        endpoint,
-        status: response.status,
-        url
-      });
-
-      return apiResponse.data as T;
 
     } catch (error: any) {
       const handledError = errorHandler.handle(error, `API:${method}:${endpoint}`);
@@ -102,6 +106,54 @@ class ApiClientImpl implements ApiClient {
       }
 
       throw handledError;
+    }
+  }
+
+  private createApiError(response: any, method: string, url: string): Error {
+    const status = response.status;
+    const statusText = response.statusText;
+    let errorMessage = `HTTP ${status}: ${statusText}`;
+    let errorDetails: any = { url, method, status };
+
+    // Извлекаем сообщение об ошибке из ответа
+    if (response.data) {
+      if (typeof response.data === 'string') {
+        errorMessage = response.data;
+      } else if (typeof response.data === 'object') {
+        if (response.data.message) {
+          errorMessage = response.data.message;
+        } else if (response.data.error) {
+          errorMessage = response.data.error;
+        } else if (Array.isArray(response.data.errors)) {
+          errorMessage = response.data.errors.join(', ');
+          errorDetails.errors = response.data.errors;
+        }
+        errorDetails.responseData = response.data;
+      }
+    }
+
+    const error = new Error(errorMessage);
+    (error as any).status = status;
+    (error as any).details = errorDetails;
+    (error as any).code = this.getErrorCode(status);
+
+    return error;
+  }
+
+  private getErrorCode(status: number): string {
+    switch (status) {
+      case 400: return 'VALIDATION_ERROR';
+      case 401: return 'UNAUTHORIZED';
+      case 403: return 'FORBIDDEN';
+      case 404: return 'NOT_FOUND';
+      case 409: return 'CONFLICT';
+      case 422: return 'UNPROCESSABLE_ENTITY';
+      case 429: return 'RATE_LIMITED';
+      case 500: return 'SERVER_ERROR';
+      case 502: return 'BAD_GATEWAY';
+      case 503: return 'SERVICE_UNAVAILABLE';
+      case 504: return 'GATEWAY_TIMEOUT';
+      default: return 'HTTP_ERROR';
     }
   }
 

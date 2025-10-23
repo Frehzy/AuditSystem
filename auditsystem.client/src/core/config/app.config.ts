@@ -13,11 +13,6 @@ interface AuthConfig {
   SESSION_TIMEOUT: number;
 }
 
-interface ChatConfig {
-  MESSAGE_LIMIT: number;
-  TYPING_INDICATOR_DELAY: number;
-}
-
 interface FeaturesConfig {
   HEALTH_CHECKS: boolean;
   AUTO_RETRY: boolean;
@@ -33,7 +28,6 @@ interface AppConfig {
   };
   API: ApiConfig;
   AUTH: AuthConfig;
-  CHAT: ChatConfig;
   FEATURES: FeaturesConfig;
 }
 
@@ -44,7 +38,7 @@ export const APP_CONFIG: AppConfig = {
     ENV: import.meta.env.MODE || 'development',
   },
   API: {
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://localhost:7193',
+    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://localhost:7282',
     TIMEOUT: 10000,
     HEALTH_CHECK_INTERVAL: 30000,
     MAX_RETRIES: 3,
@@ -56,10 +50,6 @@ export const APP_CONFIG: AppConfig = {
     TOKEN_REFRESH_INTERVAL: 5 * 60 * 1000,
     SESSION_TIMEOUT: 24 * 60 * 60 * 1000,
   },
-  CHAT: {
-    MESSAGE_LIMIT: 1000,
-    TYPING_INDICATOR_DELAY: 1000,
-  },
   FEATURES: {
     HEALTH_CHECKS: true,
     AUTO_RETRY: true,
@@ -68,4 +58,4 @@ export const APP_CONFIG: AppConfig = {
   },
 } as const;
 
-export type { AppConfig, ApiConfig, AuthConfig, ChatConfig, FeaturesConfig };
+export type { AppConfig, ApiConfig, AuthConfig, FeaturesConfig };

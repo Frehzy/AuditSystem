@@ -36,6 +36,7 @@ export interface RefreshTokenRequest {
 
 // ==================== RESPONSE TYPES ====================
 
+// Базовый интерфейс для ответов API
 export interface ApiResponse<T = any> {
   data?: T;
   success: boolean;
@@ -56,6 +57,7 @@ export interface ErrorResponse extends ApiResponse {
   statusCode: number;
 }
 
+// Прямой ответ от бекенда (без обертки)
 export interface LoginResponseData {
   token: string;
   refreshToken?: string;
@@ -75,6 +77,7 @@ export interface RefreshTokenResponseData {
   refreshToken?: string;
 }
 
+// Типы для обернутых ответов (если бекенд использует стандартную обертку)
 export type LoginResponse = SuccessResponse<LoginResponseData>;
 export type ValidateTokenResponse = SuccessResponse<ValidateTokenResponseData>;
 export type RefreshTokenResponse = SuccessResponse<RefreshTokenResponseData>;
@@ -100,7 +103,7 @@ export interface AuthValidationErrors {
 
 // ==================== UTILITY TYPES ====================
 
-export type ApiResult<T> = 
+export type ApiResult<T> =
   | { success: true; data: T; status?: number }
   | { success: false; error: string; status?: number };
 
@@ -119,10 +122,18 @@ export const isErrorResponse = (
 };
 
 export const isUserDto = (user: any): user is UserDto => {
-  return user && 
-         typeof user.id === 'string' && 
-         typeof user.username === 'string' && 
-         typeof user.email === 'string';
+  return user &&
+    typeof user.id === 'string' &&
+    typeof user.username === 'string' &&
+    typeof user.email === 'string';
+};
+
+// Проверка прямого ответа логина (без обертки)
+export const isDirectLoginResponse = (response: any): response is LoginResponseData => {
+  return response &&
+    typeof response.token === 'string' &&
+    typeof response.user === 'object' &&
+    typeof response.user.id === 'string';
 };
 
 // ==================== CONSTANTS ====================

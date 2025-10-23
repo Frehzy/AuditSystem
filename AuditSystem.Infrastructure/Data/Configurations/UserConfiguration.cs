@@ -39,10 +39,5 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
 
         builder.HasIndex(u => u.Email)
             .IsUnique();
-
-        builder.HasMany(u => u.ChatSessions)
-            .WithOne(cs => cs.User)
-            .HasForeignKey(cs => cs.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }

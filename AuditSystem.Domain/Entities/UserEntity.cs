@@ -23,7 +23,4 @@ public class UserEntity : BaseEntity
 
     [JsonPropertyName("lastLoginAt")]
     public DateTime? LastLoginAt { get; set; }
-
-    [JsonPropertyName("chatSessions")]
-    public virtual ICollection<ChatSessionEntity> ChatSessions { get; set; } = [];
 }

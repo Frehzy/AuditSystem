@@ -21,8 +21,19 @@
     "paths": {
       "@/*": [ "./src/*" ]
     },
-    "types": [ "vite/client", "node" ]
+    "types": [ "vite/client", "node", "vue" ]
   },
-  "include": [ "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "env.d.ts", "src/**/*" ],
-  "exclude": [ "src/**/__tests__/*" ]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "env.d.ts",
+    "src/**/*",
+    "src/shims-vue.d.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/*",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts"
+  ]
 }

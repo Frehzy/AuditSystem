@@ -168,7 +168,7 @@
 
       // Переход в чат с небольшой задержкой для лучшего UX
       setTimeout(() => {
-        router.push('/chat');
+        router.push('/audit');
       }, 500);
     } else {
       // Ошибка авторизации уже установлена в auth.error
@@ -202,12 +202,12 @@
 
     // Перенаправление если уже авторизован
     if (auth.isAuthenticated.value) {
-      logger.info('User already authenticated, redirecting to chat');
+      logger.info('User already authenticated, redirecting to audit');
       serverHealth.startPeriodicChecks(30000);
 
       // Небольшая задержка для лучшего UX
       await nextTick();
-      router.push('/chat');
+      router.push('/audit');
       return;
     }
 

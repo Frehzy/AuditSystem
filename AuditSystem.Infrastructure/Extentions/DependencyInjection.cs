@@ -28,9 +28,6 @@ public static class DependencyInjection
             provider.GetRequiredService<ApplicationDbContext>());
         
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IChatSessionRepository, ChatSessionRepository>();
-        services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
         
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();

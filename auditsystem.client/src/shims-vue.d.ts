@@ -1,12 +1,10 @@
-/* eslint-disable */
-
 declare module '*.vue' {
-  import type { DefineComponent } from 'vue';
-  const component: DefineComponent<{}, {}, any>;
-  export default component;
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent<{}, {}, any>
+  export default component
 }
 
-// Расширение типа для глобальных свойств Vue
+// Для Vue 3
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
     $logger: {
@@ -18,4 +16,4 @@ declare module '@vue/runtime-core' {
   }
 }
 
-export {};
+export { }

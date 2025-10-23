@@ -2,8 +2,9 @@
 using AuditSystem.Shared.DTOs.Auth;
 using MediatR;
 using FluentValidation;
+using AuditSystem.Shared.DTOs.Auth.Login;
 
-namespace AuditSystem.Application.Features.Auth.Commands;
+namespace AuditSystem.Application.Features.Auth.Commands.Login;
 
 public class LoginCommand : IRequest<Result<LoginResponse>>
 {
