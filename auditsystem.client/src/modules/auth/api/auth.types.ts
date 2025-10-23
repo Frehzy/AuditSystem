@@ -1,0 +1,138 @@
+// ==================== CORE TYPES ====================
+
+export interface UserDto {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string;
+  isActive?: boolean;
+}
+
+// ==================== REQUEST TYPES ====================
+
+export interface LoginCommand {
+  username: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface RegisterCommand {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ValidateTokenRequest {
+  token: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// ==================== RESPONSE TYPES ====================
+
+export interface ApiResponse<T = any> {
+  data?: T;
+  success: boolean;
+  message?: string;
+  errors?: string[];
+  timestamp: string;
+  statusCode?: number;
+}
+
+export interface SuccessResponse<T> extends ApiResponse<T> {
+  success: true;
+  data: T;
+}
+
+export interface ErrorResponse extends ApiResponse {
+  success: false;
+  errors: string[];
+  statusCode: number;
+}
+
+export interface LoginResponseData {
+  token: string;
+  refreshToken?: string;
+  expiresAt: string;
+  user: UserDto;
+}
+
+export interface ValidateTokenResponseData {
+  isValid: boolean;
+  expiresAt?: string;
+  user?: UserDto;
+}
+
+export interface RefreshTokenResponseData {
+  token: string;
+  expiresAt: string;
+  refreshToken?: string;
+}
+
+export type LoginResponse = SuccessResponse<LoginResponseData>;
+export type ValidateTokenResponse = SuccessResponse<ValidateTokenResponseData>;
+export type RefreshTokenResponse = SuccessResponse<RefreshTokenResponseData>;
+
+// ==================== STATE TYPES ====================
+
+export interface AuthState {
+  token: string | null;
+  user: UserDto | null;
+  isLoading: boolean;
+  error: string | null;
+  lastActivity: string | null;
+  sessionTimeout: number | null;
+}
+
+export interface AuthValidationErrors {
+  username?: string;
+  password?: string;
+  email?: string;
+  confirmPassword?: string;
+  general?: string;
+}
+
+// ==================== UTILITY TYPES ====================
+
+export type ApiResult<T> = 
+  | { success: true; data: T; status?: number }
+  | { success: false; error: string; status?: number };
+
+// ==================== TYPE GUARDS ====================
+
+export const isSuccessResponse = <T>(
+  response: ApiResponse<T>
+): response is SuccessResponse<T> => {
+  return response.success === true && response.data !== undefined;
+};
+
+export const isErrorResponse = (
+  response: ApiResponse
+): response is ErrorResponse => {
+  return response.success === false && Array.isArray(response.errors);
+};
+
+export const isUserDto = (user: any): user is UserDto => {
+  return user && 
+         typeof user.id === 'string' && 
+         typeof user.username === 'string' && 
+         typeof user.email === 'string';
+};
+
+// ==================== CONSTANTS ====================
+
+export const AUTH_ERRORS = {
+  INVALID_CREDENTIALS: 'Неверное имя пользователя или пароль',
+  USER_NOT_FOUND: 'Пользователь не найден',
+  ACCOUNT_LOCKED: 'Аккаунт заблокирован',
+  TOKEN_EXPIRED: 'Токен истек',
+  NETWORK_ERROR: 'Ошибка сети',
+  SERVER_ERROR: 'Ошибка сервера',
+  UNKNOWN_ERROR: 'Неизвестная ошибка',
+} as const;

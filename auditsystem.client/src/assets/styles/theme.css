@@ -1,0 +1,101 @@
+:root {
+  /* Light theme colors */
+  --color-background-light: #f8fafc;
+  --color-background-card-light: #ffffff;
+  --color-text-primary-light: #1e293b;
+  --color-text-secondary-light: #475569;
+  --color-text-muted-light: #64748b;
+  --color-border-light: #e2e8f0;
+  --color-border-card-light: #f1f5f9;
+  /* Dark theme colors */
+  --color-background-dark: #0f172a;
+  --color-background-card-dark: #1e293b;
+  --color-text-primary-dark: #f1f5f9;
+  --color-text-secondary-dark: #cbd5e1;
+  --color-text-muted-dark: #94a3b8;
+  --color-border-dark: #334155;
+  --color-border-card-dark: #2d3748;
+  /* Primary colors */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  /* Semantic colors */
+  --color-primary: var(--color-primary-500);
+  --color-primary-dark: var(--color-primary-600);
+  --color-primary-light: var(--color-primary-400);
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-success-dark: #059669;
+  --color-error: #ef4444;
+  --color-error-light: #fee2e2;
+  --color-error-dark: #dc2626;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-warning-dark: #d97706;
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  --color-info-dark: #2563eb;
+  /* Surface colors */
+  --color-surface: var(--color-background-card);
+  --color-surface-hover: color-mix(in srgb, var(--color-background-card) 95%, var(--color-primary) 5%);
+  --color-surface-active: color-mix(in srgb, var(--color-background-card) 90%, var(--color-primary) 10%);
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+  --gradient-primary-hover: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));
+  --gradient-surface: linear-gradient(135deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 98%, transparent));
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  --gradient-card: linear-gradient(135deg, var(--color-background-card), color-mix(in srgb, var(--color-background-card) 95%, var(--color-primary-50) 5%));
+  /* Status colors */
+  --status-online-bg: color-mix(in srgb, var(--color-success-light) 20%, transparent 80%);
+  --status-online-border: var(--color-success);
+  --status-online-dot: var(--color-success);
+  --status-online-indicator: var(--color-success-light);
+  --status-online-text: var(--color-success-dark);
+  --status-offline-bg: color-mix(in srgb, var(--color-error-light) 20%, transparent 80%);
+  --status-offline-border: var(--color-error);
+  --status-offline-dot: var(--color-error);
+  --status-offline-indicator: var(--color-error-light);
+  --status-offline-text: var(--color-error-dark);
+  --status-checking-bg: color-mix(in srgb, var(--color-warning-light) 20%, transparent 80%);
+  --status-checking-border: var(--color-warning);
+  --status-checking-dot: var(--color-warning);
+  --status-checking-indicator: var(--color-warning-light);
+  --status-checking-text: var(--color-warning-dark);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-primary: 0 4px 14px 0 color-mix(in srgb, var(--color-primary) 25%, transparent);
+  /* Animation */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+.theme-light {
+  --color-background: var(--color-background-light);
+  --color-background-card: var(--color-background-card-light);
+  --color-text-primary: var(--color-text-primary-light);
+  --color-text-secondary: var(--color-text-secondary-light);
+  --color-text-muted: var(--color-text-muted-light);
+  --color-border: var(--color-border-light);
+  --color-border-card: var(--color-border-card-light);
+}
+
+.theme-dark {
+  --color-background: var(--color-background-dark);
+  --color-background-card: var(--color-background-card-dark);
+  --color-text-primary: var(--color-text-primary-dark);
+  --color-text-secondary: var(--color-text-secondary-dark);
+  --color-text-muted: var(--color-text-muted-dark);
+  --color-border: var(--color-border-dark);
+  --color-border-card: var(--color-border-card-dark);
+}

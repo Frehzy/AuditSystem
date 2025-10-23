@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Backend/">
+    <Project Path="AuditSystem.Application/AuditSystem.Application.csproj" />
+    <Project Path="AuditSystem.Domain/AuditSystem.Domain.csproj" />
+    <Project Path="AuditSystem.Infrastructure/AuditSystem.Infrastructure.csproj" />
+    <Project Path="AuditSystem.Shared/AuditSystem.Shared.csproj" />
+  </Folder>
+  <Project Path="auditsystem.client/auditsystem.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="AuditSystem.Server/AuditSystem.Server.csproj" />
+</Solution>
