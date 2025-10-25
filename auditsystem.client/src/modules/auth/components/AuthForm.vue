@@ -1,3 +1,4 @@
+<!-- src/modules/auth/components/AuthForm.vue -->
 <template>
   <form @submit.prevent="handleSubmit" class="auth-form" novalidate>
     <div class="auth-form__fields">
@@ -77,7 +78,6 @@
 <script setup lang="ts">
   import { reactive, computed, ref } from 'vue';
   import { BaseInput, BaseButton } from '@/framework/ui';
-  import { formService } from '@/core/services/form/form.service';
   import { UserIcon, LockIcon, AlertIcon } from '@/assets/icons';
   import type { AuthValidationErrors } from '../api/auth.types';
 
@@ -109,32 +109,13 @@
 
   const validationErrors = ref<AuthValidationErrors>({});
 
-  // Правила валидации с использованием formService
-  const formValidationRules = {
-    username: [
-      formService.rules.required('Имя пользователя обязательно'),
-      formService.rules.minLength(2, 'Минимум 2 символа'),
-      formService.rules.maxLength(50, 'Максимум 50 символов'),
-      formService.rules.pattern(/^[a-zA-Z0-9_]+$/, 'Только буквы, цифры и подчеркивания'),
-    ],
-    password: [
-      formService.rules.required('Пароль обязателен'),
-      formService.rules.minLength(3, 'Минимум 3 символа'),
-      formService.rules.maxLength(100, 'Максимум 100 символов'),
-    ],
-  };
-
   /**
    * Проверка валидности формы
    */
   const isFormValid = computed(() => {
-    const formDataForValidation = {
-      username: formData.username,
-      password: formData.password,
-    };
-
-    const validation = formService.validateForm(formDataForValidation, formValidationRules);
-    return validation.isValid && formData.username.trim().length > 0 && formData.password.length > 0;
+    return formData.username.trim().length > 0 &&
+      formData.password.length > 0 &&
+      Object.keys(validationErrors.value).length === 0;
   });
 
   /**
@@ -142,12 +123,30 @@
    */
   const validateField = (field: 'username' | 'password'): void => {
     const value = formData[field];
-    const rules = formValidationRules[field];
+    let error: string | null = null;
 
-    const validation = formService.validateField(value, rules, formData);
+    if (field === 'username') {
+      if (!value.trim()) {
+        error = 'Имя пользователя обязательно';
+      } else if (value.length < 2) {
+        error = 'Минимум 2 символа';
+      } else if (value.length > 50) {
+        error = 'Максимум 50 символов';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+        error = 'Только буквы, цифры и подчеркивания';
+      }
+    } else if (field === 'password') {
+      if (!value) {
+        error = 'Пароль обязателен';
+      } else if (value.length < 3) {
+        error = 'Минимум 3 символа';
+      } else if (value.length > 100) {
+        error = 'Максимум 100 символов';
+      }
+    }
 
-    if (!validation.isValid) {
-      validationErrors.value[field] = validation.errors[0];
+    if (error) {
+      validationErrors.value[field] = error;
     } else {
       delete validationErrors.value[field];
     }
@@ -167,19 +166,14 @@
     if (!props.serverAvailable) return;
 
     // Валидируем все поля
-    const validation = formService.validateForm(formData, formValidationRules);
+    validateField('username');
+    validateField('password');
 
-    if (validation.isValid) {
+    if (Object.keys(validationErrors.value).length === 0) {
       emit('submit', {
         username: formData.username.trim(),
         password: formData.password,
       });
-    } else {
-      // Преобразуем ошибки в формат AuthValidationErrors
-      validationErrors.value = Object.entries(validation.errors).reduce((acc, [key, errors]) => {
-        acc[key as keyof AuthValidationErrors] = errors[0];
-        return acc;
-      }, {} as AuthValidationErrors);
     }
   };
 

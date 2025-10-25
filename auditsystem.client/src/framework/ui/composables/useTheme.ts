@@ -5,15 +5,6 @@ export type Theme = 'light' | 'dark' | 'auto'
 
 /**
  * Композабл для управления темой приложения
- * 
- * @example
- * const { theme, toggleTheme, isDark } = useTheme()
- * 
- * // Переключить тему
- * toggleTheme()
- * 
- * // Установить конкретную тему
- * theme.value = 'dark'
  */
 export function useTheme() {
   const storedTheme = localStorage.getItem('theme') as Theme | null
@@ -28,42 +19,50 @@ export function useTheme() {
   })
 
   // Применение темы к документу
-  const applyTheme = () => {
+  const applyTheme = (): void => {
     const effectiveTheme = isDark.value ? 'dark' : 'light'
     document.documentElement.className = `theme-${effectiveTheme}`
     localStorage.setItem('theme', theme.value)
   }
 
   // Переключение темы
-  const toggleTheme = () => {
+  const toggleTheme = (): Theme => {
     const themes: Theme[] = ['light', 'dark', 'auto']
     const currentIndex = themes.indexOf(theme.value)
     const nextIndex = (currentIndex + 1) % themes.length
     theme.value = themes[nextIndex]
+    return theme.value
   }
 
   // Установка конкретной темы
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = (newTheme: Theme): void => {
     theme.value = newTheme
   }
 
   // Следим за изменениями системных предпочтений
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+  const handleSystemThemeChange = () => {
     if (theme.value === 'auto') {
       applyTheme()
     }
   }
 
+  // Используем современный метод addEventListener
   mediaQuery.addEventListener('change', handleSystemThemeChange)
 
   // Автоматическое применение темы при изменениях
   watch(theme, applyTheme, { immediate: true })
 
+  // Функция очистки
+  const cleanup = () => {
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
   return {
-    theme,
+    theme: computed(() => theme.value),
     isDark,
     toggleTheme,
     setTheme,
+    cleanup
   }
 }

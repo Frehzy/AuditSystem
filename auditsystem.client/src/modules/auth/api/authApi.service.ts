@@ -1,6 +1,6 @@
-import { apiClient } from '@/core/services/api/api-client.service';
-import { errorHandler } from '@/core/services/error/error-handler.service';
-import { logger } from '@/core/utils/logger/logger';
+import { apiClient } from '@/core/services/core/api/api-client.service';
+import { errorHandler } from '@/core/services/core/utils/error-handler.service';
+import { logger } from '@/core/utils/logger';
 import type {
   LoginCommand,
   ValidateTokenRequest,
@@ -27,7 +27,7 @@ class AuthApiService {
     enableLogging: import.meta.env.DEV,
   };
 
-  private requestQueue = new Map<string, Promise<any>>();
+  private requestQueue = new Map<string, Promise<unknown>>();
   private activeRequests = new Set<string>();
 
   constructor(config?: Partial<AuthApiConfig>) {
@@ -44,7 +44,7 @@ class AuthApiService {
     // Дедупликация запросов
     if (this.requestQueue.has(requestKey)) {
       this.logger.debug('Returning cached login request', { username: credentials.username });
-      return this.requestQueue.get(requestKey)!;
+      return this.requestQueue.get(requestKey)! as Promise<LoginResponseData>;
     }
 
     if (this.activeRequests.has(requestKey)) {
@@ -88,7 +88,7 @@ class AuthApiService {
 
       return response;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.login');
       this.logger.error('Login failed', {
         error: handledError.message,
@@ -121,7 +121,7 @@ class AuthApiService {
       this.logger.auth('Token validation', { isValid });
       return isValid;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.validateToken');
       this.logger.error('Token validation error', {
         error: handledError.message
@@ -155,7 +155,7 @@ class AuthApiService {
 
       return { success: true, data: userData };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.register');
       this.logger.error('Registration failed', {
         error: handledError.message
@@ -188,7 +188,7 @@ class AuthApiService {
 
       return userData;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.getProfile');
       this.logger.error('Profile fetch failed', {
         error: handledError.message
@@ -206,7 +206,7 @@ class AuthApiService {
     try {
       await this.executeRequest(endpoint, 'POST');
       this.logger.auth('Logout completed');
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.logout');
       this.logger.error('Logout error', {
         error: handledError.message
@@ -225,7 +225,7 @@ class AuthApiService {
       await this.executeRequest(endpoint, 'POST', { email });
       this.logger.auth('Password reset requested', { email });
       return { success: true, data: undefined };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.requestPasswordReset');
       this.logger.error('Password reset request failed', {
         error: handledError.message
@@ -252,7 +252,7 @@ class AuthApiService {
       });
 
       return updatedUser;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.updateProfile');
       this.logger.error('Profile update failed', {
         error: handledError.message
@@ -276,7 +276,7 @@ class AuthApiService {
       );
 
       return response.available;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.checkUsername');
       this.logger.error('Username check failed', {
         error: handledError.message
@@ -305,7 +305,7 @@ class AuthApiService {
       });
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.refreshToken');
       this.logger.error('Token refresh failed', {
         error: handledError.message
@@ -320,7 +320,7 @@ class AuthApiService {
   private async executeRequest<T>(
     endpoint: string,
     method: string,
-    data?: any,
+    data?: unknown,
     options: { requireAuth?: boolean } = {}
   ): Promise<T> {
     const requestOptions = {

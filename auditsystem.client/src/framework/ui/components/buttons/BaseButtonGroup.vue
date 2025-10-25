@@ -1,6 +1,5 @@
-<!-- src/framework/ui/components/buttons/BaseButtonGroup.vue -->
 <template>
-  <div class="base-button-group" :class="groupClasses" role="group" :aria-label="ariaLabel">
+  <div class="base-button-group" :class="computedClasses" role="group" :aria-label="ariaLabel">
     <slot />
   </div>
 </template>
@@ -22,7 +21,7 @@
     ariaLabel: 'Button group',
   })
 
-  const groupClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-button-group',
     `base-button-group--${props.orientation}`,
     `base-button-group--${props.size}`,
@@ -47,43 +46,43 @@
   }
 
   /* Horizontal group styles */
-  .base-button-group--horizontal :deep(.base-button) {
+  .base-button-group--horizontal ::v-deep(.base-button) {
     border-radius: 0;
     margin: 0;
   }
 
-  .base-button-group--horizontal :deep(.base-button:first-child) {
+  .base-button-group--horizontal ::v-deep(.base-button:first-child) {
     border-top-left-radius: var(--radius-lg);
     border-bottom-left-radius: var(--radius-lg);
   }
 
-  .base-button-group--horizontal :deep(.base-button:last-child) {
+  .base-button-group--horizontal ::v-deep(.base-button:last-child) {
     border-top-right-radius: var(--radius-lg);
     border-bottom-right-radius: var(--radius-lg);
   }
 
-  .base-button-group--horizontal :deep(.base-button:not(:last-child)) {
-    border-right: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  .base-button-group--horizontal ::v-deep(.base-button:not(:last-child)) {
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
   }
 
   /* Vertical group styles */
-  .base-button-group--vertical :deep(.base-button) {
+  .base-button-group--vertical ::v-deep(.base-button) {
     border-radius: 0;
     margin: 0;
   }
 
-  .base-button-group--vertical :deep(.base-button:first-child) {
+  .base-button-group--vertical ::v-deep(.base-button:first-child) {
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
   }
 
-  .base-button-group--vertical :deep(.base-button:last-child) {
+  .base-button-group--vertical ::v-deep(.base-button:last-child) {
     border-bottom-left-radius: var(--radius-lg);
     border-bottom-right-radius: var(--radius-lg);
   }
 
-  .base-button-group--vertical :deep(.base-button:not(:last-child)) {
-    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  .base-button-group--vertical ::v-deep(.base-button:not(:last-child)) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   }
 
   /* Size variants */
@@ -91,12 +90,12 @@
     border-radius: var(--radius-md);
   }
 
-    .base-button-group--sm :deep(.base-button:first-child) {
+    .base-button-group--sm ::v-deep(.base-button:first-child) {
       border-top-left-radius: var(--radius-md);
       border-bottom-left-radius: var(--radius-md);
     }
 
-    .base-button-group--sm :deep(.base-button:last-child) {
+    .base-button-group--sm ::v-deep(.base-button:last-child) {
       border-top-right-radius: var(--radius-md);
       border-bottom-right-radius: var(--radius-md);
     }
@@ -105,12 +104,12 @@
     border-radius: var(--radius-xl);
   }
 
-    .base-button-group--lg :deep(.base-button:first-child) {
+    .base-button-group--lg ::v-deep(.base-button:first-child) {
       border-top-left-radius: var(--radius-xl);
       border-bottom-left-radius: var(--radius-xl);
     }
 
-    .base-button-group--lg :deep(.base-button:last-child) {
+    .base-button-group--lg ::v-deep(.base-button:last-child) {
       border-top-right-radius: var(--radius-xl);
       border-bottom-right-radius: var(--radius-xl);
     }
@@ -121,13 +120,13 @@
     border: 1px solid var(--color-border);
   }
 
-    .base-button-group--outline :deep(.base-button) {
+    .base-button-group--outline ::v-deep(.base-button) {
       background: transparent;
       border: none;
       box-shadow: none;
     }
 
-    .base-button-group--outline :deep(.base-button:hover) {
+    .base-button-group--outline ::v-deep(.base-button:hover) {
       background: var(--color-surface-hover);
     }
 </style>

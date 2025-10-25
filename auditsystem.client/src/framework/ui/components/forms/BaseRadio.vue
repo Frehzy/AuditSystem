@@ -66,8 +66,7 @@
     },
   ])
 
-  const onChange = (event: Event) => {
-    const target = event.target as HTMLInputElement
+  const onChange = () => {
     emit('update:modelValue', props.value)
     emit('change', props.value)
   }

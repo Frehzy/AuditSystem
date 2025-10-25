@@ -1,177 +1,95 @@
 import type { UserDto } from '@/modules/auth/api/auth.types';
-import { logger } from '@/core/utils/logger/logger';
+import { logger } from '@/core/utils/logger';
 import { STORAGE_KEYS } from '@/core/constants/storage-keys';
 
 class StorageService {
   private readonly TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
   private readonly USER_KEY = STORAGE_KEYS.AUTH_USER;
-  private readonly APP_STATE_KEY = STORAGE_KEYS.APP_STATE;
 
-  /**
-   * Сохранение токена
-   */
+  // Token methods
   setToken(token: string): void {
     this.set(this.TOKEN_KEY, token);
     logger.storage('Token saved', { length: token.length });
   }
 
-  /**
-   * Получение токена
-   */
   getToken(): string | null {
     return this.get(this.TOKEN_KEY);
   }
 
-  /**
-   * Сохранение данных пользователя
-   */
+  // User methods
   setUser(user: UserDto): void {
     this.set(this.USER_KEY, JSON.stringify(user));
-    logger.storage('User data saved', { userId: user.id, username: user.username });
+    logger.storage('User saved', { userId: user.id });
   }
 
-  /**
-   * Получение данных пользователя
-   */
   getUser(): UserDto | null {
-    const userData = this.get(this.USER_KEY);
+    const data = this.get(this.USER_KEY);
+    if (!data) return null;
+
     try {
-      return userData ? JSON.parse(userData) : null;
-    } catch (error) {
-      logger.error('Failed to parse user data:', error);
-      this.remove(this.USER_KEY); // Удаляем поврежденные данные
+      return JSON.parse(data);
+    } catch {
+      this.remove(this.USER_KEY);
+      logger.error('Failed to parse user data');
       return null;
     }
   }
 
-  /**
-   * Очистка данных аутентификации
-   */
-  clearAuthData(): void {
+  // Auth management
+  clearAuth(): void {
     this.remove(this.TOKEN_KEY);
     this.remove(this.USER_KEY);
-    logger.auth('Auth data cleared from storage');
+    logger.auth('Auth data cleared');
   }
 
-  /**
-   * Проверка валидности токена
-   */
-  isValidToken(): boolean {
+  isValidAuth(): boolean {
     const token = this.getToken();
-    
-    if (!token) {
-      return false;
-    }
+    const user = this.getUser();
 
-    // Проверка формата JWT токена
-    const isValidFormat = token.split('.').length === 3;
-    if (!isValidFormat) {
-      logger.warn('Invalid token format detected');
-      this.clearAuthData();
-      return false;
-    }
+    if (!token || !user) return false;
 
-    // Проверка минимальной длины
-    const isValidLength = token.length > 10;
-    if (!isValidLength) {
-      logger.warn('Invalid token length detected');
-      this.clearAuthData();
-      return false;
-    }
-
-    // Дополнительная проверка срока действия (если есть payload)
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const expiration = payload.exp * 1000; // Convert to milliseconds
-      
-      if (Date.now() >= expiration) {
-        logger.warn('Token expired');
-        this.clearAuthData();
-        return false;
-      }
-    } catch {
-      // Если не можем распарсить payload, продолжаем с базовыми проверками
-    }
-
-    return true;
+    // Basic validation
+    return token.length > 10 &&
+      typeof user.id === 'string' &&
+      user.id.length > 0;
   }
 
-  /**
-   * Сохранение состояния приложения
-   */
-  setAppState<T>(key: string, value: T): void {
-    try {
-      const state = this.getAppState() || {};
-      const newState = { ...state, [key]: value };
-      localStorage.setItem(this.APP_STATE_KEY, JSON.stringify(newState));
-    } catch (error) {
-      logger.error('Failed to save app state:', error);
-    }
-  }
-
-  /**
-   * Получение состояния приложения
-   */
-  getAppState<T>(key?: string): T | null {
-    try {
-      const state = localStorage.getItem(this.APP_STATE_KEY);
-      const parsedState = state ? JSON.parse(state) : {};
-      
-      return key ? parsedState[key] : parsedState;
-    } catch (error) {
-      logger.error('Failed to get app state:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Очистка всего хранилища
-   */
-  clearAll(): void {
-    try {
-      localStorage.clear();
-      logger.storage('All storage data cleared');
-    } catch (error) {
-      logger.error('Failed to clear storage:', error);
-    }
-  }
-
-  // ==================== PRIVATE METHODS ====================
-
-  private set(key: string, value: string): void {
+  // Generic methods
+  set(key: string, value: string): boolean {
     try {
       localStorage.setItem(key, value);
+      return true;
     } catch (error) {
-      logger.error('Storage set error:', error);
-      this.handleStorageError(error);
+      this.handleError('set', error);
+      return false;
     }
   }
 
-  private get(key: string): string | null {
+  get(key: string): string | null {
     try {
       return localStorage.getItem(key);
     } catch (error) {
-      logger.error('Storage get error:', error);
-      this.handleStorageError(error);
+      this.handleError('get', error);
       return null;
     }
   }
 
-  private remove(key: string): void {
+  remove(key: string): boolean {
     try {
       localStorage.removeItem(key);
+      return true;
     } catch (error) {
-      logger.error('Storage remove error:', error);
-      this.handleStorageError(error);
+      this.handleError('remove', error);
+      return false;
     }
   }
 
-  private handleStorageError(error: unknown): void {
-    // Можно добавить логику для обработки переполнения хранилища
+  private handleError(operation: string, error: unknown): void {
+    logger.error(`Storage ${operation} error:`, error);
+
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      logger.error('Storage quota exceeded');
-      // Автоматическая очистка устаревших данных
-      this.clearAuthData();
+      logger.error('Storage quota exceeded - clearing auth data');
+      this.clearAuth();
     }
   }
 }

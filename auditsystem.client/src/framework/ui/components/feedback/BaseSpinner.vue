@@ -3,8 +3,8 @@
        role="status"
        :aria-label="ariaLabel"
        :aria-live="ariaLive"
-       :style="spinnerStyle">
-    <div class="base-spinner__circle" :style="circleStyle"></div>
+       :style="computedSpinnerStyle">
+    <div class="base-spinner__circle" :style="computedCircleStyle"></div>
     <span v-if="showText" class="base-spinner__text">
       {{ text }}
     </span>
@@ -40,12 +40,12 @@
     variant: 'primary'
   })
 
-  const spinnerStyle = computed(() => ({
+  const computedSpinnerStyle = computed(() => ({
     width: props.size,
     height: props.size,
   }))
 
-  const variantColor = computed(() => {
+  const computedVariantColor = computed(() => {
     const colors = {
       primary: 'var(--color-primary)',
       secondary: 'var(--color-text-secondary)',
@@ -57,10 +57,10 @@
     return colors[props.variant] || props.color
   })
 
-  const circleStyle = computed(() => ({
+  const computedCircleStyle = computed(() => ({
     borderWidth: props.borderWidth,
     borderColor: props.borderColor,
-    borderTopColor: variantColor.value,
+    borderTopColor: computedVariantColor.value,
     animationDuration: props.speed,
   }))
 </script>
@@ -79,9 +79,9 @@
     height: 100%;
     border-style: solid;
     border-radius: 50%;
-    animation: spin v-bind('props.speed') linear infinite;
+    animation: spin 1s linear infinite;
     box-sizing: border-box;
-    border-color: color-mix(in srgb, var(--color-border) 30%, transparent);
+    border-color: rgba(128, 128, 128, 0.3);
     border-top-color: currentColor;
   }
 
@@ -141,23 +141,23 @@
 
   /* Pulse animation variant */
   .base-spinner--pulse .base-spinner__circle {
-    animation: spin-pulse v-bind('props.speed') ease-in-out infinite;
+    animation: spin-pulse 1s ease-in-out infinite;
     border-style: double;
   }
 
   @keyframes spin-pulse {
     0% {
       transform: rotate(0deg);
-      border-top-color: color-mix(in srgb, currentColor 100%, transparent);
+      border-top-color: currentColor;
     }
 
     50% {
-      border-top-color: color-mix(in srgb, currentColor 30%, transparent);
+      border-top-color: rgba(128, 128, 128, 0.3);
     }
 
     100% {
       transform: rotate(360deg);
-      border-top-color: color-mix(in srgb, currentColor 100%, transparent);
+      border-top-color: currentColor;
     }
   }
 </style>

@@ -30,7 +30,7 @@
         <tbody class="base-table__body">
           <tr v-for="(row, rowIndex) in sortedData"
               :key="getRowKey(row, rowIndex)"
-              :class="getRowClass(row, rowIndex)"
+              :class="getRowClass(rowIndex)"
               @click="handleRowClick(row)">
             <td v-for="column in columns"
                 :key="column.key"
@@ -68,155 +68,155 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ChevronUpIcon, ChevronDownIcon, MoreVerticalIcon, InfoIcon } from '@/assets/icons'
-import BasePagination from '../navigation/BasePagination.vue'
+  import { computed, ref } from 'vue'
+  import { ChevronUpIcon, ChevronDownIcon, MoreVerticalIcon, InfoIcon } from '@/assets/icons'
+  import BasePagination from '../navigation/BasePagination.vue'
 
-interface TableColumn {
-  key: string
-  title: string
-  width?: string
-  align?: 'left' | 'center' | 'right'
-  sortable?: boolean
-  formatter?: (value: any) => string
-}
-
-interface Props {
-  columns: TableColumn[]
-  data: any[]
-  striped?: boolean
-  hoverable?: boolean
-  bordered?: boolean
-  compact?: boolean
-  sortable?: boolean
-  pagination?: boolean
-  pageSize?: number
-  currentPage?: number
-  totalItems?: number
-  emptyText?: string
-  rowKey?: string | ((row: any) => string)
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  striped: false,
-  hoverable: true,
-  bordered: false,
-  compact: false,
-  sortable: true,
-  pagination: false,
-  pageSize: 10,
-  currentPage: 1,
-  totalItems: 0,
-  emptyText: 'Нет данных для отображения',
-  rowKey: 'id',
-})
-
-const emit = defineEmits<{
-  'sort': [key: string, order: 'asc' | 'desc']
-  'row-click': [row: any]
-  'update:currentPage': [page: number]
-}>()
-
-const sortBy = ref<string>('')
-const sortOrder = ref<'asc' | 'desc'>('asc')
-
-const tableClasses = computed(() => [
-  'base-table',
-  {
-    'base-table--striped': props.striped,
-    'base-table--hoverable': props.hoverable,
-    'base-table--bordered': props.bordered,
-    'base-table--compact': props.compact,
-  },
-])
-
-const containerStyle = computed(() => ({
-  'max-height': props.pagination ? 'calc(100% - 60px)' : '100%',
-}))
-
-const sortedData = computed(() => {
-  if (!sortBy.value || !props.sortable) {
-    return props.data
+  interface TableColumn {
+    key: string
+    title: string
+    width?: string
+    align?: 'left' | 'center' | 'right'
+    sortable?: boolean
+    formatter?: (value: unknown) => string
   }
 
-  return [...props.data].sort((a, b) => {
-    const aValue = a[sortBy.value]
-    const bValue = b[sortBy.value]
+  interface Props {
+    columns: TableColumn[]
+    data: Record<string, unknown>[]
+    striped?: boolean
+    hoverable?: boolean
+    bordered?: boolean
+    compact?: boolean
+    sortable?: boolean
+    pagination?: boolean
+    pageSize?: number
+    currentPage?: number
+    totalItems?: number
+    emptyText?: string
+    rowKey?: string | ((row: Record<string, unknown>, index: number) => string)
+  }
 
-    if (aValue === bValue) return 0
-
-    let result = 0
-    if (aValue < bValue) result = -1
-    if (aValue > bValue) result = 1
-
-    return sortOrder.value === 'asc' ? result : -result
+  const props = withDefaults(defineProps<Props>(), {
+    striped: false,
+    hoverable: true,
+    bordered: false,
+    compact: false,
+    sortable: true,
+    pagination: false,
+    pageSize: 10,
+    currentPage: 1,
+    totalItems: 0,
+    emptyText: 'Нет данных для отображения',
+    rowKey: 'id',
   })
-})
 
-const getRowKey = (row: any, index: number): string => {
-  if (typeof props.rowKey === 'function') {
-    return props.rowKey(row)
-  }
-  return row[props.rowKey] || `row-${index}`
-}
+  const emit = defineEmits<{
+    'sort': [key: string, order: 'asc' | 'desc']
+    'row-click': [row: Record<string, unknown>]
+    'update:currentPage': [page: number]
+  }>()
 
-const getHeaderClass = (column: TableColumn) => [
-  'base-table__header-cell',
-  {
-    'base-table__header-cell--sortable': column.sortable,
-    'base-table__header-cell--sorted': sortBy.value === column.key,
-  },
-]
+  const sortBy = ref<string>('')
+  const sortOrder = ref<'asc' | 'desc'>('asc')
 
-const getHeaderStyle = (column: TableColumn) => ({
-  width: column.width,
-  textAlign: column.align,
-})
+  const tableClasses = computed(() => [
+    'base-table',
+    {
+      'base-table--striped': props.striped,
+      'base-table--hoverable': props.hoverable,
+      'base-table--bordered': props.bordered,
+      'base-table--compact': props.compact,
+    },
+  ])
 
-const getRowClass = (row: any, index: number) => [
-  'base-table__row',
-  {
-    'base-table__row--even': index % 2 === 0,
-    'base-table__row--odd': index % 2 === 1,
-  },
-]
+  const containerStyle = computed(() => ({
+    'max-height': props.pagination ? 'calc(100% - 60px)' : '100%',
+  }))
 
-const getCellClass = (column: TableColumn) => [
-  'base-table__cell',
-  `base-table__cell--align-${column.align || 'left'}`,
-]
+  const sortedData = computed(() => {
+    if (!sortBy.value || !props.sortable) {
+      return props.data
+    }
 
-const getCellStyle = (column: TableColumn) => ({
-  width: column.width,
-})
+    return [...props.data].sort((a, b) => {
+      const aValue = a[sortBy.value] as string | number
+      const bValue = b[sortBy.value] as string | number
 
-const formatCellValue = (value: any, column: TableColumn): string => {
-  if (column.formatter) {
-    return column.formatter(value)
-  }
-  return value != null ? String(value) : ''
-}
+      if (aValue === bValue) return 0
 
-const handleSort = (column: TableColumn) => {
-  if (!column.sortable || !props.sortable) return
+      let result = 0
+      if (aValue < bValue) result = -1
+      if (aValue > bValue) result = 1
 
-  if (sortBy.value === column.key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = column.key
-    sortOrder.value = 'asc'
+      return sortOrder.value === 'asc' ? result : -result
+    })
+  })
+
+  const getRowKey = (row: Record<string, unknown>, index: number): string => {
+    if (typeof props.rowKey === 'function') {
+      return props.rowKey(row, index)
+    }
+    return String(row[props.rowKey] || `row-${index}`)
   }
 
-  emit('sort', column.key, sortOrder.value)
-}
+  const getHeaderClass = (column: TableColumn) => [
+    'base-table__header-cell',
+    {
+      'base-table__header-cell--sortable': column.sortable,
+      'base-table__header-cell--sorted': sortBy.value === column.key,
+    },
+  ]
 
-const handleRowClick = (row: any) => {
-  emit('row-click', row)
-}
+  const getHeaderStyle = (column: TableColumn) => ({
+    width: column.width,
+    textAlign: column.align,
+  })
 
-const handlePageChange = (page: number) => {
-  emit('update:currentPage', page)
-}
+  const getRowClass = (index: number) => [
+    'base-table__row',
+    {
+      'base-table__row--even': index % 2 === 0,
+      'base-table__row--odd': index % 2 === 1,
+    },
+  ]
+
+  const getCellClass = (column: TableColumn) => [
+    'base-table__cell',
+    `base-table__cell--align-${column.align || 'left'}`,
+  ]
+
+  const getCellStyle = (column: TableColumn) => ({
+    width: column.width,
+  })
+
+  const formatCellValue = (value: unknown, column: TableColumn): string => {
+    if (column.formatter) {
+      return column.formatter(value)
+    }
+    return value != null ? String(value) : ''
+  }
+
+  const handleSort = (column: TableColumn) => {
+    if (!column.sortable || !props.sortable) return
+
+    if (sortBy.value === column.key) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortBy.value = column.key
+      sortOrder.value = 'asc'
+    }
+
+    emit('sort', column.key, sortOrder.value)
+  }
+
+  const handleRowClick = (row: Record<string, unknown>) => {
+    emit('row-click', row)
+  }
+
+  const handlePageChange = (page: number) => {
+    emit('update:currentPage', page)
+  }
 </script>
 
 <style scoped>

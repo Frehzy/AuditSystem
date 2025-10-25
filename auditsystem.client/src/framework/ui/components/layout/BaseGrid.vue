@@ -1,42 +1,41 @@
-<!-- src/framework/ui/components/layout/BaseGrid.vue -->
 <template>
-  <div class="base-grid" :class="gridClasses" :style="gridStyle">
+  <div class="base-grid" :class="computedClasses" :style="computedStyle">
     <slot />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+  import { computed } from 'vue'
 
-interface Props {
-  cols?: number | string
-  gap?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl'
-  alignItems?: 'start' | 'center' | 'end' | 'stretch'
-  justify?: 'start' | 'center' | 'end' | 'between' | 'around'
-  responsive?: boolean
-}
+  interface Props {
+    cols?: number | string
+    gap?: 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+    alignItems?: 'start' | 'center' | 'end' | 'stretch'
+    justify?: 'start' | 'center' | 'end' | 'between' | 'around'
+    responsive?: boolean
+  }
 
-const props = withDefaults(defineProps<Props>(), {
-  cols: 1,
-  gap: 'md',
-  alignItems: 'stretch',
-  justify: 'start',
-  responsive: true,
-})
+  const props = withDefaults(defineProps<Props>(), {
+    cols: 1,
+    gap: 'md',
+    alignItems: 'stretch',
+    justify: 'start',
+    responsive: true,
+  })
 
-const gridClasses = computed(() => [
-  'base-grid',
-  `base-grid--gap-${props.gap}`,
-  `base-grid--align-${props.alignItems}`,
-  `base-grid--justify-${props.justify}`,
-  {
-    'base-grid--responsive': props.responsive,
-  },
-])
+  const computedClasses = computed(() => [
+    'base-grid',
+    `base-grid--gap-${props.gap}`,
+    `base-grid--align-${props.alignItems}`,
+    `base-grid--justify-${props.justify}`,
+    {
+      'base-grid--responsive': props.responsive,
+    },
+  ])
 
-const gridStyle = computed(() => ({
-  '--grid-cols': props.cols,
-}))
+  const computedStyle = computed(() => ({
+    '--grid-cols': props.cols,
+  }))
 </script>
 
 <style scoped>

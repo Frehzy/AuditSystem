@@ -14,7 +14,7 @@
           <router-link :to="item.path"
                        class="nav-link"
                        :class="{
-              'nav-link--active': $route.path.startsWith(item.path),
+              'nav-link--active': currentRoute.path.startsWith(item.path),
               'nav-link--collapsed': isCollapsed
             }">
             <component :is="item.icon" class="nav-link__icon" />
@@ -30,12 +30,12 @@
 
     <div class="sidebar__footer">
       <div class="sidebar__controls" :class="{ 'sidebar__controls--collapsed': isCollapsed }">
-        <button @click="emit('toggle-theme')"
+        <button @click="handleToggleTheme"
                 class="sidebar__control-btn"
                 :title="isDarkTheme ? 'Светлая тема' : 'Темная тема'">
           <component :is="themeIcon" class="sidebar__control-icon" />
         </button>
-        <button @click="emit('toggle-sidebar')"
+        <button @click="handleToggleSidebar"
                 class="sidebar__control-btn"
                 :title="isCollapsed ? 'Развернуть' : 'Свернуть'">
           <MenuIcon class="sidebar__control-icon" />
@@ -78,19 +78,17 @@
     icon: unknown;
   }
 
-  interface Props {
-    isCollapsed?: boolean;
-  }
-
   interface Emits {
     (e: 'toggle-theme'): void;
     (e: 'toggle-sidebar'): void;
   }
 
-  const props = defineProps<Props>();
+  defineProps<{
+    isCollapsed?: boolean;
+  }>();
   const emit = defineEmits<Emits>();
 
-  const route = useRoute();
+  const currentRoute = useRoute();
   const auth = useAuth();
   const themeStore = useThemeStore();
 
@@ -118,6 +116,14 @@
   const userName = computed(() => auth.user.value?.username || 'Аудитор');
   const isDarkTheme = computed(() => themeStore.isDark);
   const themeIcon = computed(() => isDarkTheme.value ? markRaw(SunIcon) : markRaw(MoonIcon));
+
+  const handleToggleTheme = (): void => {
+    emit('toggle-theme');
+  };
+
+  const handleToggleSidebar = (): void => {
+    emit('toggle-sidebar');
+  };
 </script>
 
 <style scoped>

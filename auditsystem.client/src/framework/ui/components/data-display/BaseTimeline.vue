@@ -1,10 +1,9 @@
-<!-- src/framework/ui/components/data-display/BaseTimeline.vue -->
 <template>
-  <div class="base-timeline" :class="timelineClasses">
+  <div class="base-timeline" :class="computedClasses">
     <div v-for="(item, index) in items"
-         :key="item.id || index"
+         :key="getItemKey(item, index)"
          class="base-timeline__item"
-         :class="getItemClass(item, index)">
+         :class="getComputedItemClass(item, index)">
 
       <!-- Timeline connector -->
       <div v-if="index < items.length - 1" class="base-timeline__connector" />
@@ -44,13 +43,16 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
+  import type { Component } from 'vue';
+
   interface TimelineItem {
     id?: string
     title: string
     description?: string
     content?: string
     time?: string
-    icon?: any
+    icon?: Component
     status?: 'default' | 'success' | 'error' | 'warning' | 'info'
   }
 
@@ -65,7 +67,7 @@
     size: 'md',
   })
 
-  const timelineClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-timeline',
     `base-timeline--${props.size}`,
     {
@@ -73,13 +75,17 @@
     },
   ])
 
-  const getItemClass = (item: TimelineItem, index: number) => [
+  const getItemKey = (item: TimelineItem, index: number): string => {
+    return item.id || `timeline-item-${index}`
+  }
+
+  const getComputedItemClass = (item: TimelineItem, index: number) => [
     'base-timeline__item',
     `base-timeline__item--${item.status || 'default'}`,
     {
       'base-timeline__item--alternate': props.alternate && index % 2 === 1,
     },
-  ])
+  ]
 </script>
 
 <style scoped>

@@ -1,6 +1,7 @@
-import { apiClient } from '@/core/services/api/api-client.service';
-import { errorHandler } from '@/core/services/error/error-handler.service';
-import { logger } from '@/core/utils/logger/logger';
+// src/modules/audit/api/auditApi.service.ts
+import { apiClient } from '@/core/services/core/api/api-client.service';
+import { errorHandler } from '@/core/services/core/utils/error-handler.service';
+import { logger } from '@/core/utils/logger';
 import type {
   MilitaryUnit,
   Subnet,
@@ -79,6 +80,24 @@ class AuditApiService {
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'audit.getScanStatus');
       this.logger.error('Failed to get scan status', { error: handledError.message });
+      throw handledError;
+    }
+  }
+
+  async getScanProgress(scanId: string): Promise<ScanResult> {
+    // Используем getScanStatus для получения прогресса
+    return this.getScanStatus(scanId);
+  }
+
+  async cancelScan(scanId: string): Promise<void> {
+    try {
+      await apiClient.post<void>(`${this.basePath}/scans/${scanId}/cancel`, {}, {
+        requireAuth: true,
+        timeout: 10000,
+      });
+    } catch (error: unknown) {
+      const handledError = errorHandler.handle(error, 'audit.cancelScan');
+      this.logger.error('Failed to cancel scan', { error: handledError.message });
       throw handledError;
     }
   }

@@ -1,213 +1,247 @@
 // src/modules/audit/composables/useAudit.ts
 import { ref, computed } from 'vue';
 import { auditApiService } from '../api/auditApi.service';
-import { logger } from '@/core/utils/logger/logger';
 import type {
-  AuditState,
   MilitaryUnit,
   Subnet,
+  ScanResult,
+  Vulnerability,
   AuditSettings,
+  StartScanCommand,
   CreateUnitCommand,
-  CreateSubnetCommand,
-  StartScanCommand
+  CreateSubnetCommand
 } from '../api/audit.types';
 
-const DEFAULT_SETTINGS: AuditSettings = {
-  scanInterval: 3600000,
-  autoReporting: true,
-  notificationEnabled: true,
-  reportFormat: 'pdf',
-  maxScanDuration: 1800000
-};
-
 export const useAudit = () => {
-  const loggerContext = logger.create('useAudit');
-
   // State
-  const state = ref<AuditState>({
-    units: [],
-    currentScan: null,
-    settings: { ...DEFAULT_SETTINGS },
-    scanHistory: [],
-    isLoading: false,
-    error: null
+  const units = ref<MilitaryUnit[]>([]);
+  const currentScan = ref<ScanResult | null>(null);
+  const scanHistory = ref<ScanResult[]>([]);
+  const vulnerabilities = ref<Vulnerability[]>([]);
+  const settings = ref<AuditSettings>({
+    scanInterval: 3600000,
+    autoReporting: true,
+    notificationEnabled: true,
+    reportFormat: 'pdf',
+    maxScanDuration: 1800000,
+    deepScan: false,
+    notificationEmail: '',
+    realtimeNotifications: true,
+    reportDetailLevel: 'detailed',
+    autoArchive: true
   });
 
-  // Computed
-  const units = computed(() => state.value.units);
-  const currentScan = computed(() => state.value.currentScan);
-  const settings = computed(() => state.value.settings);
-  const scanHistory = computed(() => state.value.scanHistory);
-  const isLoading = computed(() => state.value.isLoading);
-  const error = computed(() => state.value.error);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
 
+  // Computed
   const totalDevices = computed(() => {
-    return state.value.units.reduce((total, unit) => {
+    return units.value.reduce((total, unit) => {
       return total + unit.subnets.reduce((subTotal, subnet) => subTotal + subnet.devicesCount, 0);
     }, 0);
   });
 
-  // Military Units Management
+  const activeScans = computed(() => {
+    return scanHistory.value.filter(scan => scan.status === 'in_progress');
+  });
+
+  const criticalVulnerabilities = computed(() => {
+    return vulnerabilities.value.filter(vuln => vuln.severity === 'critical');
+  });
+
+  // Actions
   const loadMilitaryUnits = async (): Promise<void> => {
-    state.value.isLoading = true;
-    state.value.error = null;
+    isLoading.value = true;
+    error.value = null;
 
     try {
-      const units = await auditApiService.getMilitaryUnits();
-      state.value.units = units;
-      loggerContext.info('Military units loaded', { count: units.length });
+      units.value = await auditApiService.getMilitaryUnits();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      state.value.error = errorMessage;
-      loggerContext.error('Failed to load military units', { error: errorMessage });
-      throw err;
+      error.value = err instanceof Error ? err.message : 'Failed to load military units';
+      console.error('Error loading military units:', err);
     } finally {
-      state.value.isLoading = false;
+      isLoading.value = false;
     }
   };
 
-  const createMilitaryUnit = async (command: CreateUnitCommand): Promise<MilitaryUnit> => {
-    state.value.isLoading = true;
-    state.value.error = null;
+  const startScan = async (command: StartScanCommand): Promise<ScanResult> => {
+    isLoading.value = true;
+    error.value = null;
 
     try {
-      const newUnit = await auditApiService.createMilitaryUnit(command);
-      state.value.units.push(newUnit);
-      loggerContext.info('Military unit created', { unitId: newUnit.id });
-      return newUnit;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      state.value.error = errorMessage;
-      loggerContext.error('Failed to create military unit', { error: errorMessage });
-      throw err;
-    } finally {
-      state.value.isLoading = false;
-    }
-  };
+      const result = await auditApiService.startScan(command);
 
-  // Subnets Management
-  const createSubnet = async (command: CreateSubnetCommand): Promise<Subnet> => {
-    state.value.isLoading = true;
-    state.value.error = null;
-
-    try {
-      const newSubnet = await auditApiService.createSubnet(command);
-
-      const unitIndex = state.value.units.findIndex(unit => unit.id === command.unitId);
-      if (unitIndex !== -1) {
-        state.value.units[unitIndex].subnets.push(newSubnet);
-      }
-
-      loggerContext.info('Subnet created', { subnetId: newSubnet.id });
-      return newSubnet;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      state.value.error = errorMessage;
-      loggerContext.error('Failed to create subnet', { error: errorMessage });
-      throw err;
-    } finally {
-      state.value.isLoading = false;
-    }
-  };
-
-  // Scanning
-  const startScan = async (command: StartScanCommand): Promise<void> => {
-    state.value.isLoading = true;
-    state.value.error = null;
-
-    try {
-      const { scanId } = await auditApiService.startScan(command);
-
-      state.value.currentScan = {
-        scanId,
+      // Создаем временный объект ScanResult на основе ответа
+      const scan: ScanResult = {
+        id: result.scanId,
+        subnetId: command.subnetId,
+        timestamp: new Date().toISOString(),
         status: 'in_progress',
-        progress: 0,
-        currentAction: 'Инициализация сканирования...',
-        devicesProcessed: 0,
-        totalDevices: 0,
-        estimatedTimeRemaining: null
+        devicesScanned: 0,
+        devicesFound: 0,
+        vulnerabilitiesFound: 0,
+        scanDuration: 0
       };
 
+      currentScan.value = scan;
+      return scan;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      state.value.error = errorMessage;
-      loggerContext.error('Failed to start scan', { error: errorMessage });
+      error.value = err instanceof Error ? err.message : 'Failed to start scan';
+      console.error('Error starting scan:', err);
       throw err;
     } finally {
-      state.value.isLoading = false;
+      isLoading.value = false;
     }
   };
 
   const loadScanHistory = async (limit?: number): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+
     try {
-      const history = await auditApiService.getScanHistory(limit);
-      state.value.scanHistory = history;
-      loggerContext.info('Scan history loaded', { count: history.length });
+      scanHistory.value = await auditApiService.getScanHistory(limit);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      loggerContext.error('Failed to load scan history', { error: errorMessage });
-      throw err;
+      error.value = err instanceof Error ? err.message : 'Failed to load scan history';
+      console.error('Error loading scan history:', err);
+    } finally {
+      isLoading.value = false;
     }
   };
 
-  // Settings
-  const loadSettings = async (): Promise<void> => {
-    try {
-      const settings = await auditApiService.getSettings();
-      state.value.settings = settings;
-      loggerContext.info('Settings loaded');
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      loggerContext.error('Failed to load settings', { error: errorMessage });
-      throw err;
-    }
-  };
-
-  const updateSettings = async (newSettings: Partial<AuditSettings>): Promise<void> => {
-    state.value.isLoading = true;
-    state.value.error = null;
+  const createMilitaryUnit = async (command: CreateUnitCommand): Promise<MilitaryUnit> => {
+    isLoading.value = true;
+    error.value = null;
 
     try {
-      const updatedSettings = await auditApiService.updateSettings(newSettings);
-      state.value.settings = updatedSettings;
-      loggerContext.info('Settings updated');
+      const unit = await auditApiService.createMilitaryUnit(command);
+      units.value.push(unit);
+      return unit;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      state.value.error = errorMessage;
-      loggerContext.error('Failed to update settings', { error: errorMessage });
+      error.value = err instanceof Error ? err.message : 'Failed to create military unit';
+      console.error('Error creating military unit:', err);
       throw err;
     } finally {
-      state.value.isLoading = false;
+      isLoading.value = false;
+    }
+  };
+
+  const createSubnet = async (command: CreateSubnetCommand): Promise<Subnet> => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const subnet = await auditApiService.createSubnet(command);
+
+      // Find and update the unit
+      const unitIndex = units.value.findIndex(unit => unit.id === command.unitId);
+      if (unitIndex !== -1) {
+        units.value[unitIndex].subnets.push(subnet);
+      }
+
+      return subnet;
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to create subnet';
+      console.error('Error creating subnet:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const loadSettings = async (): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      settings.value = await auditApiService.getSettings();
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to load settings';
+      console.error('Error loading settings:', err);
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const updateSettings = async (newSettings: AuditSettings): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      await auditApiService.updateSettings(newSettings);
+      settings.value = newSettings;
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to update settings';
+      console.error('Error updating settings:', err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const getScanProgress = async (scanId: string): Promise<ScanResult> => {
+    try {
+      // Используем существующий метод getScanStatus вместо отсутствующего getScanProgress
+      return await auditApiService.getScanStatus(scanId);
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to get scan progress';
+      console.error('Error getting scan progress:', err);
+      throw err;
+    }
+  };
+
+  const cancelScan = async (scanId: string): Promise<void> => {
+    try {
+      // Временная заглушка для отсутствующего метода cancelScan
+      console.warn('cancelScan method not implemented in AuditApiService');
+
+      // Обновляем статус сканирования локально
+      if (currentScan.value?.id === scanId) {
+        currentScan.value.status = 'failed';
+      }
+
+      // Ищем в истории и обновляем
+      const scanInHistory = scanHistory.value.find(scan => scan.id === scanId);
+      if (scanInHistory) {
+        scanInHistory.status = 'failed';
+      }
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Failed to cancel scan';
+      console.error('Error cancelling scan:', err);
+      throw err;
     }
   };
 
   const clearError = (): void => {
-    state.value.error = null;
+    error.value = null;
   };
 
   return {
     // State
-    state,
-    units,
-    currentScan,
-    settings,
-    scanHistory,
-    isLoading,
-    error,
+    units: computed(() => units.value),
+    currentScan: computed(() => currentScan.value),
+    scanHistory: computed(() => scanHistory.value),
+    vulnerabilities: computed(() => vulnerabilities.value),
+    settings: computed(() => settings.value),
+    isLoading: computed(() => isLoading.value),
+    error: computed(() => error.value),
 
     // Computed
     totalDevices,
+    activeScans,
+    criticalVulnerabilities,
 
     // Actions
     loadMilitaryUnits,
-    createMilitaryUnit,
-    createSubnet,
     startScan,
     loadScanHistory,
+    createMilitaryUnit,
+    createSubnet,
     loadSettings,
     updateSettings,
+    getScanProgress,
+    cancelScan,
     clearError
   };
 };
 
-export type UseAuditReturn = ReturnType<typeof useAudit>;
+export default useAudit;

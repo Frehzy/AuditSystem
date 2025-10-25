@@ -6,7 +6,7 @@
       <div v-for="(step, index) in steps"
            :key="step.id"
            class="base-stepper__step"
-           :class="getStepClass(step, index)">
+           :class="getStepClass(step)">
 
         <!-- Step connector -->
         <div v-if="index > 0" class="base-stepper__connector" />
@@ -79,17 +79,18 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { CheckIcon } from '@/assets/icons'
   import BaseButton from '../buttons/BaseButton.vue'
+  import type { Component } from 'vue';
 
   interface Step {
     id: string
     title: string
     description?: string
     status?: 'completed' | 'current' | 'pending' | 'error'
-    component?: any
-    props?: any
+    component?: Component
+    props?: Record<string, unknown>
     disabled?: boolean
     validate?: () => boolean | Promise<boolean>
   }
@@ -134,7 +135,7 @@
     },
   ])
 
-  const getStepClass = (step: Step, index: number) => [
+  const getStepClass = (step: Step) => [
     'base-stepper__step',
     `base-stepper__step--${step.status || 'pending'}`,
     {
@@ -214,7 +215,7 @@
   }
 
   // Update steps status based on current step
-  watch(() => currentIndex.value, (newIndex) => {
+  watch(() => currentIndex.value, (newIndex: number) => {
     props.steps.forEach((step, index) => {
       if (index < newIndex) {
         step.status = 'completed'

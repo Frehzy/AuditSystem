@@ -70,18 +70,18 @@
 <script setup lang="ts">
   import { computed, ref, watch, nextTick } from 'vue'
   import { CloseIcon } from '@/assets/icons'
-  import BaseBadge from '../data-display/BaseBadge.vue'
+  import type { Component } from 'vue';
 
   interface Tab {
     id: string
     label: string
-    icon?: any
+    icon?: Component
     badge?: string | number
     badgeVariant?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'
     closable?: boolean
     disabled?: boolean
-    component?: any
-    props?: any
+    component?: Component
+    props?: Record<string, unknown>
     content?: string
   }
 

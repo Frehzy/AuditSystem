@@ -1,8 +1,9 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
-import { storage } from '@/core/services/storage/storage.service';
-import { logger } from '@/core/utils/logger/logger';
+import { storageService } from '@/core/services/core/auth/storage.service';
+import { tokenService } from '@/core/services/core/auth/token.service';
+import { logger } from '@/core/utils/logger';
 
 // Динамические импорты для code splitting
 const AuthView = () => import('@/modules/auth/views/AuthView.vue');
@@ -81,13 +82,13 @@ const router = createRouter({
  * Навигационные guards
  */
 const authGuard = (to: RouteLocationNormalized, from: RouteLocationNormalized): boolean | string => {
-  // Добавляем проверку на существование meta
   if (!to.meta) {
     logger.warn('Route meta is undefined', { path: to.path, name: to.name });
     return true;
   }
 
-  const isAuthenticated = storage.isValidToken();
+  const token = storageService.getToken(); // Используем существующий метод
+  const isAuthenticated = token ? tokenService.isValidFormat(token) && !tokenService.isTokenExpired(token) : false;
 
   logger.router('Navigation guard check', {
     from: from?.name || 'unknown',

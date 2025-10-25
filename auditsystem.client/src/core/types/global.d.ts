@@ -1,3 +1,4 @@
+// src/core/types/global.d.ts
 declare module '*.vue' {
   import type { DefineComponent } from 'vue';
   const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>;
@@ -11,15 +12,15 @@ interface ImportMetaEnv {
   readonly VITE_APP_ENV: string;
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
-// Глобальные типы для приложения
+// Используем type вместо interface для глобальных объявлений
 declare global {
-  interface Window {
-    __APP_CONFIG__?: typeof import('../config/app.config').APP_CONFIG;
-  }
+  type AppWindow = Window & {
+    __APP_CONFIG__?: Record<string, unknown>;
+    __VUE_DEVTOOLS_GLOBAL_HOOK__?: {
+      emit?: (event: string, payload: unknown) => void;
+    };
+  };
 }
 
-export {};
+// Экспортируем типы для использования в других модулях
+export { ImportMetaEnv };

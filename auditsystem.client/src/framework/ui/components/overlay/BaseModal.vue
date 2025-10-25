@@ -48,120 +48,120 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId, nextTick } from 'vue'
-import { CloseIcon } from '@/assets/icons'
-import BaseButton from '../buttons/BaseButton.vue'
+  import { computed, useId } from 'vue'
+  import { CloseIcon } from '@/assets/icons'
+  import BaseButton from '../buttons/BaseButton.vue'
 
-interface Props {
-  modelValue: boolean
-  title?: string
-  message?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
-  closable?: boolean
-  closeOnBackdrop?: boolean
-  closeOnEscape?: boolean
-  showHeader?: boolean
-  showFooter?: boolean
-  confirmText?: string
-  cancelText?: string
-  persistent?: boolean
-  fullscreen?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  title: '',
-  message: '',
-  size: 'md',
-  closable: true,
-  closeOnBackdrop: true,
-  closeOnEscape: true,
-  showHeader: true,
-  showFooter: true,
-  confirmText: 'Подтвердить',
-  cancelText: 'Отмена',
-  persistent: false,
-  fullscreen: false,
-})
-
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  'close': []
-  'confirm': []
-  'open': []
-  'closed': []
-}>()
-
-const titleId = `modal-title-${useId()}`
-const descriptionId = `modal-description-${useId()}`
-
-const modalClasses = computed(() => [
-  'base-modal',
-  `base-modal--${props.size}`,
-  {
-    'base-modal--fullscreen': props.fullscreen,
-    'base-modal--persistent': props.persistent,
-  },
-])
-
-const containerStyle = computed(() => ({
-  '--modal-width': props.fullscreen ? '100%' : getModalWidth(),
-}))
-
-const getModalWidth = (): string => {
-  const widths = {
-    sm: '400px',
-    md: '500px',
-    lg: '600px',
-    xl: '800px',
+  interface Props {
+    modelValue: boolean
+    title?: string
+    message?: string
+    size?: 'sm' | 'md' | 'lg' | 'xl'
+    closable?: boolean
+    closeOnBackdrop?: boolean
+    closeOnEscape?: boolean
+    showHeader?: boolean
+    showFooter?: boolean
+    confirmText?: string
+    cancelText?: string
+    persistent?: boolean
+    fullscreen?: boolean
   }
-  return widths[props.size]
-}
 
-const closeModal = () => {
-  if (!props.persistent) {
-    emit('update:modelValue', false)
-    emit('close')
+  const props = withDefaults(defineProps<Props>(), {
+    title: '',
+    message: '',
+    size: 'md',
+    closable: true,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
+    showHeader: true,
+    showFooter: true,
+    confirmText: 'Подтвердить',
+    cancelText: 'Отмена',
+    persistent: false,
+    fullscreen: false,
+  })
+
+  const emit = defineEmits<{
+    'update:modelValue': [value: boolean]
+    'close': []
+    'confirm': []
+    'open': []
+    'closed': []
+  }>()
+
+  const titleId = `modal-title-${useId()}`
+  const descriptionId = `modal-description-${useId()}`
+
+  const modalClasses = computed(() => [
+    'base-modal',
+    `base-modal--${props.size}`,
+    {
+      'base-modal--fullscreen': props.fullscreen,
+      'base-modal--persistent': props.persistent,
+    },
+  ])
+
+  const containerStyle = computed(() => ({
+    '--modal-width': props.fullscreen ? '100%' : getModalWidth(),
+  }))
+
+  const getModalWidth = (): string => {
+    const widths = {
+      sm: '400px',
+      md: '500px',
+      lg: '600px',
+      xl: '800px',
+    }
+    return widths[props.size]
   }
-}
 
-const handleConfirm = () => {
-  emit('confirm')
-  closeModal()
-}
+  const closeModal = () => {
+    if (!props.persistent) {
+      emit('update:modelValue', false)
+      emit('close')
+    }
+  }
 
-const handleBackdropClick = () => {
-  if (props.closeOnBackdrop && !props.persistent) {
+  const handleConfirm = () => {
+    emit('confirm')
     closeModal()
   }
-}
 
-const handleEscape = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.closeOnEscape && !props.persistent) {
-    closeModal()
+  const handleBackdropClick = () => {
+    if (props.closeOnBackdrop && !props.persistent) {
+      closeModal()
+    }
   }
-}
 
-const onEnter = () => {
-  document.addEventListener('keydown', handleEscape)
-  document.body.style.overflow = 'hidden'
-  emit('open')
-}
+  const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && props.closeOnEscape && !props.persistent) {
+      closeModal()
+    }
+  }
 
-const onLeave = () => {
-  document.removeEventListener('keydown', handleEscape)
-  document.body.style.overflow = ''
-  emit('closed')
-}
+  const onEnter = () => {
+    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = 'hidden'
+    emit('open')
+  }
 
-// Public methods
-const open = () => {
-  emit('update:modelValue', true)
-}
+  const onLeave = () => {
+    document.removeEventListener('keydown', handleEscape)
+    document.body.style.overflow = ''
+    emit('closed')
+  }
 
-defineExpose({
-  open,
-  close: closeModal,
-})
+  // Public methods
+  const open = () => {
+    emit('update:modelValue', true)
+  }
+
+  defineExpose({
+    open,
+    close: closeModal,
+  })
 </script>
 
 <style scoped>

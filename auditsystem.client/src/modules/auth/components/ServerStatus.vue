@@ -1,3 +1,4 @@
+<!-- src/modules/auth/components/ServerStatus.vue -->
 <template>
   <div class="server-status" :class="statusClass" @click="handleClick">
     <div class="server-status__content">
@@ -8,7 +9,7 @@
         <div class="server-status__details">
           <div class="server-status__label">Статус сервера</div>
           <div class="server-status__url" :title="serverUrl">
-            {{ urlUtils.truncateUrl(serverUrl) }}
+            {{ truncatedUrl }}
           </div>
           <div v-if="responseTime" class="server-status__response-time">
             {{ responseTime }}ms
@@ -35,16 +36,13 @@
     </div>
 
     <div v-if="lastCheck" class="server-status__timestamp">
-      Последняя проверка: {{ dateUtils.formatRelativeTime(lastCheck) }}
+      Последняя проверка: {{ formatRelativeTime(lastCheck) }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import { logger } from '@/core/utils/logger/logger';
-  import dateUtils from '@/core/utils/date/date.utils';
-  import urlUtils from '@/core/utils/url/url.utils';
   import { GlobeIcon, SpinnerIcon } from '@/assets/icons';
 
   interface Props {
@@ -69,7 +67,6 @@
   });
 
   const emit = defineEmits<Emits>();
-  const loggerContext = logger.create('ServerStatus');
 
   /**
    * Класс статуса для стилизации
@@ -89,11 +86,43 @@
   });
 
   /**
+   * Обрезанный URL для отображения
+   */
+  const truncatedUrl = computed(() => {
+    const url = props.serverUrl;
+    if (url.length <= 30) return url;
+    return url.substring(0, 15) + '...' + url.substring(url.length - 12);
+  });
+
+  /**
+   * Форматирование относительного времени
+   */
+  const formatRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+
+    if (diffSec < 60) {
+      return 'только что';
+    } else if (diffMin < 60) {
+      return `${diffMin} мин назад`;
+    } else if (diffHour < 24) {
+      return `${diffHour} ч назад`;
+    } else {
+      return date.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+
+  /**
    * Обработка повторной проверки
    */
   const handleRetry = (): void => {
     if (props.status !== 'checking') {
-      loggerContext.info('Manual server check requested');
       emit('retry');
     }
   };

@@ -1,3 +1,4 @@
+<!-- src/modules/auth/views/AuthView.vue -->
 <template>
   <div class="auth-view" :class="themeClass">
     <!-- Анимированный фон -->
@@ -71,14 +72,13 @@
   import { useAuth } from '../composables/useAuth';
   import { useServerHealth } from '../composables/useServerHealth';
   import { useThemeStore } from '@/framework/stores/theme.store';
-  import { notificationService } from '@/core/services/notification/notification.service';
+  import { notificationService } from '@/core/services/core/ui/notification.service';
   import { BaseToast } from '@/framework/ui';
   import AuthForm from '../components/AuthForm.vue';
   import ServerStatus from '../components/ServerStatus.vue';
   import { RobotIcon, MoonIcon, SunIcon } from '@/assets/icons';
-  import { apiHelper } from '@/services/api/api.client';
   import { APP_CONFIG } from '@/core/config/app.config';
-  import { logger } from '@/core/utils/logger/logger';
+  import { logger } from '@/core/utils/logger';
 
   // Импорт стилей темы
   import '@/assets/styles/theme.css';
@@ -89,7 +89,7 @@
   const themeStore = useThemeStore();
   const toastRef = ref<InstanceType<typeof BaseToast> | null>(null);
 
-  const serverUrl = ref(apiHelper.getBaseURL());
+  const serverUrl = ref(APP_CONFIG.API.BASE_URL);
   const isDevelopment = import.meta.env.DEV;
 
   /**
@@ -109,7 +109,7 @@
    * Переключение темы
    */
   const toggleTheme = (): void => {
-    themeStore.toggleTheme();
+    themeStore.toggle();
     logger.info('Theme toggled', { theme: themeStore.theme });
   };
 
@@ -484,127 +484,6 @@
 
     100% {
       background-position: 200% 0;
-    }
-  }
-
-  /* Адаптивность для мобильных устройств */
-  @media (max-width: 480px) {
-    .auth-view {
-      padding: 8px;
-    }
-
-    .auth-view__card {
-      padding: 20px;
-      border-radius: 12px;
-    }
-
-    .auth-view__header {
-      margin-bottom: 16px;
-    }
-
-    .auth-view__logo {
-      gap: 10px;
-    }
-
-    .auth-view__logo-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-    }
-
-      .auth-view__logo-icon svg {
-        width: 20px;
-        height: 20px;
-      }
-
-    .auth-view__title {
-      font-size: 18px;
-    }
-
-    .auth-view__subtitle {
-      font-size: 12px;
-    }
-
-    .auth-view__theme-toggle {
-      width: 32px;
-      height: 32px;
-    }
-
-    .auth-view__theme-icon svg {
-      width: 14px;
-      height: 14px;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .auth-view__card {
-      padding: 16px;
-    }
-
-    .auth-view__logo {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .auth-view__logo-icon {
-      width: 36px;
-      height: 36px;
-    }
-
-      .auth-view__logo-icon svg {
-        width: 18px;
-        height: 18px;
-      }
-
-    .auth-view__title {
-      font-size: 16px;
-    }
-  }
-
-  /* Ландшафтная ориентация */
-  @media (max-height: 600px) and (orientation: landscape) {
-    .auth-view {
-      padding: 4px;
-      align-items: flex-start;
-    }
-
-    .auth-view__card {
-      padding: 16px;
-      margin: 8px 0;
-    }
-
-    .auth-view__header {
-      margin-bottom: 12px;
-    }
-
-    .auth-view__status {
-      margin-bottom: 12px;
-    }
-  }
-
-  /* Очень маленькие экраны */
-  @media (max-width: 320px) {
-    .auth-view__card {
-      padding: 14px;
-    }
-
-    .auth-view__logo-icon {
-      width: 32px;
-      height: 32px;
-    }
-
-      .auth-view__logo-icon svg {
-        width: 16px;
-        height: 16px;
-      }
-
-    .auth-view__title {
-      font-size: 15px;
-    }
-
-    .auth-view__subtitle {
-      font-size: 11px;
     }
   }
 </style>

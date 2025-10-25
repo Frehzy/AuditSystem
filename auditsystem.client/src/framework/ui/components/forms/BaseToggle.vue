@@ -1,16 +1,15 @@
-<!-- src/framework/ui/components/forms/BaseToggle.vue -->
 <template>
-  <div class="base-toggle" :class="containerClasses">
+  <div class="base-toggle" :class="computedContainerClasses">
     <button type="button"
             role="switch"
             :aria-checked="modelValue"
             :disabled="disabled"
-            @click="toggle"
-            @keydown.space.prevent="toggle"
-            @keydown.enter.prevent="toggle"
+            @click="handleToggle"
+            @keydown.space.prevent="handleToggle"
+            @keydown.enter.prevent="handleToggle"
             class="base-toggle__button">
       <span class="base-toggle__track">
-        <span class="base-toggle__thumb" :style="thumbStyle">
+        <span class="base-toggle__thumb" :style="computedThumbStyle">
           <BaseSpinner v-if="loading"
                        size="12px"
                        variant="primary"
@@ -19,7 +18,7 @@
       </span>
     </button>
 
-    <div v-if="label || description" class="base-toggle__content" @click="toggle">
+    <div v-if="label || description" class="base-toggle__content" @click="handleToggle">
       <div v-if="label" class="base-toggle__label">
         {{ label }}
       </div>
@@ -31,53 +30,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import BaseSpinner from '../feedback/BaseSpinner.vue'
+  import { computed } from 'vue'
+  import BaseSpinner from '../feedback/BaseSpinner.vue'
 
-interface Props {
-  modelValue: boolean
-  label?: string
-  description?: string
-  disabled?: boolean
-  loading?: boolean
-  size?: 'sm' | 'md' | 'lg'
-  variant?: 'primary' | 'success' | 'warning' | 'error'
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  disabled: false,
-  loading: false,
-  size: 'md',
-  variant: 'primary'
-})
-
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  'change': [value: boolean]
-}>()
-
-const containerClasses = computed(() => [
-  'base-toggle',
-  `base-toggle--${props.size}`,
-  `base-toggle--${props.variant}`,
-  {
-    'base-toggle--disabled': props.disabled,
-    'base-toggle--checked': props.modelValue,
-    'base-toggle--loading': props.loading,
-  },
-])
-
-const thumbStyle = computed(() => ({
-  transform: props.modelValue ? 'translateX(100%)' : 'translateX(0)',
-}))
-
-const toggle = () => {
-  if (!props.disabled && !props.loading) {
-    const newValue = !props.modelValue
-    emit('update:modelValue', newValue)
-    emit('change', newValue)
+  interface Props {
+    modelValue: boolean
+    label?: string
+    description?: string
+    disabled?: boolean
+    loading?: boolean
+    size?: 'sm' | 'md' | 'lg'
+    variant?: 'primary' | 'success' | 'warning' | 'error'
   }
-}
+
+  const props = withDefaults(defineProps<Props>(), {
+    disabled: false,
+    loading: false,
+    size: 'md',
+    variant: 'primary'
+  })
+
+  const emit = defineEmits<{
+    'update:modelValue': [value: boolean]
+    'change': [value: boolean]
+  }>()
+
+  const computedContainerClasses = computed(() => [
+    'base-toggle',
+    `base-toggle--${props.size}`,
+    `base-toggle--${props.variant}`,
+    {
+      'base-toggle--disabled': props.disabled,
+      'base-toggle--checked': props.modelValue,
+      'base-toggle--loading': props.loading,
+    },
+  ])
+
+  const computedThumbStyle = computed(() => ({
+    transform: props.modelValue ? 'translateX(100%)' : 'translateX(0)',
+  }))
+
+  const handleToggle = () => {
+    if (!props.disabled && !props.loading) {
+      const newValue = !props.modelValue
+      emit('update:modelValue', newValue)
+      emit('change', newValue)
+    }
+  }
 </script>
 
 <style scoped>
@@ -123,7 +122,7 @@ const toggle = () => {
     background: var(--color-border);
     border-radius: var(--radius-full);
     position: relative;
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
     box-shadow: var(--shadow-inner);
   }
 
@@ -144,7 +143,7 @@ const toggle = () => {
   }
 
   .base-toggle__button:focus-visible .base-toggle__track {
-    box-shadow: var(--shadow-focus);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
   }
 
   .base-toggle__thumb {
@@ -155,7 +154,7 @@ const toggle = () => {
     height: 1.25rem;
     background: white;
     border-radius: var(--radius-full);
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
     box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;

@@ -6,75 +6,91 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
-import { RouterView } from 'vue-router';
-import BaseToast from '@/framework/ui/BaseToast.vue';
-import { useAppStore } from '@/framework/stores/app.store';
-import { useThemeStore } from '@/framework/stores/theme.store';
-import { logger } from '@/core/utils/logger/logger';
-import './assets/styles/theme.css'
+  import { onMounted, onUnmounted, computed } from 'vue';
+  import { RouterView } from 'vue-router';
+  import BaseToast from '@/framework/ui/components/feedback/BaseToast.vue';
+  import { useAppStore } from '@/framework/stores/app.store';
+  import { useThemeStore } from '@/framework/stores/theme.store';
+  import { logger } from '@/core/utils/logger';
+  import './assets/styles/theme.css'
 
-const appStore = useAppStore();
-const themeStore = useThemeStore();
-const loggerContext = logger.create('App');
+  const appStore = useAppStore();
+  const themeStore = useThemeStore();
+  const loggerContext = logger.create('App');
 
-/**
- * Текущий класс темы
- */
-const themeClass = computed(() => `theme-${themeStore.theme}`);
+  /**
+   * Текущий класс темы
+   */
+  const themeClass = computed(() => `theme-${themeStore.theme}`);
 
-/**
- * Обработчик онлайн/офлайн статуса
- */
-const handleOnline = () => {
-  appStore.setOnlineStatus(true);
-  loggerContext.info('Application came online');
-};
+  /**
+   * Обработчик онлайн/офлайн статуса
+   */
+  const handleOnline = () => {
+    appStore.setOnlineStatus(true);
+    loggerContext.info('Application came online');
+  };
 
-const handleOffline = () => {
-  appStore.setOnlineStatus(false);
-  loggerContext.warn('Application went offline');
-};
+  const handleOffline = () => {
+    appStore.setOnlineStatus(false);
+    loggerContext.warn('Application went offline');
+  };
 
-/**
- * Обработчик видимости страницы
- */
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    loggerContext.debug('App became hidden');
-  } else {
-    loggerContext.debug('App became visible');
-  }
-};
+  /**
+   * Обработчик видимости страницы
+   */
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      loggerContext.debug('App became hidden');
+    } else {
+      loggerContext.debug('App became visible');
+    }
+  };
 
-onMounted(() => {
-  // Инициализация темы
-  themeStore.initializeTheme();
-  const cleanupSystemThemeListener = themeStore.setupSystemPreferenceListener();
+  onMounted(() => {
+    // Инициализация темы - используем существующий метод initialize
+    themeStore.initialize();
 
-  // Инициализация слушателей событий
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Добавляем слушатель системных предпочтений темы
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-  loggerContext.info('Application mounted', {
-    online: navigator.onLine,
-    userAgent: navigator.userAgent,
-    theme: themeStore.theme
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const systemTheme = e.matches ? 'dark' : 'light';
+      loggerContext.debug('System theme preference changed:', systemTheme);
+      // Можно добавить логику для автоматического следования системной теме
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+    // Инициализация слушателей событий
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    loggerContext.info('Application mounted', {
+      online: navigator.onLine,
+      userAgent: navigator.userAgent,
+      theme: themeStore.theme
+    });
+
+    // Cleanup function
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   });
 
-  // Cleanup function
-  return () => {
-    cleanupSystemThemeListener();
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
-  };
-});
+  onUnmounted(() => {
+    loggerContext.info('Application unmounted');
+  });
 
-onUnmounted(() => {
-  loggerContext.info('Application unmounted');
-});
+  // Явно указываем, что эти импорты используются в шаблоне
+  // Это устраняет предупреждения TypeScript
+  void RouterView;
+  void BaseToast;
+  void themeClass.value;
 </script>
 
 <style>

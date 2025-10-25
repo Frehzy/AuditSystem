@@ -12,7 +12,7 @@ export { default as MonitoringView } from './components/views/MonitoringView.vue
 export { default as SettingsView } from './components/views/SettingsView.vue';
 
 // Composables
-export { useAudit } from './composables/useAudit';
+export { default as useAudit } from './composables/useAudit';
 
 // API
 export { auditApiService } from './api/auditApi.service';

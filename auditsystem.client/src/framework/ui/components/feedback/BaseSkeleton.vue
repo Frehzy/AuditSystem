@@ -1,52 +1,51 @@
-<!-- src/framework/ui/components/feedback/BaseSkeleton.vue -->
 <template>
-  <div class="base-skeleton" :class="skeletonClasses" :style="skeletonStyle">
+  <div class="base-skeleton" :class="computedClasses" :style="computedStyle">
     <div class="base-skeleton__shimmer"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+  import { computed } from 'vue'
 
-interface Props {
-  width?: string
-  height?: string
-  variant?: 'text' | 'circular' | 'rectangular'
-  animation?: 'pulse' | 'wave' | 'none'
-  borderRadius?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  width: '100%',
-  height: '1rem',
-  variant: 'text',
-  animation: 'pulse',
-  borderRadius: undefined,
-})
-
-const skeletonClasses = computed(() => [
-  'base-skeleton',
-  `base-skeleton--${props.variant}`,
-  `base-skeleton--${props.animation}`,
-])
-
-const skeletonStyle = computed(() => ({
-  width: props.width,
-  height: props.height,
-  borderRadius: props.borderRadius || getDefaultBorderRadius(),
-}))
-
-const getDefaultBorderRadius = (): string => {
-  switch (props.variant) {
-    case 'circular':
-      return '50%'
-    case 'rectangular':
-      return '0px'
-    case 'text':
-    default:
-      return '4px'
+  interface Props {
+    width?: string
+    height?: string
+    variant?: 'text' | 'circular' | 'rectangular'
+    animation?: 'pulse' | 'wave' | 'none'
+    borderRadius?: string
   }
-}
+
+  const props = withDefaults(defineProps<Props>(), {
+    width: '100%',
+    height: '1rem',
+    variant: 'text',
+    animation: 'pulse',
+    borderRadius: undefined,
+  })
+
+  const computedClasses = computed(() => [
+    'base-skeleton',
+    `base-skeleton--${props.variant}`,
+    `base-skeleton--${props.animation}`,
+  ])
+
+  const computedStyle = computed(() => ({
+    width: props.width,
+    height: props.height,
+    borderRadius: props.borderRadius || getDefaultBorderRadius(),
+  }))
+
+  const getDefaultBorderRadius = (): string => {
+    switch (props.variant) {
+      case 'circular':
+        return '50%'
+      case 'rectangular':
+        return '0px'
+      case 'text':
+      default:
+        return '4px'
+    }
+  }
 </script>
 
 <style scoped>
@@ -75,7 +74,7 @@ const getDefaultBorderRadius = (): string => {
   }
 
   .base-skeleton--wave {
-    background: linear-gradient( 90deg, var(--color-border) 0%, color-mix(in srgb, var(--color-border) 80%, transparent) 50%, var(--color-border) 100% );
+    background: linear-gradient(90deg, var(--color-border) 0%, rgba(255, 255, 255, 0.4) 50%, var(--color-border) 100%);
     background-size: 200% 100%;
     animation: skeleton-wave 2s ease-in-out infinite;
   }
@@ -90,7 +89,7 @@ const getDefaultBorderRadius = (): string => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient( 90deg, transparent 0%, color-mix(in srgb, white 20%, transparent) 50%, transparent 100% );
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
     animation: skeleton-shimmer 2s ease-in-out infinite;
   }
 

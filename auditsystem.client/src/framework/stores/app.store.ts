@@ -1,105 +1,77 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
-import { logger } from '@/core/utils/logger/logger';
-import { stateManager } from '@/core/services/state/state-manager.service';
+import { ref, computed } from 'vue';
+import { logger } from '@/core/utils/logger';
 
-interface AppState {
-  isOnline: boolean;
-  isLoading: boolean;
-  serverHealth: boolean;
-  lastServerCheck: Date | null;
-  errors: string[];
+interface AppError {
+  id: string;
+  message: string;
+  timestamp: Date;
+  type: 'error' | 'warning' | 'info';
 }
 
 export const useAppStore = defineStore('app', () => {
-  const state = ref<AppState>({
-    isOnline: navigator.onLine,
-    isLoading: false,
-    serverHealth: false,
-    lastServerCheck: null,
-    errors: [],
-  });
+  // State
+  const isOnline = ref(navigator.onLine);
+  const isLoading = ref(false);
+  const serverHealth = ref(false);
+  const lastServerCheck = ref<Date | null>(null);
+  const errors = ref<AppError[]>([]);
 
   // Computed
-  const isOnline = computed(() => state.value.isOnline);
-  const isLoading = computed(() => state.value.isLoading);
-  const serverHealth = computed(() => state.value.serverHealth);
-  const lastServerCheck = computed(() => state.value.lastServerCheck);
-  const errors = computed(() => state.value.errors);
-  const hasErrors = computed(() => state.value.errors.length > 0);
+  const hasErrors = computed(() => errors.value.length > 0);
+  const latestError = computed(() => errors.value[errors.value.length - 1]);
+  const criticalErrors = computed(() =>
+    errors.value.filter(error => error.type === 'error')
+  );
 
   // Actions
   const setOnlineStatus = (status: boolean) => {
-    state.value.isOnline = status;
-    stateManager.set('app.networkStatus', status);
-    logger.info(`Network status changed: ${status ? 'online' : 'offline'}`);
+    isOnline.value = status;
+    logger.info(`Network status: ${status ? 'online' : 'offline'}`);
   };
 
   const setLoading = (loading: boolean) => {
-    state.value.isLoading = loading;
-    stateManager.set('app.loading', loading);
-
-    if (loading) {
-      logger.debug('Global loading started');
-    } else {
-      logger.debug('Global loading finished');
-    }
+    isLoading.value = loading;
+    logger.debug(`Global loading: ${loading}`);
   };
 
   const setServerHealth = (health: boolean) => {
-    state.value.serverHealth = health;
-    state.value.lastServerCheck = new Date();
-
-    stateManager.set('app.serverHealth', {
-      health,
-      lastCheck: state.value.lastServerCheck
-    });
-
-    logger.info(`Server health status: ${health ? 'healthy' : 'unhealthy'}`);
+    serverHealth.value = health;
+    lastServerCheck.value = new Date();
+    logger.info(`Server health: ${health ? 'healthy' : 'unhealthy'}`);
   };
 
-  const addError = (error: string) => {
-    state.value.errors.push(error);
-    stateManager.set('app.errors', state.value.errors);
-    logger.error('App error added:', error);
+  const addError = (message: string, type: AppError['type'] = 'error') => {
+    const error: AppError = {
+      id: Date.now().toString(),
+      message,
+      timestamp: new Date(),
+      type
+    };
+
+    errors.value.push(error);
+
+    // Автоматически очищаем старые ошибки (максимум 50)
+    if (errors.value.length > 50) {
+      errors.value = errors.value.slice(-50);
+    }
+
+    logger[type === 'error' ? 'error' : 'warn']('App error:', message);
+  };
+
+  const removeError = (id: string) => {
+    const index = errors.value.findIndex(error => error.id === id);
+    if (index > -1) {
+      errors.value.splice(index, 1);
+    }
   };
 
   const clearErrors = () => {
-    state.value.errors = [];
-    stateManager.set('app.errors', []);
-    logger.debug('App errors cleared');
+    errors.value = [];
+    logger.debug('All errors cleared');
   };
 
-  const removeError = (index: number) => {
-    if (index >= 0 && index < state.value.errors.length) {
-      state.value.errors.splice(index, 1);
-      stateManager.set('app.errors', state.value.errors);
-      logger.debug(`Error at index ${index} removed`);
-    }
-  };
-
-  // Watchers
-  watch(
-    () => state.value.isOnline,
-    (newStatus) => {
-      if (newStatus) {
-        logger.info('App came online');
-      } else {
-        logger.warn('App went offline');
-      }
-    }
-  );
-
-  watch(
-    () => state.value.serverHealth,
-    (newHealth) => {
-      if (!newHealth) {
-        logger.warn('Server health degraded');
-      }
-    }
-  );
-
-  // Event listeners for network status
+  // Event listeners
   if (typeof window !== 'undefined') {
     window.addEventListener('online', () => setOnlineStatus(true));
     window.addEventListener('offline', () => setOnlineStatus(false));
@@ -107,24 +79,23 @@ export const useAppStore = defineStore('app', () => {
 
   return {
     // State
-    state,
+    isOnline: computed(() => isOnline.value),
+    isLoading: computed(() => isLoading.value),
+    serverHealth: computed(() => serverHealth.value),
+    lastServerCheck: computed(() => lastServerCheck.value),
+    errors: computed(() => errors.value),
 
     // Computed
-    isOnline,
-    isLoading,
-    serverHealth,
-    lastServerCheck,
-    errors,
     hasErrors,
+    latestError,
+    criticalErrors,
 
     // Actions
     setOnlineStatus,
     setLoading,
     setServerHealth,
     addError,
-    clearErrors,
     removeError,
+    clearErrors,
   };
 });
-
-export type AppStore = ReturnType<typeof useAppStore>;

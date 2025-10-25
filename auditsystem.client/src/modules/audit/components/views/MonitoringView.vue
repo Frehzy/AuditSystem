@@ -11,34 +11,34 @@
       <div class="monitoring-section">
         <div class="section-header">
           <h2 class="section-title">Активное сканирование</h2>
-          <BaseButton @click="startQuickScan"
+          <BaseButton @click="handleStartQuickScan"
                       variant="primary"
                       :loading="isScanning"
-                      :disabled="!!currentScan"
+                      :disabled="!!currentScanData"
                       class="scan-button">
             <ScanIcon class="button-icon" />
             Запустить сканирование
           </BaseButton>
         </div>
 
-        <div class="scan-progress" v-if="currentScan">
+        <div class="scan-progress" v-if="currentScanData">
           <div class="scan-progress__header">
             <div class="scan-progress__info">
               <span class="scan-progress__title">Сканирование выполняется</span>
-              <span class="scan-progress__subtitle">{{ currentScan.currentAction }}</span>
+              <span class="scan-progress__subtitle">{{ currentScanData.currentAction }}</span>
             </div>
-            <span class="scan-progress__percent">{{ currentScan.progress }}%</span>
+            <span class="scan-progress__percent">{{ currentScanData.progress }}%</span>
           </div>
 
           <div class="scan-progress__bar">
             <div class="scan-progress__fill"
-                 :style="{ width: `${currentScan.progress}%` }" />
+                 :style="{ width: `${currentScanData.progress}%` }" />
           </div>
 
           <div class="scan-progress__details">
-            <span>Обработано: {{ currentScan.devicesProcessed }}/{{ currentScan.totalDevices }}</span>
-            <span v-if="currentScan.estimatedTimeRemaining">
-              Осталось: {{ formatTime(currentScan.estimatedTimeRemaining) }}
+            <span>Обработано: {{ currentScanData.devicesProcessed }}/{{ currentScanData.totalDevices }}</span>
+            <span v-if="currentScanData.estimatedTimeRemaining">
+              Осталось: {{ formatRemainingTime(currentScanData.estimatedTimeRemaining) }}
             </span>
           </div>
         </div>
@@ -54,7 +54,7 @@
       <div class="monitoring-section">
         <div class="section-header">
           <h2 class="section-title">Войсковые части</h2>
-          <BaseButton @click="showCreateUnitDialog"
+          <BaseButton @click="handleShowCreateUnitDialog"
                       variant="secondary"
                       size="sm"
                       class="add-button">
@@ -64,15 +64,15 @@
         </div>
 
         <div class="units-grid">
-          <div v-for="unit in units"
+          <div v-for="unit in militaryUnits"
                :key="unit.id"
                class="unit-card"
-               @click="selectUnit(unit)"
-               :class="{ 'unit-card--selected': selectedUnit?.id === unit.id }">
+               @click="handleSelectUnit(unit)"
+               :class="{ 'unit-card--selected': selectedUnitData?.id === unit.id }">
             <div class="unit-card__header">
               <h3 class="unit-card__title">{{ unit.name }}</h3>
               <span class="unit-card__status" :class="`status--${unit.status}`">
-                {{ getStatusText(unit.status) }}
+                {{ getUnitStatusText(unit.status) }}
               </span>
             </div>
 
@@ -89,16 +89,16 @@
 
             <div class="unit-card__footer">
               <span class="unit-card__date">
-                Создано: {{ formatDate(unit.createdAt) }}
+                Создано: {{ formatUnitDate(unit.createdAt) }}
               </span>
             </div>
           </div>
         </div>
 
-        <div class="empty-state" v-if="units.length === 0">
+        <div class="empty-state" v-if="militaryUnits.length === 0">
           <ServerIcon class="empty-state__icon" />
           <p class="empty-state__text">Войсковые части не найдены</p>
-          <BaseButton @click="showCreateUnitDialog"
+          <BaseButton @click="handleShowCreateUnitDialog"
                       variant="primary"
                       class="add-button">
             <PlusIcon class="button-icon" />
@@ -108,10 +108,10 @@
       </div>
 
       <!-- Выбранная часть -->
-      <div class="monitoring-section" v-if="selectedUnit">
+      <div class="monitoring-section" v-if="selectedUnitData">
         <div class="section-header">
-          <h2 class="section-title">Подсети: {{ selectedUnit.name }}</h2>
-          <BaseButton @click="showCreateSubnetDialog"
+          <h2 class="section-title">Подсети: {{ selectedUnitData.name }}</h2>
+          <BaseButton @click="handleShowCreateSubnetDialog"
                       variant="secondary"
                       size="sm"
                       class="add-button">
@@ -129,7 +129,7 @@
             <div class="table-cell">Действия</div>
           </div>
 
-          <div v-for="subnet in selectedUnit.subnets"
+          <div v-for="subnet in selectedUnitData.subnets"
                :key="subnet.id"
                class="table-row">
             <div class="table-cell">
@@ -151,13 +151,13 @@
 
             <div class="table-cell">
               <span class="last-scan" :class="{ 'never-scanned': !subnet.lastScan }">
-                {{ subnet.lastScan ? formatRelativeTime(subnet.lastScan) : 'Никогда' }}
+                {{ subnet.lastScan ? formatSubnetRelativeTime(subnet.lastScan) : 'Никогда' }}
               </span>
             </div>
 
             <div class="table-cell">
               <div class="actions">
-                <BaseButton @click="startSubnetScan(subnet)"
+                <BaseButton @click="handleStartSubnetScan(subnet)"
                             variant="primary"
                             size="sm"
                             :loading="isScanning"
@@ -176,21 +176,21 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue';
-  import BaseButton from '@/framework/ui/BaseButton.vue';
+  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
   import { ScanIcon, ServerIcon, PlusIcon } from '@/assets/icons';
-  import { useAudit } from '@/modules/audit/composables/useAudit';
+  import useAudit from '@/modules/audit/composables/useAudit';
   import type { MilitaryUnit, Subnet } from '@/modules/audit/api/audit.types';
 
   const audit = useAudit();
 
   const isScanning = ref(false);
-  const selectedUnit = ref<MilitaryUnit | null>(null);
+  const selectedUnitData = ref<MilitaryUnit | null>(null);
 
-  const units = computed(() => audit.units.value);
-  const currentScan = computed(() => audit.currentScan.value);
+  const militaryUnits = computed(() => audit.units.value);
+  const currentScanData = computed(() => audit.currentScan.value);
 
-  const startQuickScan = async (): Promise<void> => {
-    if (!selectedUnit.value || selectedUnit.value.subnets.length === 0) {
+  const handleStartQuickScan = async (): Promise<void> => {
+    if (!selectedUnitData.value || selectedUnitData.value.subnets.length === 0) {
       alert('Выберите войсковую часть с подсетями для сканирования');
       return;
     }
@@ -198,7 +198,7 @@
     isScanning.value = true;
     try {
       await audit.startScan({
-        subnetId: selectedUnit.value.subnets[0].id,
+        subnetId: selectedUnitData.value.subnets[0].id,
         scanType: 'quick'
       });
     } finally {
@@ -206,7 +206,7 @@
     }
   };
 
-  const startSubnetScan = async (subnet: Subnet): Promise<void> => {
+  const handleStartSubnetScan = async (subnet: Subnet): Promise<void> => {
     isScanning.value = true;
     try {
       await audit.startScan({
@@ -218,23 +218,23 @@
     }
   };
 
-  const selectUnit = (unit: MilitaryUnit): void => {
-    selectedUnit.value = unit;
+  const handleSelectUnit = (unit: MilitaryUnit): void => {
+    selectedUnitData.value = unit;
   };
 
-  const showCreateUnitDialog = (): void => {
+  const handleShowCreateUnitDialog = (): void => {
     console.log('Show create unit dialog');
   };
 
-  const showCreateSubnetDialog = (): void => {
-    if (!selectedUnit.value) {
+  const handleShowCreateSubnetDialog = (): void => {
+    if (!selectedUnitData.value) {
       alert('Сначала выберите войсковую часть');
       return;
     }
     console.log('Show create subnet dialog');
   };
 
-  const getStatusText = (status: string): string => {
+  const getUnitStatusText = (status: string): string => {
     const statusMap: Record<string, string> = {
       active: 'Активна',
       deployed: 'На выезде',
@@ -243,17 +243,17 @@
     return statusMap[status] || status;
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatUnitDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('ru-RU');
   };
 
-  const formatTime = (ms: number): string => {
+  const formatRemainingTime = (ms: number): string => {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     return minutes > 0 ? `${minutes} мин ${seconds} сек` : `${seconds} сек`;
   };
 
-  const formatRelativeTime = (dateString: string): string => {
+  const formatSubnetRelativeTime = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();

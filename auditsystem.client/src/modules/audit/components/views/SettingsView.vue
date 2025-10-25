@@ -228,10 +228,10 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue';
-  import BaseButton from '@/framework/ui/BaseButton.vue';
-  import BaseInput from '@/framework/ui/BaseInput.vue';
-  import BaseSelect from '@/framework/ui/BaseSelect.vue';
-  import BaseToggle from '@/framework/ui/BaseToggle.vue';
+  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
+  import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
+  import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
+  import BaseToggle from '@/framework/ui/components/forms/BaseToggle.vue';
   import {
     ScanIcon,
     BellIcon,
@@ -244,7 +244,7 @@
     ResetIcon,
     DownloadIcon
   } from '@/assets/icons';
-  import { useAudit } from '@/modules/audit/composables/useAudit';
+  import useAudit from '@/modules/audit/composables/useAudit';
   import type { MilitaryUnit, AuditSettings } from '@/modules/audit/api/audit.types';
 
   const audit = useAudit();

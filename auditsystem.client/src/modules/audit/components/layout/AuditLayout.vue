@@ -28,7 +28,7 @@
   };
 
   const toggleTheme = (): void => {
-    themeStore.toggleTheme();
+    themeStore.toggle();
   };
 </script>
 

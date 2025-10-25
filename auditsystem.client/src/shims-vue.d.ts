@@ -1,19 +1,12 @@
+// Отключение проверки неиспользуемых переменных для Vue SFC
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
-  const component: DefineComponent<{}, {}, any>
+  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>
   export default component
 }
 
-// Для Vue 3
-declare module '@vue/runtime-core' {
-  interface ComponentCustomProperties {
-    $logger: {
-      debug: (message: string, data?: any) => void;
-      info: (message: string, data?: any) => void;
-      warn: (message: string, data?: any) => void;
-      error: (message: string, data?: any) => void;
-    };
-  }
+// Глобальные объявления для подавления предупреждений
+declare global {
+  const __VUE_OPTIONS_API__: boolean
+  const __VUE_PROD_DEVTOOLS__: boolean
 }
-
-export { }

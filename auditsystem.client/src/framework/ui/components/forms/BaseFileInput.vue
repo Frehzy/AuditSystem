@@ -1,23 +1,22 @@
-<!-- src/framework/ui/components/forms/BaseFileInput.vue -->
 <template>
-  <div class="base-file-input" :class="containerClasses">
-    <label v-if="label" :for="fileInputId" class="base-file-input__label">
+  <div class="base-file-input" :class="computedContainerClasses">
+    <label v-if="label" :for="computedFileInputId" class="base-file-input__label">
       {{ label }}
       <span v-if="required" class="base-file-input__required">*</span>
     </label>
 
-    <input :id="fileInputId"
+    <input :id="computedFileInputId"
            ref="fileInputRef"
            type="file"
            :accept="accept"
            :multiple="multiple"
            :disabled="disabled"
-           :class="inputClasses"
-           @change="onFileChange"
-           @blur="onBlur"
-           @focus="onFocus" />
+           :class="computedInputClasses"
+           @change="handleFileChange"
+           @blur="handleBlur"
+           @focus="handleFocus" />
 
-    <label :for="fileInputId" class="base-file-input__dropzone">
+    <label :for="computedFileInputId" class="base-file-input__dropzone">
       <div class="base-file-input__dropzone-content">
         <UploadIcon :size="24" class="base-file-input__icon" />
         <div class="base-file-input__text">
@@ -31,7 +30,7 @@
       </div>
 
       <div v-if="hasFiles" class="base-file-input__files">
-        <div v-for="(file, index) in files" :key="index" class="base-file-input__file">
+        <div v-for="(file, index) in currentFiles" :key="index" class="base-file-input__file">
           <div class="base-file-input__file-info">
             <DocumentIcon :size="16" />
             <span class="base-file-input__file-name">{{ file.name }}</span>
@@ -39,7 +38,7 @@
           </div>
           <button type="button"
                   class="base-file-input__file-remove"
-                  @click="removeFile(index)"
+                  @click="handleRemoveFile(index)"
                   :aria-label="`Удалить файл ${file.name}`">
             <CloseIcon :size="14" />
           </button>
@@ -60,7 +59,10 @@
 
 <script setup lang="ts">
   import { computed, ref, useId } from 'vue'
-  import { UploadIcon, DocumentIcon, CloseIcon, AlertIcon } from '@/assets/icons'
+  import UploadIcon from '@/assets/icons/actions/UploadIcon.vue'
+  import DocumentIcon from '@/assets/icons/files/DocumentIcon.vue'
+  import CloseIcon from '@/assets/icons/actions/CloseIcon.vue'
+  import AlertIcon from '@/assets/icons/status/AlertIcon.vue'
 
   interface Props {
     id?: string
@@ -104,9 +106,9 @@
 
   const fileInputRef = ref<HTMLInputElement | null>(null)
   const isFocused = ref(false)
-  const files = ref<File[]>([])
+  const currentFiles = ref<File[]>([])
 
-  const fileInputId = computed(() => props.id || `file-input-${useId()}`)
+  const computedFileInputId = computed(() => props.id || `file-input-${useId()}`)
 
   const hasFiles = computed(() => {
     if (Array.isArray(props.modelValue)) {
@@ -115,7 +117,7 @@
     return props.modelValue !== null
   })
 
-  const containerClasses = computed(() => [
+  const computedContainerClasses = computed(() => [
     'base-file-input',
     `base-file-input--${props.size}`,
     {
@@ -126,7 +128,7 @@
     },
   ])
 
-  const inputClasses = computed(() => [
+  const computedInputClasses = computed(() => [
     'base-file-input__input',
     {
       'base-file-input__input--error': !!props.error,
@@ -142,7 +144,7 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  const onFileChange = (event: Event) => {
+  const handleFileChange = (event: Event) => {
     const target = event.target as HTMLInputElement
     const selectedFiles = target.files
 
@@ -163,9 +165,7 @@
     if (props.maxSize) {
       const oversizedFiles = newFiles.filter(file => file.size > props.maxSize!)
       if (oversizedFiles.length > 0) {
-        // Handle oversized files
         console.warn('Some files exceed the maximum size limit')
-        // You might want to show an error message here
       }
       newFiles = newFiles.filter(file => file.size <= props.maxSize!)
     }
@@ -186,7 +186,7 @@
       resultFiles = newFiles[0] || null
     }
 
-    files.value = Array.isArray(resultFiles) ? resultFiles : resultFiles ? [resultFiles] : []
+    currentFiles.value = Array.isArray(resultFiles) ? resultFiles : resultFiles ? [resultFiles] : []
     emit('update:modelValue', resultFiles)
     emit('change', resultFiles)
 
@@ -196,12 +196,12 @@
     })
   }
 
-  const removeFile = (index: number) => {
-    const fileToRemove = files.value[index]
+  const handleRemoveFile = (index: number) => {
+    const fileToRemove = currentFiles.value[index]
 
     let newFiles: File[] | File | null
     if (props.multiple) {
-      newFiles = files.value.filter((_, i) => i !== index)
+      newFiles = currentFiles.value.filter((_, i) => i !== index)
       if (newFiles.length === 0) {
         newFiles = null
       }
@@ -209,7 +209,7 @@
       newFiles = null
     }
 
-    files.value = Array.isArray(newFiles) ? newFiles : newFiles ? [newFiles] : []
+    currentFiles.value = Array.isArray(newFiles) ? newFiles : newFiles ? [newFiles] : []
     emit('update:modelValue', newFiles)
     emit('change', newFiles)
     emit('file-remove', fileToRemove, index)
@@ -220,12 +220,12 @@
     }
   }
 
-  const onBlur = (event: FocusEvent) => {
+  const handleBlur = (event: FocusEvent) => {
     isFocused.value = false
     emit('blur', event)
   }
 
-  const onFocus = (event: FocusEvent) => {
+  const handleFocus = (event: FocusEvent) => {
     isFocused.value = true
     emit('focus', event)
   }
@@ -234,7 +234,7 @@
     focus: () => fileInputRef.value?.focus(),
     blur: () => fileInputRef.value?.blur(),
     clear: () => {
-      files.value = []
+      currentFiles.value = []
       emit('update:modelValue', null)
       emit('change', null)
       if (fileInputRef.value) {
@@ -283,7 +283,7 @@
     border-radius: var(--radius-lg);
     background: var(--color-surface);
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
     min-height: 120px;
   }
 
@@ -294,7 +294,7 @@
 
   .base-file-input--focused .base-file-input__dropzone {
     border-color: var(--color-primary);
-    box-shadow: var(--shadow-focus);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
   }
 
   .base-file-input--error .base-file-input__dropzone {
@@ -383,7 +383,7 @@
     cursor: pointer;
     padding: var(--space-xs);
     border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     color: var(--color-text-muted);
     display: flex;
     align-items: center;

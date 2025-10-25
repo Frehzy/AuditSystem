@@ -1,18 +1,17 @@
-<!-- src/framework/ui/components/feedback/BaseProgress.vue -->
 <template>
-  <div class="base-progress" :class="containerClasses" role="progressbar"
-       :aria-valuenow="value"
+  <div class="base-progress" :class="computedClasses" role="progressbar"
+       :aria-valuenow="computedValue"
        :aria-valuemin="min"
        :aria-valuemax="max"
        :aria-label="ariaLabel">
 
     <div v-if="label || showValue" class="base-progress__header">
       <span v-if="label" class="base-progress__label">{{ label }}</span>
-      <span v-if="showValue" class="base-progress__value">{{ displayValue }}</span>
+      <span v-if="showValue" class="base-progress__value">{{ computedDisplayValue }}</span>
     </div>
 
     <div class="base-progress__track">
-      <div class="base-progress__bar" :style="barStyle">
+      <div class="base-progress__bar" :style="computedBarStyle">
         <div v-if="indeterminate" class="base-progress__indeterminate"></div>
       </div>
     </div>
@@ -49,18 +48,23 @@
     ariaLabel: 'Progress indicator',
   })
 
+  const computedValue = computed(() => {
+    if (props.indeterminate) return 0
+    return Math.max(props.min, Math.min(props.max, props.value))
+  })
+
   const normalizedValue = computed(() => {
     if (props.indeterminate) return 0
-    const val = Math.max(props.min, Math.min(props.max, props.value))
+    const val = computedValue.value
     return ((val - props.min) / (props.max - props.min)) * 100
   })
 
-  const displayValue = computed(() => {
+  const computedDisplayValue = computed(() => {
     if (props.indeterminate) return ''
     return `${Math.round(normalizedValue.value)}%`
   })
 
-  const containerClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-progress',
     `base-progress--${props.size}`,
     `base-progress--${props.variant}`,
@@ -69,7 +73,7 @@
     },
   ])
 
-  const barStyle = computed(() => ({
+  const computedBarStyle = computed(() => ({
     width: `${normalizedValue.value}%`,
   }))
 </script>
@@ -139,7 +143,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient( 90deg, transparent 0%, color-mix(in srgb, currentColor 30%, transparent) 50%, transparent 100% );
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
     animation: indeterminate 1.5s ease-in-out infinite;
   }
 
@@ -171,7 +175,7 @@
 
   /* Striped variant */
   .base-progress--striped .base-progress__bar {
-    background-image: linear-gradient( 45deg, color-mix(in srgb, currentColor 20%, transparent) 25%, transparent 25%, transparent 50%, color-mix(in srgb, currentColor 20%, transparent) 50%, color-mix(in srgb, currentColor 20%, transparent) 75%, transparent 75%, transparent );
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.2) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.2) 75%, transparent 75%, transparent);
     background-size: 1rem 1rem;
   }
 

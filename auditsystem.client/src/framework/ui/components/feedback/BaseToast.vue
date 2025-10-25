@@ -5,14 +5,12 @@
            :key="toast.id"
            :class="['base-toast', `base-toast--${toast.type}`]"
            role="alert"
-           :aria-live="toastTypeAriaLive(toast.type)"
+           :aria-live="getAriaLive(toast.type)"
            :aria-atomic="true">
         <div class="base-toast__content">
           <div class="base-toast__icon">
-            <SuccessIcon v-if="toast.type === 'success'" />
-            <ErrorIcon v-else-if="toast.type === 'error'" />
-            <WarningIcon v-else-if="toast.type === 'warning'" />
-            <InfoIcon v-else />
+            <!-- Исправлены пути к иконкам -->
+            <component :is="getIconComponent(toast.type)" />
           </div>
 
           <div class="base-toast__body">
@@ -25,7 +23,7 @@
           </div>
 
           <button v-if="toast.dismissible"
-                  @click="dismissToast(toast.id)"
+                  @click="handleDismissToast(toast.id)"
                   class="base-toast__close"
                   :aria-label="`Close ${toast.type} notification`">
             ×
@@ -34,7 +32,7 @@
 
         <div v-if="toast.duration && toast.duration > 0" class="base-toast__progress">
           <div class="base-toast__progress-bar"
-               :style="progressBarStyle(toast)"></div>
+               :style="getProgressBarStyle(toast)"></div>
         </div>
       </div>
     </transition-group>
@@ -42,107 +40,116 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onUnmounted } from 'vue'
-  import { notificationService } from '@/core/services/notification/notification.service';
-  import { SuccessIcon, ErrorIcon, WarningIcon, InfoIcon } from '@/assets/icons';
-  import type { Notification, NotificationType } from '@/core/services/types';
+  import { ref, onUnmounted, defineAsyncComponent } from 'vue'
+  import type { Component } from 'vue';
 
-  const toasts = ref<Notification[]>([]);
+  // Асинхронные импорты иконок для уменьшения размера бандла
+  const SuccessIcon = defineAsyncComponent(() => import('@/assets/icons/status/SuccessIcon.vue'));
+  const ErrorIcon = defineAsyncComponent(() => import('@/assets/icons/status/ErrorIcon.vue'));
+  const WarningIcon = defineAsyncComponent(() => import('@/assets/icons/status/WarningIcon.vue'));
+  const InfoIcon = defineAsyncComponent(() => import('@/assets/icons/status/InfoIcon.vue'));
+
+  interface ToastOptions {
+    title?: string
+    duration?: number
+    dismissible?: boolean
+  }
+
+  interface Toast {
+    id: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    message: string;
+    title?: string;
+    duration?: number;
+    dismissible: boolean;
+    createdAt: number;
+  }
+
+  const toasts = ref<Toast[]>([]);
   const toastTimers = new Map<string, number>();
 
-  /**
-   * Подписка на уведомления
-   */
-  const unsubscribe = notificationService.subscribe((notifications) => {
-    toasts.value = notifications;
+  // Функция для получения компонента иконки по типу
+  const getIconComponent = (type: Toast['type']): Component => {
+    switch (type) {
+      case 'success': return SuccessIcon;
+      case 'error': return ErrorIcon;
+      case 'warning': return WarningIcon;
+      case 'info': return InfoIcon;
+      default: return InfoIcon;
+    }
+  };
 
-    // Управление таймерами для авто-скрытия
-    notifications.forEach(toast => {
-      if (toast.duration && toast.duration > 0 && !toastTimers.has(toast.id)) {
-        const timer = window.setTimeout(() => {
-          dismissToast(toast.id);
-        }, toast.duration);
+  const showToast = (type: Toast['type'], message: string, options?: ToastOptions) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const toast: Toast = {
+      id,
+      type,
+      message,
+      title: options?.title,
+      duration: options?.duration || 5000,
+      dismissible: options?.dismissible !== false,
+      createdAt: Date.now()
+    };
 
-        toastTimers.set(toast.id, timer);
-      }
-    });
-  });
+    toasts.value.push(toast);
 
-  /**
-   * Закрытие уведомления
-   */
-  const dismissToast = (id: string) => {
-    // Очистка таймера
+    if (toast.duration && toast.duration > 0) {
+      const timer = window.setTimeout(() => {
+        handleDismissToast(toast.id);
+      }, toast.duration);
+
+      toastTimers.set(toast.id, timer);
+    }
+
+    return id;
+  }
+
+  const handleDismissToast = (id: string) => {
     const timer = toastTimers.get(id);
     if (timer) {
       clearTimeout(timer);
       toastTimers.delete(id);
     }
-
-    notificationService.dismiss(id);
+    toasts.value = toasts.value.filter(toast => toast.id !== id);
   }
 
-  /**
-   * Очистка всех уведомлений
-   */
   const clearAllToasts = () => {
-    notificationService.clearAll();
+    toasts.value = [];
     toastTimers.forEach(timer => clearTimeout(timer));
     toastTimers.clear();
   }
 
-  /**
-   * Расчет оставшегося времени
-   */
-  const calculateRemainingTime = (toast: Notification): number => {
-    if (!toast.duration) return 0;
-    const elapsed = Date.now() - toast.createdAt;
-    return Math.max(0, toast.duration - elapsed);
-  }
-
-  /**
-   * Стиль прогресс-бара
-   */
-  const progressBarStyle = (toast: Notification) => {
+  const getProgressBarStyle = (toast: Toast) => {
     if (!toast.duration) return {};
 
-    const remainingTime = calculateRemainingTime(toast);
-    const progress = (remainingTime / toast.duration) * 100;
+    const elapsed = Date.now() - toast.createdAt;
+    const progress = Math.max(0, (toast.duration - elapsed) / toast.duration * 100);
 
     return {
       width: `${progress}%`,
-      animationDuration: `${remainingTime}ms`,
     };
   }
 
-  /**
-   * ARIA live region для разных типов уведомлений
-   */
-  const toastTypeAriaLive = (type: NotificationType): 'assertive' | 'polite' => {
+  const getAriaLive = (type: Toast['type']): 'assertive' | 'polite' => {
     return type === 'error' ? 'assertive' : 'polite';
   }
 
-  // Публичный API для показа уведомлений
-  const showToast = (type: NotificationType, message: string, options?: any) => {
-    return notificationService.show(type, message, options);
-  }
-
+  // Публичный API
   const toast = {
-    success: (message: string, options?: any) => notificationService.success(message, options),
-    error: (message: string, options?: any) => notificationService.error(message, options),
-    warning: (message: string, options?: any) => notificationService.warning(message, options),
-    info: (message: string, options?: any) => notificationService.info(message, options),
+    success: (message: string, options?: ToastOptions) => showToast('success', message, options),
+    error: (message: string, options?: ToastOptions) => showToast('error', message, options),
+    warning: (message: string, options?: ToastOptions) => showToast('warning', message, options),
+    info: (message: string, options?: ToastOptions) => showToast('info', message, options),
   };
 
   // Очистка при размонтировании
   onUnmounted(() => {
-    unsubscribe();
     clearAllToasts();
   });
 
   defineExpose({
     showToast,
-    dismissToast,
+    handleDismissToast,
     clearAllToasts,
     toast,
   });
@@ -221,7 +228,7 @@
     margin: -4px;
     border-radius: 4px;
     opacity: 0.7;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     flex-shrink: 0;
     line-height: 1;
     color: var(--color-text-muted);
@@ -229,7 +236,7 @@
 
     .base-toast__close:hover {
       opacity: 1;
-      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+      background: rgba(14, 165, 233, 0.08);
       color: var(--color-primary);
     }
 
@@ -247,7 +254,7 @@
     height: 100%;
     background: currentColor;
     opacity: 0.6;
-    animation: progress linear;
+    transition: width 0.1s linear;
   }
 
   /* Type variants */
@@ -286,7 +293,7 @@
 
   .toast-list-enter-active,
   .toast-list-leave-active {
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
   }
 
   .toast-list-enter-from {
@@ -300,17 +307,7 @@
   }
 
   .toast-list-move {
-    transition: transform var(--transition-normal);
-  }
-
-  @keyframes progress {
-    from {
-      width: 100%;
-    }
-
-    to {
-      width: 0%;
-    }
+    transition: transform 0.3s ease;
   }
 
   /* Адаптивность */

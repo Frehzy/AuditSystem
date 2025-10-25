@@ -4,7 +4,7 @@
     <div v-for="(item, index) in items"
          :key="getItemKey(item, index)"
          class="base-list__item"
-         :class="getItemClass(item, index)"
+         :class="getItemClass(item)"
          role="listitem">
       <!-- Item content -->
       <div class="base-list__item-content" @click="handleItemClick(item)">
@@ -73,19 +73,21 @@
   import BaseAvatar from './BaseAvatar.vue'
   import BaseButton from '../buttons/BaseButton.vue'
 
+  interface ListItemAction {
+    label: string
+    variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+    size?: 'sm' | 'md' | 'lg'
+    onClick?: (item: ListItem) => void
+  }
+
   interface ListItem {
     id?: string | number
     title: string
     description?: string
     meta?: string
     avatar?: string
-    actions?: Array<{
-      label: string
-      variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
-      size?: 'sm' | 'md' | 'lg'
-      onClick?: (item: ListItem) => void
-    }>
-    [key: string]: any
+    actions?: ListItemAction[]
+    [key: string]: unknown
   }
 
   interface Props {
@@ -109,7 +111,7 @@
 
   const emit = defineEmits<{
     'item-click': [item: ListItem, index: number]
-    'action-click': [action: any, item: ListItem, index: number]
+    'action-click': [action: ListItemAction, item: ListItem, index: number]
   }>()
 
   const listClasses = computed(() => [
@@ -126,10 +128,10 @@
     if (typeof props.itemKey === 'function') {
       return props.itemKey(item, index)
     }
-    return item[props.itemKey] || `item-${index}`
+    return String(item[props.itemKey] || `item-${index}`)
   }
 
-  const getItemClass = (item: ListItem, index: number) => [
+  const getItemClass = () => [
     'base-list__item',
     {
       'base-list__item--clickable': props.clickable,
@@ -138,15 +140,17 @@
 
   const handleItemClick = (item: ListItem) => {
     if (props.clickable) {
-      emit('item-click', item, props.items.indexOf(item))
+      const index = props.items.indexOf(item)
+      emit('item-click', item, index)
     }
   }
 
-  const handleAction = (action: any, item: ListItem) => {
+  const handleAction = (action: ListItemAction, item: ListItem) => {
     if (action.onClick) {
       action.onClick(item)
     }
-    emit('action-click', action, item, props.items.indexOf(item))
+    const index = props.items.indexOf(item)
+    emit('action-click', action, item, index)
   }
 </script>
 

@@ -31,7 +31,7 @@
     delay?: number
   }
 
-  const props = withDefaults(defineProps<Props>(), {
+  withDefaults(defineProps<Props>(), {
     position: 'top',
     size: 'md',
     delay: 0,

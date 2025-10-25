@@ -1,26 +1,26 @@
-<!-- src/framework/ui/components/feedback/BaseRating.vue -->
 <template>
-  <div class="base-rating" :class="ratingClasses">
+  <div class="base-rating" :class="computedClasses">
     <button v-for="star in maxStars"
             :key="star"
             :disabled="disabled || readonly"
-            @click="setRating(star)"
+            @click="handleSetRating(star)"
             @mouseenter="hoverRating = star"
             @mouseleave="hoverRating = 0"
             class="base-rating__star"
-            :class="getStarClass(star)"
+            :class="getComputedStarClass(star)"
             :aria-label="`Оценить ${star} из ${maxStars}`">
-      <StarIcon :size="starSize" :fill="getStarFill(star)" />
+      <StarIcon :size="computedStarSize" :fill="getComputedStarFill(star)" />
     </button>
 
     <span v-if="showValue" class="base-rating__value">
-      {{ displayValue }}
+      {{ computedDisplayValue }}
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { StarIcon } from '@/assets/icons'
+  import { ref, computed } from 'vue';
+  import StarIcon from '@/assets/icons/status/StarIcon.vue';
 
   interface Props {
     modelValue: number
@@ -48,7 +48,7 @@
 
   const hoverRating = ref(0)
 
-  const ratingClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-rating',
     `base-rating--${props.size}`,
     {
@@ -57,28 +57,28 @@
     },
   ])
 
-  const starSize = computed(() => {
+  const computedStarSize = computed(() => {
     const sizes = { sm: 16, md: 20, lg: 24 }
     return sizes[props.size]
   })
 
-  const displayValue = computed(() => {
+  const computedDisplayValue = computed(() => {
     return `${props.modelValue.toFixed(1)} / ${props.maxStars}`
   })
 
-  const getStarClass = (star: number) => [
+  const getComputedStarClass = (star: number) => [
     'base-rating__star',
     {
       'base-rating__star--active': star <= (hoverRating.value || props.modelValue),
     },
   ]
 
-  const getStarFill = (star: number): string | undefined => {
+  const getComputedStarFill = (star: number): string => {
     const currentRating = hoverRating.value || props.modelValue
-    return star <= currentRating ? 'currentColor' : undefined
+    return star <= currentRating ? 'currentColor' : 'none'
   }
 
-  const setRating = (rating: number) => {
+  const handleSetRating = (rating: number) => {
     if (!props.disabled && !props.readonly) {
       emit('update:modelValue', rating)
       emit('change', rating)

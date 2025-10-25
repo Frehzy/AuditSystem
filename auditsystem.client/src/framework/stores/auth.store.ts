@@ -1,51 +1,36 @@
 import { defineStore } from 'pinia';
-import { computed, reactive, watch } from 'vue';
-import { storage } from '@/core/services/storage/storage.service';
-import { tokenService } from '@/core/services/auth/token.service';
-import { logger } from '@/core/utils/logger/logger';
-import type { AuthState, UserDto } from '@/modules/auth/api/auth.types';
+import { ref, computed } from 'vue';
+import { storage } from './storage.service';
+import { tokenService } from '@/core/services/core/auth/token.service';
+import { logger } from '@/core/utils/logger';
+import type { UserDto } from '@/modules/auth/api/auth.types';
 
 export const useAuthStore = defineStore('auth', () => {
-  const state = reactive<AuthState>({
-    token: storage.getToken(),
-    user: storage.getUser(),
-    isLoading: false,
-    error: null,
-    lastActivity: null,
-    sessionTimeout: null,
+  // State
+  const token = ref(storage.getToken());
+  const user = ref(storage.getUser());
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+
+  // Computed
+  const isAuthenticated = computed(() => {
+    if (!token.value) return false;
+    return tokenService.isValidFormat(token.value) &&
+      !tokenService.isTokenExpired(token.value);
   });
 
-  // Computed properties
-  const isAuthenticated = computed(() =>
-    !!state.token && tokenService.isValidFormat(state.token) && !tokenService.isTokenExpired(state.token)
+  const userInfo = computed(() => user.value);
+  const hasRole = computed(() => (role: string) =>
+    user.value?.role === role
   );
 
-  const isLoading = computed(() => state.isLoading);
-  const error = computed(() => state.error);
-  const user = computed(() => state.user);
-  const token = computed(() => state.token);
-  const lastActivity = computed(() => state.lastActivity);
-
   // Actions
-  const setLoading = (loading: boolean): void => {
-    state.isLoading = loading;
-    logger.auth(`Auth loading: ${loading}`);
-  };
+  const setAuthData = (newToken: string, userData: UserDto) => {
+    token.value = newToken;
+    user.value = userData;
+    error.value = null;
 
-  const setError = (errorMessage: string | null): void => {
-    state.error = errorMessage;
-    if (errorMessage) {
-      logger.auth(`Auth error: ${errorMessage}`);
-    }
-  };
-
-  const setAuthData = (token: string, userData: UserDto): void => {
-    state.token = token;
-    state.user = userData;
-    state.lastActivity = new Date().toISOString();
-    state.error = null;
-
-    storage.setToken(token);
+    storage.setToken(newToken);
     storage.setUser(userData);
 
     logger.auth('Auth data set', {
@@ -54,77 +39,85 @@ export const useAuthStore = defineStore('auth', () => {
     });
   };
 
-  const clearAuthData = (): void => {
-    state.token = null;
-    state.user = null;
-    state.error = null;
-    state.lastActivity = null;
-    state.sessionTimeout = null;
+  const clearAuth = () => {
+    token.value = null;
+    user.value = null;
+    error.value = null;
 
-    storage.clearAuthData();
+    storage.clearAuth();
     logger.auth('Auth data cleared');
   };
 
-  const updateLastActivity = (): void => {
-    state.lastActivity = new Date().toISOString();
-    logger.debug('Last activity updated');
+  const setLoading = (loading: boolean) => {
+    isLoading.value = loading;
   };
 
-  const setSessionTimeout = (timeout: number | null): void => {
-    state.sessionTimeout = timeout;
-  };
-
-  const getTokenRemainingTime = (): number => {
-    if (!state.token) return 0;
-    return tokenService.getTokenRemainingTime(state.token);
-  };
-
-  const shouldRefreshToken = (): boolean => {
-    if (!state.token) return false;
-    return tokenService.shouldRefreshToken(state.token);
-  };
-
-  // Watchers
-  watch(
-    () => state.token,
-    (newToken) => {
-      if (!newToken) {
-        logger.auth('Token was cleared');
-      }
+  const setError = (errorMessage: string | null) => {
+    error.value = errorMessage;
+    if (errorMessage) {
+      logger.auth('Auth error:', errorMessage);
     }
-  );
+  };
 
-  watch(
-    () => state.user,
-    (newUser) => {
-      if (newUser) {
-        logger.auth('User data updated', { username: newUser.username });
-      }
+  const refreshToken = async () => {
+    if (!token.value) return null;
+
+    try {
+      // Здесь будет логика обновления токена
+      logger.auth('Token refresh attempted');
+      return token.value;
+    } catch (err) {
+      clearAuth();
+      throw err;
     }
-  );
+  };
+
+  // Дополнительные методы для совместимости
+  const clearAuthData = clearAuth; // Алиас для clearAuth
+
+  const shouldRefreshToken = () => {
+    if (!token.value) return false;
+    try {
+      const remainingTime = tokenService.getTokenRemainingTime(token.value);
+      return remainingTime < 300000; // 5 минут
+    } catch {
+      return false;
+    }
+  };
+
+  const getTokenRemainingTime = () => {
+    if (!token.value) return 0;
+    return tokenService.getTokenRemainingTime(token.value);
+  };
+
+  const state = computed(() => ({
+    token: token.value,
+    user: user.value,
+    isLoading: isLoading.value,
+    error: error.value,
+    isAuthenticated: isAuthenticated.value
+  }));
 
   return {
     // State
-    state,
+    token: computed(() => token.value),
+    user: userInfo,
+    isLoading: computed(() => isLoading.value),
+    error: computed(() => error.value),
 
     // Computed
-    token,
-    user,
-    isLoading,
-    error,
     isAuthenticated,
-    lastActivity,
+    hasRole,
 
     // Actions
+    setAuthData,
+    clearAuth,
+    clearAuthData,
     setLoading,
     setError,
-    setAuthData,
-    clearAuthData,
-    updateLastActivity,
-    setSessionTimeout,
-    getTokenRemainingTime,
+    refreshToken,
     shouldRefreshToken,
+    getTokenRemainingTime,
+    state
   };
 });
-
-export type AuthStore = ReturnType<typeof useAuthStore>;

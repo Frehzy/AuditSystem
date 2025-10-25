@@ -44,134 +44,143 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue'
-import { CloseIcon } from '@/assets/icons'
-import BaseButton from '../buttons/BaseButton.vue'
+  import { computed, onMounted, onUnmounted } from 'vue'
+  import { CloseIcon } from '@/assets/icons'
+  import BaseButton from '../buttons/BaseButton.vue'
 
-interface Props {
-  modelValue: boolean
-  title?: string
-  message?: string
-  position?: 'left' | 'right' | 'top' | 'bottom'
-  size?: 'sm' | 'md' | 'lg' | 'xl'
-  closable?: boolean
-  closeOnBackdrop?: boolean
-  closeOnEscape?: boolean
-  showHeader?: boolean
-  showFooter?: boolean
-  confirmText?: string
-  cancelText?: string
-  persistent?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  title: '',
-  message: '',
-  position: 'right',
-  size: 'md',
-  closable: true,
-  closeOnBackdrop: true,
-  closeOnEscape: true,
-  showHeader: true,
-  showFooter: true,
-  confirmText: 'Подтвердить',
-  cancelText: 'Отмена',
-  persistent: false,
-})
-
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  'close': []
-  'confirm': []
-  'open': []
-  'closed': []
-}>()
-
-const drawerClasses = computed(() => [
-  'base-drawer',
-  `base-drawer--${props.position}`,
-  `base-drawer--${props.size}`,
-  {
-    'base-drawer--persistent': props.persistent,
-  },
-])
-
-const contentStyle = computed(() => ({
-  '--drawer-width': getDrawerWidth(),
-  '--drawer-height': getDrawerHeight(),
-}))
-
-const getDrawerWidth = (): string => {
-  if (props.position === 'top' || props.position === 'bottom') {
-    return '100%'
+  interface Props {
+    modelValue: boolean
+    title?: string
+    message?: string
+    position?: 'left' | 'right' | 'top' | 'bottom'
+    size?: 'sm' | 'md' | 'lg' | 'xl'
+    closable?: boolean
+    closeOnBackdrop?: boolean
+    closeOnEscape?: boolean
+    showHeader?: boolean
+    showFooter?: boolean
+    confirmText?: string
+    cancelText?: string
+    persistent?: boolean
   }
-  const widths = {
-    sm: '320px',
-    md: '400px',
-    lg: '480px',
-    xl: '560px',
-  }
-  return widths[props.size]
-}
 
-const getDrawerHeight = (): string => {
-  if (props.position === 'left' || props.position === 'right') {
-    return '100%'
-  }
-  const heights = {
-    sm: '300px',
-    md: '400px',
-    lg: '500px',
-    xl: '600px',
-  }
-  return heights[props.size]
-}
+  const props = withDefaults(defineProps<Props>(), {
+    title: '',
+    message: '',
+    position: 'right',
+    size: 'md',
+    closable: true,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
+    showHeader: true,
+    showFooter: true,
+    confirmText: 'Подтвердить',
+    cancelText: 'Отмена',
+    persistent: false,
+  })
 
-const closeDrawer = () => {
-  if (!props.persistent) {
-    emit('update:modelValue', false)
-    emit('close')
+  const emit = defineEmits<{
+    'update:modelValue': [value: boolean]
+    'close': []
+    'confirm': []
+    'open': []
+    'closed': []
+  }>()
+
+  const drawerClasses = computed(() => [
+    'base-drawer',
+    `base-drawer--${props.position}`,
+    `base-drawer--${props.size}`,
+    {
+      'base-drawer--persistent': props.persistent,
+    },
+  ])
+
+  const contentStyle = computed(() => ({
+    '--drawer-width': getDrawerWidth(),
+    '--drawer-height': getDrawerHeight(),
+  }))
+
+  const getDrawerWidth = (): string => {
+    if (props.position === 'top' || props.position === 'bottom') {
+      return '100%'
+    }
+    const widths = {
+      sm: '320px',
+      md: '400px',
+      lg: '480px',
+      xl: '560px',
+    }
+    return widths[props.size]
   }
-}
 
-const handleConfirm = () => {
-  emit('confirm')
-  closeDrawer()
-}
+  const getDrawerHeight = (): string => {
+    if (props.position === 'left' || props.position === 'right') {
+      return '100%'
+    }
+    const heights = {
+      sm: '300px',
+      md: '400px',
+      lg: '500px',
+      xl: '600px',
+    }
+    return heights[props.size]
+  }
 
-const handleBackdropClick = () => {
-  if (props.closeOnBackdrop && !props.persistent) {
+  const closeDrawer = () => {
+    if (!props.persistent) {
+      emit('update:modelValue', false)
+      emit('close')
+    }
+  }
+
+  const handleConfirm = () => {
+    emit('confirm')
     closeDrawer()
   }
-}
 
-const handleEscape = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.closeOnEscape && !props.persistent) {
-    closeDrawer()
+  const handleBackdropClick = () => {
+    if (props.closeOnBackdrop && !props.persistent) {
+      closeDrawer()
+    }
   }
-}
 
-const onEnter = () => {
-  document.addEventListener('keydown', handleEscape)
-  document.body.style.overflow = 'hidden'
-  emit('open')
-}
+  const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && props.closeOnEscape && !props.persistent) {
+      closeDrawer()
+    }
+  }
 
-const onLeave = () => {
-  document.removeEventListener('keydown', handleEscape)
-  document.body.style.overflow = ''
-  emit('closed')
-}
+  const onEnter = () => {
+    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = 'hidden'
+    emit('open')
+  }
 
-// Public methods
-const open = () => {
-  emit('update:modelValue', true)
-}
+  const onLeave = () => {
+    document.removeEventListener('keydown', handleEscape)
+    document.body.style.overflow = ''
+    emit('closed')
+  }
 
-defineExpose({
-  open,
-  close: closeDrawer,
-})
+  // Public methods
+  const open = () => {
+    emit('update:modelValue', true)
+  }
+
+  defineExpose({
+    open,
+    close: closeDrawer,
+  })
+
+  // Lifecycle hooks
+  onMounted(() => {
+    onEnter()
+  })
+
+  onUnmounted(() => {
+    onLeave()
+  })
 </script>
 
 <style scoped>

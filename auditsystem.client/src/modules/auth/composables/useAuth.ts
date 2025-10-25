@@ -1,8 +1,9 @@
+// src/modules/auth/composables/useAuth.ts
 import { computed } from 'vue';
 import { useAuthStore } from '@/framework/stores/auth.store';
 import { authApiService } from '../api/authApi.service';
-import { errorHandler } from '@/core/services/error/error-handler.service';
-import { logger } from '@/core/utils/logger/logger';
+import { errorHandler } from '@/core/services/core/utils/error-handler.service';
+import { logger } from '@/core/utils/logger';
 import type { LoginCommand, ApiResult, UserDto } from '../api/auth.types';
 
 export const useAuth = () => {

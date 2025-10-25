@@ -1,17 +1,16 @@
-<!-- src/framework/ui/components/layout/BaseAccordion.vue -->
 <template>
-  <div class="base-accordion" :class="accordionClasses">
+  <div class="base-accordion" :class="computedClasses">
     <div v-for="(item, index) in items"
-         :key="item.id || index"
+         :key="getItemKey(item, index)"
          class="base-accordion__item"
-         :class="getItemClass(item, index)">
+         :class="getComputedItemClass(item, index)">
 
       <!-- Accordion header -->
-      <button :id="`accordion-${item.id || index}`"
-              @click="toggleItem(item.id || index)"
+      <button :id="`accordion-${getItemKey(item, index)}`"
+              @click="handleToggleItem(getItemKey(item, index))"
               class="base-accordion__header"
-              :aria-expanded="isItemOpen(item.id || index)"
-              :aria-controls="`accordion-content-${item.id || index}`">
+              :aria-expanded="isItemOpen(getItemKey(item, index))"
+              :aria-controls="`accordion-content-${getItemKey(item, index)}`">
 
         <!-- Header content -->
         <div class="base-accordion__header-content">
@@ -33,19 +32,19 @@
         </div>
 
         <!-- Chevron icon -->
-        <div class="base-accordion__chevron" :class="{ 'base-accordion__chevron--open': isItemOpen(item.id || index) }">
+        <div class="base-accordion__chevron" :class="{ 'base-accordion__chevron--open': isItemOpen(getItemKey(item, index)) }">
           <ChevronDownIcon :size="16" />
         </div>
       </button>
 
       <!-- Accordion content -->
-      <div :id="`accordion-content-${item.id || index}`"
+      <div :id="`accordion-content-${getItemKey(item, index)}`"
            class="base-accordion__content"
-           :aria-labelledby="`accordion-${item.id || index}`"
-           :hidden="!isItemOpen(item.id || index)">
+           :aria-labelledby="`accordion-${getItemKey(item, index)}`"
+           :hidden="!isItemOpen(getItemKey(item, index))">
 
         <div class="base-accordion__content-inner">
-          <slot :name="item.id || `item-${index}`" :item="item" :index="index">
+          <slot :name="getItemKey(item, index)" :item="item" :index="index">
             <div v-if="item.content" v-html="item.content" />
             <component v-else-if="item.component" :is="item.component" v-bind="item.props" />
           </slot>
@@ -57,16 +56,17 @@
 
 <script setup lang="ts">
   import { ref, computed } from 'vue'
-  import { ChevronDownIcon } from '@/assets/icons'
+  import ChevronDownIcon from '@/assets/icons/arrows/ChevronDownIcon.vue'
+  import type { Component } from 'vue';
 
   interface AccordionItem {
     id?: string
     title: string
     description?: string
-    icon?: any
+    icon?: Component
     content?: string
-    component?: any
-    props?: any
+    component?: Component
+    props?: Record<string, unknown>
     disabled?: boolean
     defaultOpen?: boolean
   }
@@ -93,22 +93,27 @@
   const openItems = ref<Set<string>>(new Set())
 
   // Initialize default open items
-  props.items.forEach(item => {
-    if (item.defaultOpen && item.id) {
-      openItems.value.add(item.id)
+  props.items.forEach((item, index) => {
+    if (item.defaultOpen) {
+      const itemId = getItemKey(item, index)
+      openItems.value.add(itemId)
     }
   })
 
-  const accordionClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-accordion',
     `base-accordion--${props.variant}`,
     `base-accordion--${props.size}`,
   ])
 
-  const getItemClass = (item: AccordionItem, index: number) => [
+  const getItemKey = (item: AccordionItem, index: number): string => {
+    return item.id || `accordion-item-${index}`
+  }
+
+  const getComputedItemClass = (item: AccordionItem, index: number) => [
     'base-accordion__item',
     {
-      'base-accordion__item--open': isItemOpen(item.id || String(index)),
+      'base-accordion__item--open': isItemOpen(getItemKey(item, index)),
       'base-accordion__item--disabled': item.disabled,
     },
   ]
@@ -117,8 +122,9 @@
     return openItems.value.has(itemId)
   }
 
-  const toggleItem = (itemId: string) => {
-    const item = props.items.find(item => (item.id || String(props.items.indexOf(item))) === itemId)
+  const handleToggleItem = (itemId: string) => {
+    const itemIndex = props.items.findIndex(item => getItemKey(item, props.items.indexOf(item)) === itemId)
+    const item = props.items[itemIndex]
     if (!item || item.disabled) return
 
     const wasOpen = openItems.value.has(itemId)
@@ -159,9 +165,10 @@
 
   const openAll = () => {
     if (props.multiple) {
-      props.items.forEach(item => {
-        if (item.id && !item.disabled) {
-          openItems.value.add(item.id)
+      props.items.forEach((item, index) => {
+        if (!item.disabled) {
+          const itemId = getItemKey(item, index)
+          openItems.value.add(itemId)
         }
       })
     }
@@ -187,7 +194,7 @@
 
   /* Item */
   .base-accordion__item {
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
   }
 
   /* Variants */
@@ -219,7 +226,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     text-align: left;
   }
 
@@ -274,7 +281,7 @@
   .base-accordion__chevron {
     flex-shrink: 0;
     color: var(--color-text-muted);
-    transition: transform var(--transition-normal);
+    transition: transform 0.3s ease;
     margin-left: var(--space-md);
   }
 
@@ -285,7 +292,7 @@
   /* Content */
   .base-accordion__content {
     overflow: hidden;
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
   }
 
   .base-accordion__content-inner {

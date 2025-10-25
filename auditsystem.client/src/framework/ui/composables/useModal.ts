@@ -1,5 +1,6 @@
 // src/framework/ui/composables/useModal.ts
 import { ref, computed } from 'vue'
+import type { Component } from 'vue'
 
 export interface ModalOptions {
   title?: string
@@ -13,8 +14,8 @@ export interface ModalOptions {
 
 export interface ModalInstance {
   id: string
-  component: any
-  props?: any
+  component: Component
+  props?: Record<string, unknown>
   options: ModalOptions
 }
 
@@ -34,8 +35,8 @@ export function useModal() {
   const modals = ref<ModalInstance[]>([])
   const currentModal = computed(() => modals.value[modals.value.length - 1])
 
-  const open = (component: any, props?: any, options: ModalOptions = {}) => {
-    const id = `modal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const open = (component: Component, props?: Record<string, unknown>, options: ModalOptions = {}) => {
+    const id = `modal-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 
     const modal: ModalInstance = {
       id,
@@ -68,7 +69,7 @@ export function useModal() {
     modals.value = []
   }
 
-  const updateProps = (id: string, newProps: any) => {
+  const updateProps = (id: string, newProps: Record<string, unknown>) => {
     const modal = modals.value.find(m => m.id === id)
     if (modal) {
       modal.props = { ...modal.props, ...newProps }

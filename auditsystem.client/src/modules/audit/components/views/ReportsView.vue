@@ -13,7 +13,7 @@
             <ScanIcon />
           </div>
           <div class="stat-card__content">
-            <div class="stat-card__value">{{ totalScans }}</div>
+            <div class="stat-card__value">{{ totalScansCount }}</div>
             <div class="stat-card__label">Всего сканирований</div>
           </div>
         </div>
@@ -23,7 +23,7 @@
             <ShieldIcon />
           </div>
           <div class="stat-card__content">
-            <div class="stat-card__value">{{ securedSystems }}</div>
+            <div class="stat-card__value">{{ securedSystemsCount }}</div>
             <div class="stat-card__label">Защищенных систем</div>
           </div>
         </div>
@@ -33,7 +33,7 @@
             <AlertIcon />
           </div>
           <div class="stat-card__content">
-            <div class="stat-card__value">{{ criticalIssues }}</div>
+            <div class="stat-card__value">{{ criticalIssuesCount }}</div>
             <div class="stat-card__label">Критических проблем</div>
           </div>
         </div>
@@ -43,7 +43,7 @@
             <ServerIcon />
           </div>
           <div class="stat-card__content">
-            <div class="stat-card__value">{{ totalDevices }}</div>
+            <div class="stat-card__value">{{ totalDevicesCount }}</div>
             <div class="stat-card__label">Всего устройств</div>
           </div>
         </div>
@@ -52,28 +52,28 @@
       <div class="reports-section">
         <div class="section-header">
           <h2 class="section-title">Последние сканирования</h2>
-          <BaseButton @click="loadScanHistory" variant="secondary" size="sm" class="refresh-btn">
+          <BaseButton @click="handleLoadScanHistory" variant="secondary" size="sm" class="refresh-btn">
             <RefreshIcon class="button-icon" />
             Обновить
           </BaseButton>
         </div>
 
         <div class="scans-list">
-          <div v-for="scan in recentScans" :key="scan.id" class="scan-item">
+          <div v-for="scan in recentScansList" :key="scan.id" class="scan-item">
             <div class="scan-item__status" :class="`status--${scan.status}`"></div>
             <div class="scan-item__content">
               <div class="scan-item__title">Сканирование подсети {{ scan.subnetName }}</div>
               <div class="scan-item__meta">
-                <span class="scan-item__date">{{ formatDate(scan.timestamp) }}</span>
+                <span class="scan-item__date">{{ formatScanDate(scan.timestamp) }}</span>
                 <span class="scan-item__devices">{{ scan.devicesFound }} устройств</span>
                 <span class="scan-item__vulnerabilities">{{ scan.vulnerabilitiesFound }} уязвимостей</span>
               </div>
             </div>
             <div class="scan-item__duration">
-              {{ formatDuration(scan.scanDuration) }}
+              {{ formatScanDuration(scan.scanDuration) }}
             </div>
             <div class="scan-item__actions">
-              <BaseButton @click="downloadReport(scan.id)" variant="text" size="sm">
+              <BaseButton @click="handleDownloadReport(scan.id)" variant="text" size="sm">
                 <DownloadIcon class="button-icon" />
                 Отчет
               </BaseButton>
@@ -81,7 +81,7 @@
           </div>
         </div>
 
-        <div class="empty-state" v-if="recentScans.length === 0">
+        <div class="empty-state" v-if="recentScansList.length === 0">
           <ReportIcon class="empty-state__icon" />
           <p class="empty-state__text">Сканирования не найдены</p>
           <p class="empty-state__description">Запустите первое сканирование в разделе Мониторинг</p>
@@ -92,7 +92,7 @@
       <div class="reports-section">
         <div class="section-header">
           <h2 class="section-title">Статистика безопасности</h2>
-          <BaseSelect v-model="selectedPeriod" :options="periodOptions" size="sm" />
+          <BaseSelect v-model="selectedPeriod" :options="periodOptionsList" size="sm" />
         </div>
 
         <div class="stats-charts">
@@ -116,8 +116,8 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue';
-  import BaseButton from '@/framework/ui/BaseButton.vue';
-  import BaseSelect from '@/framework/ui/BaseSelect.vue';
+  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
+  import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
   import {
     ScanIcon,
     ShieldIcon,
@@ -129,25 +129,25 @@
     BarChartIcon,
     PieChartIcon
   } from '@/assets/icons';
-  import { useAudit } from '@/modules/audit/composables/useAudit';
+  import useAudit from '@/modules/audit/composables/useAudit';
 
   const audit = useAudit();
 
-  const totalScans = ref(24);
-  const securedSystems = ref(18);
-  const criticalIssues = ref(3);
+  const totalScansCount = ref(24);
+  const securedSystemsCount = ref(18);
+  const criticalIssuesCount = ref(3);
   const selectedPeriod = ref('week');
 
-  const recentScans = computed(() => audit.scanHistory.value.slice(0, 5));
-  const totalDevices = computed(() => audit.totalDevices.value);
+  const recentScansList = computed(() => audit.scanHistory.value.slice(0, 5));
+  const totalDevicesCount = computed(() => audit.totalDevices.value);
 
-  const periodOptions = [
+  const periodOptionsList = [
     { value: 'week', label: 'За неделю' },
     { value: 'month', label: 'За месяц' },
     { value: 'quarter', label: 'За квартал' }
   ];
 
-  const formatDate = (dateString: string): string => {
+  const formatScanDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
@@ -157,17 +157,17 @@
     });
   };
 
-  const formatDuration = (ms: number): string => {
+  const formatScanDuration = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     return minutes > 0 ? `${minutes} мин` : `${seconds} сек`;
   };
 
-  const loadScanHistory = (): void => {
+  const handleLoadScanHistory = (): void => {
     audit.loadScanHistory(10);
   };
 
-  const downloadReport = (scanId: string): void => {
+  const handleDownloadReport = (scanId: string): void => {
     console.log('Download report for scan:', scanId);
     // Реализация скачивания отчета
   };

@@ -1,6 +1,5 @@
-<!-- src/framework/ui/components/data-display/BaseCard.vue -->
 <template>
-  <div class="base-card" :class="cardClasses" :style="cardStyle">
+  <div class="base-card" :class="computedClasses" :style="computedStyle">
     <!-- Header -->
     <div v-if="$slots.header || title" class="base-card__header">
       <slot name="header">
@@ -33,37 +32,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+  import { computed } from 'vue'
 
-interface Props {
-  title?: string
-  subtitle?: string
-  variant?: 'elevated' | 'outlined' | 'filled'
-  padding?: 'none' | 'sm' | 'md' | 'lg'
-  hoverable?: boolean
-  clickable?: boolean
-}
+  interface Props {
+    title?: string
+    subtitle?: string
+    variant?: 'elevated' | 'outlined' | 'filled'
+    padding?: 'none' | 'sm' | 'md' | 'lg'
+    hoverable?: boolean
+    clickable?: boolean
+  }
 
-const props = withDefaults(defineProps<Props>(), {
-  variant: 'elevated',
-  padding: 'md',
-  hoverable: false,
-  clickable: false,
-})
+  const props = withDefaults(defineProps<Props>(), {
+    variant: 'elevated',
+    padding: 'md',
+    hoverable: false,
+    clickable: false,
+  })
 
-const cardClasses = computed(() => [
-  'base-card',
-  `base-card--${props.variant}`,
-  `base-card--padding-${props.padding}`,
-  {
-    'base-card--hoverable': props.hoverable,
-    'base-card--clickable': props.clickable,
-  },
-])
+  const computedClasses = computed(() => [
+    'base-card',
+    `base-card--${props.variant}`,
+    `base-card--padding-${props.padding}`,
+    {
+      'base-card--hoverable': props.hoverable,
+      'base-card--clickable': props.clickable,
+    },
+  ])
 
-const cardStyle = computed(() => ({
-  'cursor': props.clickable ? 'pointer' : 'default',
-}))
+  const computedStyle = computed(() => ({
+    cursor: props.clickable ? 'pointer' : 'default',
+  }))
 </script>
 
 <style scoped>
@@ -145,7 +144,7 @@ const cardStyle = computed(() => ({
     overflow: hidden;
   }
 
-    .base-card__media :deep(img) {
+    .base-card__media ::v-deep(img) {
       width: 100%;
       height: auto;
       display: block;
@@ -157,11 +156,11 @@ const cardStyle = computed(() => ({
     line-height: 1.5;
   }
 
-    .base-card__content :deep(p) {
+    .base-card__content ::v-deep(p) {
       margin: 0 0 var(--space-md) 0;
     }
 
-    .base-card__content :deep(p:last-child) {
+    .base-card__content ::v-deep(p:last-child) {
       margin-bottom: 0;
     }
 

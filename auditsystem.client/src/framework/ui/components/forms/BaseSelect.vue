@@ -1,23 +1,22 @@
-<!-- src/framework/ui/components/forms/BaseSelect.vue -->
 <template>
-  <div class="base-select" :class="containerClasses">
-    <label v-if="label" :for="selectId" class="base-select__label">
+  <div class="base-select" :class="computedContainerClasses">
+    <label v-if="label" :for="computedSelectId" class="base-select__label">
       {{ label }}
       <span v-if="required" class="base-select__required">*</span>
     </label>
 
     <div class="base-select__wrapper">
-      <select :id="selectId"
+      <select :id="computedSelectId"
               :value="modelValue"
               :disabled="disabled || loading"
-              @change="onChange"
-              @blur="onBlur"
-              @focus="onFocus"
+              @change="handleChange"
+              @blur="handleBlur"
+              @focus="handleFocus"
               class="base-select__select">
         <option v-if="placeholder" value="" disabled>
           {{ placeholder }}
         </option>
-        <option v-for="option in normalizedOptions"
+        <option v-for="option in computedOptions"
                 :key="getOptionValue(option)"
                 :value="getOptionValue(option)"
                 :disabled="getOptionDisabled(option)">
@@ -48,97 +47,98 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue'
-import BaseSpinner from '../feedback/BaseSpinner.vue'
-import { ChevronDownIcon, AlertIcon } from '@/assets/icons'
+  import { computed, useId } from 'vue'
+  import BaseSpinner from '../feedback/BaseSpinner.vue'
+  import ChevronDownIcon from '@/assets/icons/arrows/ChevronDownIcon.vue'
+  import AlertIcon from '@/assets/icons/status/AlertIcon.vue'
 
-interface SelectOption {
-  value: string | number
-  label: string
-  disabled?: boolean
-}
-
-interface Props {
-  modelValue: string | number
-  options: SelectOption[] | string[] | number[]
-  label?: string
-  placeholder?: string
-  required?: boolean
-  disabled?: boolean
-  loading?: boolean
-  error?: string
-  helpText?: string
-  size?: 'sm' | 'md' | 'lg'
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  required: false,
-  disabled: false,
-  loading: false,
-  error: undefined,
-  helpText: undefined,
-  size: 'md',
-})
-
-const emit = defineEmits<{
-  'update:modelValue': [value: string | number]
-  'blur': [event: FocusEvent]
-  'focus': [event: FocusEvent]
-  'change': [value: string | number]
-}>()
-
-const selectId = computed(() => `select-${useId()}`)
-
-const containerClasses = computed(() => [
-  'base-select',
-  `base-select--${props.size}`,
-  {
-    'base-select--error': !!props.error,
-    'base-select--disabled': props.disabled,
-    'base-select--loading': props.loading,
-  },
-])
-
-const normalizedOptions = computed(() => {
-  if (props.options.length === 0) return []
-
-  // Handle string/number arrays
-  if (typeof props.options[0] !== 'object') {
-    return props.options.map(option => ({
-      value: option,
-      label: String(option)
-    }))
+  interface SelectOption {
+    value: string | number
+    label: string
+    disabled?: boolean
   }
 
-  return props.options as SelectOption[]
-})
+  interface Props {
+    modelValue: string | number
+    options: SelectOption[] | string[] | number[]
+    label?: string
+    placeholder?: string
+    required?: boolean
+    disabled?: boolean
+    loading?: boolean
+    error?: string
+    helpText?: string
+    size?: 'sm' | 'md' | 'lg'
+  }
 
-const getOptionValue = (option: SelectOption): string | number => {
-  return option.value
-}
+  const props = withDefaults(defineProps<Props>(), {
+    required: false,
+    disabled: false,
+    loading: false,
+    error: undefined,
+    helpText: undefined,
+    size: 'md',
+  })
 
-const getOptionLabel = (option: SelectOption): string => {
-  return option.label
-}
+  const emit = defineEmits<{
+    'update:modelValue': [value: string | number]
+    'blur': [event: FocusEvent]
+    'focus': [event: FocusEvent]
+    'change': [value: string | number]
+  }>()
 
-const getOptionDisabled = (option: SelectOption): boolean => {
-  return option.disabled || false
-}
+  const computedSelectId = computed(() => `select-${useId()}`)
 
-const onChange = (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  const value = target.value
-  emit('update:modelValue', value)
-  emit('change', value)
-}
+  const computedContainerClasses = computed(() => [
+    'base-select',
+    `base-select--${props.size}`,
+    {
+      'base-select--error': !!props.error,
+      'base-select--disabled': props.disabled,
+      'base-select--loading': props.loading,
+    },
+  ])
 
-const onBlur = (event: FocusEvent) => {
-  emit('blur', event)
-}
+  const computedOptions = computed(() => {
+    if (props.options.length === 0) return []
 
-const onFocus = (event: FocusEvent) => {
-  emit('focus', event)
-}
+    // Handle string/number arrays
+    if (typeof props.options[0] !== 'object') {
+      return props.options.map(option => ({
+        value: option,
+        label: String(option)
+      }))
+    }
+
+    return props.options as SelectOption[]
+  })
+
+  const getOptionValue = (option: SelectOption): string | number => {
+    return option.value
+  }
+
+  const getOptionLabel = (option: SelectOption): string => {
+    return option.label
+  }
+
+  const getOptionDisabled = (option: SelectOption): boolean => {
+    return option.disabled || false
+  }
+
+  const handleChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement
+    const value = target.value
+    emit('update:modelValue', value)
+    emit('change', value)
+  }
+
+  const handleBlur = (event: FocusEvent) => {
+    emit('blur', event)
+  }
+
+  const handleFocus = (event: FocusEvent) => {
+    emit('focus', event)
+  }
 </script>
 
 <style scoped>
@@ -181,14 +181,14 @@ const onFocus = (event: FocusEvent) => {
     cursor: pointer;
     appearance: none;
     outline: none;
-    transition: all var(--transition-normal);
+    transition: all 0.3s ease;
     box-shadow: var(--shadow-sm);
     font-family: var(--font-family-sans);
   }
 
     .base-select__select:focus {
       border-color: var(--color-primary);
-      box-shadow: var(--shadow-focus);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
     }
 
   .base-select--error .base-select__select {
@@ -198,7 +198,7 @@ const onFocus = (event: FocusEvent) => {
 
     .base-select--error .base-select__select:focus {
       border-color: var(--color-error);
-      box-shadow: var(--shadow-error);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
     }
 
   .base-select--disabled .base-select__select,
@@ -213,7 +213,7 @@ const onFocus = (event: FocusEvent) => {
     right: var(--space-md);
     pointer-events: none;
     color: var(--color-text-muted);
-    transition: color var(--transition-fast);
+    transition: color 0.2s ease;
     display: flex;
     align-items: center;
   }

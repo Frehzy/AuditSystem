@@ -2,7 +2,7 @@
   <button :type="buttonType"
           :disabled="isDisabled"
           :class="buttonClasses"
-          @click="handleClick"
+          @click="handleButtonClick"
           :aria-label="ariaLabel"
           :aria-busy="isLoading">
     <span v-if="isLoading" class="base-button__loading-content">
@@ -26,7 +26,6 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import BaseSpinner from './BaseSpinner.vue';
 
   interface Props {
     buttonType?: 'button' | 'submit' | 'reset';
@@ -85,7 +84,7 @@
     return colors[props.variant];
   });
 
-  const handleClick = (event: MouseEvent): void => {
+  const handleButtonClick = (event: MouseEvent): void => {
     if (!isDisabled.value) {
       emit('click', event);
     }
@@ -159,7 +158,7 @@
       background: var(--color-error-dark);
       border-color: var(--color-error-dark);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px color-mix(in srgb, var(--color-error) 30%, transparent);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
     }
 
   /* Success variant */
@@ -173,7 +172,7 @@
       background: var(--color-success-dark);
       border-color: var(--color-success-dark);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px color-mix(in srgb, var(--color-success) 30%, transparent);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
 
   /* Ghost variant */
@@ -185,7 +184,7 @@
   }
 
     .base-button--ghost:hover:not(.base-button--disabled) {
-      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+      background: rgba(14, 165, 233, 0.08);
       color: var(--color-primary-dark);
       transform: translateY(-1px);
     }

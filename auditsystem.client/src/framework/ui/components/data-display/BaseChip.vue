@@ -1,6 +1,5 @@
-<!-- src/framework/ui/components/data-display/BaseChip.vue -->
 <template>
-  <span class="base-chip" :class="chipClasses" :style="chipStyle">
+  <span class="base-chip" :class="computedClasses" :style="computedStyle" @click="handleChipClick">
     <component v-if="icon"
                :is="icon"
                class="base-chip__icon"
@@ -11,7 +10,7 @@
     </span>
 
     <button v-if="closable"
-            @click="handleClose"
+            @click="handleCloseClick"
             class="base-chip__close"
             :aria-label="`Удалить ${label}`">
       <CloseIcon :size="12" />
@@ -20,14 +19,16 @@
 </template>
 
 <script setup lang="ts">
-  import { CloseIcon } from '@/assets/icons'
+  import { computed } from 'vue';
+  import CloseIcon from '@/assets/icons/actions/CloseIcon.vue';
+  import type { Component } from 'vue';
 
   interface Props {
     label?: string
     variant?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'
     size?: 'sm' | 'md' | 'lg'
     closable?: boolean
-    icon?: any
+    icon?: Component
     outlined?: boolean
     clickable?: boolean
   }
@@ -45,7 +46,7 @@
     'click': []
   }>()
 
-  const chipClasses = computed(() => [
+  const computedClasses = computed(() => [
     'base-chip',
     `base-chip--${props.variant}`,
     `base-chip--${props.size}`,
@@ -56,12 +57,14 @@
     },
   ])
 
-  const handleClose = (event: Event) => {
+  const computedStyle = computed(() => ({}))
+
+  const handleCloseClick = (event: Event) => {
     event.stopPropagation()
     emit('close')
   }
 
-  const handleClick = () => {
+  const handleChipClick = () => {
     if (props.clickable) {
       emit('click')
     }

@@ -2,8 +2,8 @@
 <template>
   <nav class="base-breadcrumb" aria-label="Хлебные крошки">
     <ol class="base-breadcrumb__list">
-      <li v-for="(item, index) in items"
-          :key="item.id || index"
+      <li v-for="(item, index) in displayItems"
+          :key="getItemKey(item, index)"
           class="base-breadcrumb__item">
 
         <!-- Separator -->
@@ -15,7 +15,7 @@
         <component :is="item.href ? 'a' : 'span'"
                    :href="item.href"
                    :class="getItemClass(item, index)"
-                   :aria-current="index === items.length - 1 ? 'page' : undefined"
+                   :aria-current="index === displayItems.length - 1 ? 'page' : undefined"
                    @click="handleItemClick(item, index)">
 
           <!-- Icon -->
@@ -35,13 +35,15 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue';
   import { ChevronRightIcon } from '@/assets/icons'
+  import type { Component } from 'vue';
 
   interface BreadcrumbItem {
     id?: string
     label: string
     href?: string
-    icon?: any
+    icon?: Component
     disabled?: boolean
   }
 
@@ -60,8 +62,8 @@
     homeItem: () => ({
       label: 'Главная',
       href: '/',
-      icon: null,
-    }),
+      icon: undefined,
+    }) as BreadcrumbItem,
   })
 
   const emit = defineEmits<{
@@ -90,6 +92,10 @@
 
     return items
   })
+
+  const getItemKey = (item: BreadcrumbItem, index: number): string => {
+    return item.id || `breadcrumb-${index}`
+  }
 
   const getItemClass = (item: BreadcrumbItem, index: number) => [
     'base-breadcrumb__link',

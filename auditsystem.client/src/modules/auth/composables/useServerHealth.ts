@@ -1,9 +1,9 @@
+// src/modules/auth/composables/useServerHealth.ts
 import { ref, onUnmounted, computed, watch } from 'vue';
-import { apiHelper } from '@/services/api/api.client';
-import { logger } from '@/core/utils/logger/logger';
-import { stateManager } from '@/core/services/state/state-manager.service';
-import { useAppStore } from '@/framework/stores/app.store';
-import { notificationService } from '@/core/services/notification/notification.service';
+import { apiClient } from '@/core/services/core/api/api-client.service';
+import { logger } from '@/core/utils/logger';
+// Исправлено: правильный импорт
+import { notificationService } from '@/core/services/core/ui/notification.service';
 
 export type ServerStatus = 'checking' | 'online' | 'offline';
 
@@ -28,7 +28,6 @@ interface HealthCheckConfig {
 }
 
 export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
-  const appStore = useAppStore();
   const loggerContext = logger.create('useServerHealth');
 
   const defaultConfig: HealthCheckConfig = {
@@ -99,7 +98,8 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
     state.value.totalChecks++;
 
     try {
-      const isHealthy = await apiHelper.checkServerHealth();
+      // Простая проверка доступности сервера
+      const isHealthy = await apiClient.checkHealth();
       const endTime = performance.now();
       const responseTimeMs = Math.round(endTime - startTime);
 
@@ -131,18 +131,6 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
         });
       }
 
-      // Сохраняем состояние в stateManager
-      stateManager.set('server.health', {
-        status: state.value.status,
-        lastCheck: state.value.lastCheck,
-        responseTime: responseTimeMs,
-        successRate: successRate.value,
-        healthScore: healthScore.value
-      });
-
-      // Синхронизация с app store
-      appStore.setServerHealth(isHealthy);
-
       // Уведомление об изменении статуса
       if (previousStatus !== newStatus && currentConfig.notifyOnStatusChange) {
         handleStatusChange(previousStatus, newStatus);
@@ -155,31 +143,19 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
 
       return isHealthy;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const endTime = performance.now();
       const responseTimeMs = Math.round(endTime - startTime);
 
       consecutiveFailures++;
-      state.value.lastError = error.message;
+      state.value.lastError = error instanceof Error ? error.message : 'Unknown error';
       state.value.status = 'offline';
       state.value.lastCheck = new Date();
       state.value.responseTime = responseTimeMs;
       state.value.retryCount++;
 
-      // Сохраняем состояние в stateManager
-      stateManager.set('server.health', {
-        status: state.value.status,
-        lastCheck: state.value.lastCheck,
-        responseTime: responseTimeMs,
-        error: error.message,
-        consecutiveFailures
-      });
-
-      // Синхронизация с app store
-      appStore.setServerHealth(false);
-
       loggerContext.error('Health check failed', {
-        error: error.message,
+        error: state.value.lastError,
         retryCount: state.value.retryCount,
         consecutiveFailures,
         responseTime: `${responseTimeMs}ms`,
@@ -273,7 +249,6 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
     state.value.responseTime = null;
     consecutiveFailures = 0;
 
-    stateManager.remove('server.health');
     loggerContext.info('Health check state reset');
   };
 
@@ -283,13 +258,6 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
   const restartChecks = (intervalMs?: number): void => {
     reset();
     startPeriodicChecks(intervalMs);
-  };
-
-  /**
-   * Получение истории проверок из stateManager
-   */
-  const getHealthHistory = () => {
-    return stateManager.get('server.health.history') || [];
   };
 
   /**
@@ -320,14 +288,12 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
    * Расчет времени доступности
    */
   const calculateUptime = (): string => {
-    // Простая реализация - можно улучшить с историей проверок
     if (state.value.totalChecks === 0) return '0%';
     return `${successRate.value.toFixed(1)}%`;
   };
 
   // Watchers
   watch(isOnline, (newVal) => {
-    // Можно добавить дополнительную логику при изменении статуса
     loggerContext.debug('Server status changed', {
       isOnline: newVal,
       successRate: successRate.value
@@ -363,7 +329,6 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
     manualCheck,
     reset,
     restartChecks,
-    getHealthHistory,
 
     // Configuration
     updateConfig: (newConfig: Partial<HealthCheckConfig>) => {

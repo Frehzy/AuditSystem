@@ -6,7 +6,7 @@
 import type { ValidationRule } from '../composables/useForm'
 
 export interface FormField {
-  value: any
+  value: unknown
   rules?: ValidationRule[]
   touched: boolean
   dirty: boolean
@@ -22,12 +22,12 @@ export interface SelectOption {
 
 export interface FormSubmitEvent {
   isValid: boolean
-  data: Record<string, any>
+  data: Record<string, unknown>
   errors: Record<string, string[]>
 }
 
 export interface FormChangeEvent {
   field: string
-  value: any
+  value: unknown
   isValid: boolean
 }
