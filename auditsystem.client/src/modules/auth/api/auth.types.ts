@@ -37,7 +37,7 @@ export interface RefreshTokenRequest {
 // ==================== RESPONSE TYPES ====================
 
 // Базовый интерфейс для ответов API
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   success: boolean;
   message?: string;
@@ -121,19 +121,21 @@ export const isErrorResponse = (
   return response.success === false && Array.isArray(response.errors);
 };
 
-export const isUserDto = (user: any): user is UserDto => {
-  return user &&
-    typeof user.id === 'string' &&
-    typeof user.username === 'string' &&
-    typeof user.email === 'string';
+export const isUserDto = (user: unknown): user is UserDto => {
+  return !!user &&
+    typeof user === 'object' &&
+    'id' in user && typeof (user as UserDto).id === 'string' &&
+    'username' in user && typeof (user as UserDto).username === 'string' &&
+    'email' in user && typeof (user as UserDto).email === 'string';
 };
 
 // Проверка прямого ответа логина (без обертки)
-export const isDirectLoginResponse = (response: any): response is LoginResponseData => {
-  return response &&
-    typeof response.token === 'string' &&
-    typeof response.user === 'object' &&
-    typeof response.user.id === 'string';
+export const isDirectLoginResponse = (response: unknown): response is LoginResponseData => {
+  return !!response &&
+    typeof response === 'object' &&
+    'token' in response && typeof (response as LoginResponseData).token === 'string' &&
+    'user' in response && typeof (response as LoginResponseData).user === 'object' &&
+    'id' in (response as LoginResponseData).user && typeof (response as LoginResponseData).user.id === 'string';
 };
 
 // ==================== CONSTANTS ====================

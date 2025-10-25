@@ -1,22 +1,31 @@
+// src/modules/audit/composables/useAudit.ts
 import { ref, computed } from 'vue';
+import { auditApiService } from '../api/auditApi.service';
 import { logger } from '@/core/utils/logger/logger';
 import type {
   AuditState,
-  AuditSystem,
-  SecurityScanResult,
-  Vulnerability,
+  MilitaryUnit,
+  Subnet,
   AuditSettings,
-  StartScanCommand,
-  UpdateSettingsCommand,
-  DEFAULT_SETTINGS
+  CreateUnitCommand,
+  CreateSubnetCommand,
+  StartScanCommand
 } from '../api/audit.types';
+
+const DEFAULT_SETTINGS: AuditSettings = {
+  scanInterval: 3600000,
+  autoReporting: true,
+  notificationEnabled: true,
+  reportFormat: 'pdf',
+  maxScanDuration: 1800000
+};
 
 export const useAudit = () => {
   const loggerContext = logger.create('useAudit');
 
   // State
   const state = ref<AuditState>({
-    systems: [],
+    units: [],
     currentScan: null,
     settings: { ...DEFAULT_SETTINGS },
     scanHistory: [],
@@ -25,253 +34,178 @@ export const useAudit = () => {
   });
 
   // Computed
-  const systems = computed(() => state.value.systems);
+  const units = computed(() => state.value.units);
   const currentScan = computed(() => state.value.currentScan);
   const settings = computed(() => state.value.settings);
   const scanHistory = computed(() => state.value.scanHistory);
   const isLoading = computed(() => state.value.isLoading);
   const error = computed(() => state.value.error);
 
-  const recentVulnerabilities = computed(() => {
-    return state.value.scanHistory
-      .flatMap(scan => scan.vulnerabilities)
-      .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
-      .slice(0, 5);
+  const totalDevices = computed(() => {
+    return state.value.units.reduce((total, unit) => {
+      return total + unit.subnets.reduce((subTotal, subnet) => subTotal + subnet.devicesCount, 0);
+    }, 0);
   });
 
-  const criticalVulnerabilitiesCount = computed(() => {
-    return state.value.scanHistory
-      .flatMap(scan => scan.vulnerabilities)
-      .filter(vuln => vuln.severity === 'critical').length;
-  });
-
-  // Actions
-  const loadSystems = async (): Promise<void> => {
+  // Military Units Management
+  const loadMilitaryUnits = async (): Promise<void> => {
     state.value.isLoading = true;
-    state.value.error = null; try {
-      // Заглушка - в реальном приложении здесь будет API вызов
-      const mockSystems: AuditSystem[] = [
-        {
-          id: '1',
-          name: 'Astra Linux SE 1.7',
-          version: '1.7.2',
-          status: 'online',
-          lastScan: new Date().toISOString(),
-          securityLevel: 'medium'
-        },
-        {
-          id: '2',
-          name: 'Astra Linux CE 2.12',
-          version: '2.12.4',
-          status: 'online',
-          lastScan: new Date(Date.now() - 3600000).toISOString(),
-          securityLevel: 'high'
-        },
-        {
-          id: '3',
-          name: 'Astra Linux SE 1.6',
-          version: '1.6.8',
-          status: 'offline',
-          lastScan: new Date(Date.now() - 86400000).toISOString(),
-          securityLevel: 'critical'
-        }
-      ];
+    state.value.error = null;
 
-      state.value.systems = mockSystems;
-      loggerContext.info('Systems loaded', { count: mockSystems.length });
-    } catch (err: any) {
-      state.value.error = err.message;
-      loggerContext.error('Failed to load systems', { error: err.message });
+    try {
+      const units = await auditApiService.getMilitaryUnits();
+      state.value.units = units;
+      loggerContext.info('Military units loaded', { count: units.length });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      state.value.error = errorMessage;
+      loggerContext.error('Failed to load military units', { error: errorMessage });
+      throw err;
     } finally {
       state.value.isLoading = false;
     }
   };
+
+  const createMilitaryUnit = async (command: CreateUnitCommand): Promise<MilitaryUnit> => {
+    state.value.isLoading = true;
+    state.value.error = null;
+
+    try {
+      const newUnit = await auditApiService.createMilitaryUnit(command);
+      state.value.units.push(newUnit);
+      loggerContext.info('Military unit created', { unitId: newUnit.id });
+      return newUnit;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      state.value.error = errorMessage;
+      loggerContext.error('Failed to create military unit', { error: errorMessage });
+      throw err;
+    } finally {
+      state.value.isLoading = false;
+    }
+  };
+
+  // Subnets Management
+  const createSubnet = async (command: CreateSubnetCommand): Promise<Subnet> => {
+    state.value.isLoading = true;
+    state.value.error = null;
+
+    try {
+      const newSubnet = await auditApiService.createSubnet(command);
+
+      const unitIndex = state.value.units.findIndex(unit => unit.id === command.unitId);
+      if (unitIndex !== -1) {
+        state.value.units[unitIndex].subnets.push(newSubnet);
+      }
+
+      loggerContext.info('Subnet created', { subnetId: newSubnet.id });
+      return newSubnet;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      state.value.error = errorMessage;
+      loggerContext.error('Failed to create subnet', { error: errorMessage });
+      throw err;
+    } finally {
+      state.value.isLoading = false;
+    }
+  };
+
+  // Scanning
   const startScan = async (command: StartScanCommand): Promise<void> => {
     state.value.isLoading = true;
     state.value.error = null;
-    try {
-      loggerContext.info('Starting scan', command);
 
-      // Имитация процесса сканирования
+    try {
+      const { scanId } = await auditApiService.startScan(command);
+
       state.value.currentScan = {
-        scanId: `scan-${Date.now()}`,
+        scanId,
         status: 'in_progress',
         progress: 0,
-        currentCheck: 'Инициализация сканирования...',
-        estimatedTimeRemaining: 120000
+        currentAction: 'Инициализация сканирования...',
+        devicesProcessed: 0,
+        totalDevices: 0,
+        estimatedTimeRemaining: null
       };
 
-      // Имитация прогресса сканирования
-      const progressSteps = [
-        'Проверка системных файлов...',
-        'Анализ сетевых настроек...',
-        'Проверка пользователей и прав...',
-        'Аудит сервисов...',
-        'Проверка брандмауэра...',
-        'Формирование отчета...'
-      ];
-
-      for (let i = 0; i < progressSteps.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        if (state.value.currentScan) {
-          state.value.currentScan.progress = Math.round(((i + 1) / progressSteps.length) * 100);
-          state.value.currentScan.currentCheck = progressSteps[i];
-          state.value.currentScan.estimatedTimeRemaining = (progressSteps.length - i - 1) * 2000;
-        }
-      }
-
-      // Завершение сканирования
-      if (state.value.currentScan) {
-        state.value.currentScan.status = 'completed';
-        state.value.currentScan.progress = 100;
-        state.value.currentScan.currentCheck = 'Сканирование завершено';
-        state.value.currentScan.estimatedTimeRemaining = 0;
-      }
-
-      // Добавление результата в историю
-      const scanResult: SecurityScanResult = {
-        id: state.value.currentScan?.scanId || `scan-${Date.now()}`,
-        systemId: command.systemId,
-        timestamp: new Date().toISOString(),
-        status: 'completed',
-        vulnerabilities: generateMockVulnerabilities(),
-        scanDuration: 12000,
-        totalChecks: 156,
-        passedChecks: 142,
-        failedChecks: 14
-      };
-
-      state.value.scanHistory.unshift(scanResult);
-      loggerContext.info('Scan completed', { scanId: scanResult.id });
-
-    } catch (err: any) {
-      state.value.error = err.message;
-      if (state.value.currentScan) {
-        state.value.currentScan.status = 'failed';
-      }
-      loggerContext.error('Scan failed', { error: err.message });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      state.value.error = errorMessage;
+      loggerContext.error('Failed to start scan', { error: errorMessage });
+      throw err;
     } finally {
       state.value.isLoading = false;
+    }
+  };
 
-      // Очистка текущего сканирования через некоторое время
-      setTimeout(() => {
-        state.value.currentScan = null;
-      }, 3000);
+  const loadScanHistory = async (limit?: number): Promise<void> => {
+    try {
+      const history = await auditApiService.getScanHistory(limit);
+      state.value.scanHistory = history;
+      loggerContext.info('Scan history loaded', { count: history.length });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      loggerContext.error('Failed to load scan history', { error: errorMessage });
+      throw err;
+    }
+  };
+
+  // Settings
+  const loadSettings = async (): Promise<void> => {
+    try {
+      const settings = await auditApiService.getSettings();
+      state.value.settings = settings;
+      loggerContext.info('Settings loaded');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      loggerContext.error('Failed to load settings', { error: errorMessage });
+      throw err;
     }
   };
 
   const updateSettings = async (newSettings: Partial<AuditSettings>): Promise<void> => {
     state.value.isLoading = true;
     state.value.error = null;
+
     try {
-      state.value.settings = { ...state.value.settings, ...newSettings };
-      loggerContext.info('Settings updated', newSettings);
-
-      // Здесь будет вызов API для сохранения настроек
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-    } catch (err: any) {
-      state.value.error = err.message;
-      loggerContext.error('Failed to update settings', { error: err.message });
+      const updatedSettings = await auditApiService.updateSettings(newSettings);
+      state.value.settings = updatedSettings;
+      loggerContext.info('Settings updated');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      state.value.error = errorMessage;
+      loggerContext.error('Failed to update settings', { error: errorMessage });
+      throw err;
     } finally {
       state.value.isLoading = false;
     }
-  };
-
-  const loadRecentVulnerabilities = async (): Promise<void> => {
-    try {
-      // Заглушка - в реальном приложении здесь будет API вызов
-      const mockVulnerabilities = generateMockVulnerabilities();
-
-      // Добавляем уязвимости в историю сканирований
-      if (state.value.scanHistory.length === 0) {
-        const scanResult: SecurityScanResult = {
-          id: `scan-${Date.now()}`,
-          systemId: 'local',
-          timestamp: new Date().toISOString(),
-          status: 'completed',
-          vulnerabilities: mockVulnerabilities,
-          scanDuration: 15000,
-          totalChecks: 200,
-          passedChecks: 185,
-          failedChecks: 15
-        };
-        state.value.scanHistory.push(scanResult);
-      }
-
-      loggerContext.info('Recent vulnerabilities loaded');
-    } catch (err: any) {
-      loggerContext.error('Failed to load vulnerabilities', { error: err.message });
-    }
-  };
-
-  const generateReport = (): void => {
-    loggerContext.info('Generating security report');
-    // Логика генерации отчета
   };
 
   const clearError = (): void => {
     state.value.error = null;
   };
 
-  // Вспомогательные функции
-  const generateMockVulnerabilities = (): Vulnerability[] => {
-    return [
-      {
-        id: 'vuln-1',
-        title: 'Устаревшая версия ядра',
-        severity: 'critical',
-        category: 'system',
-        description: 'Обнаружена устаревшая версия ядра системы, содержащая известные уязвимости',
-        recommendation: 'Обновите ядро до последней стабильной версии',
-        cve: 'CVE-2023-1234',
-        cvssScore: 8.2,
-        status: 'open',
-        detectedAt: new Date().toISOString()
-      },
-      {
-        id: 'vuln-2',
-        title: 'Слабые пароли пользователей',
-        severity: 'high',
-        category: 'configuration',
-        description: 'Обнаружены пользователи со слабыми паролями',
-        recommendation: 'Требовать сложные пароли и регулярную смену',
-        status: 'open',
-        detectedAt: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        id: 'vuln-3',
-        title: 'Открытые сетевые порты',
-        severity: 'medium',
-        category: 'network',
-        description: 'Обнаружены неиспользуемые открытые порты',
-        recommendation: 'Закройте неиспользуемые порты в настройках брандмауэра',
-        status: 'open',
-        detectedAt: new Date(Date.now() - 172800000).toISOString()
-      }
-    ];
-  };
-
   return {
     // State
     state,
-    systems,
+    units,
     currentScan,
     settings,
     scanHistory,
     isLoading,
     error,
+
     // Computed
-    recentVulnerabilities,
-    criticalVulnerabilitiesCount,
+    totalDevices,
 
     // Actions
-    loadSystems,
+    loadMilitaryUnits,
+    createMilitaryUnit,
+    createSubnet,
     startScan,
+    loadScanHistory,
+    loadSettings,
     updateSettings,
-    loadRecentVulnerabilities,
-    generateReport,
     clearError
   };
 };

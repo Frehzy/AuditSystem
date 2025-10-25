@@ -1,4 +1,6 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+// src/router/index.ts
+import { createRouter, createWebHistory } from 'vue-router';
+import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { storage } from '@/core/services/storage/storage.service';
 import { logger } from '@/core/utils/logger/logger';
 
@@ -78,7 +80,7 @@ const router = createRouter({
 /**
  * Навигационные guards
  */
-const authGuard = (to: any, from: any): boolean | string => {
+const authGuard = (to: RouteLocationNormalized, from: RouteLocationNormalized): boolean | string => {
   // Добавляем проверку на существование meta
   if (!to.meta) {
     logger.warn('Route meta is undefined', { path: to.path, name: to.name });

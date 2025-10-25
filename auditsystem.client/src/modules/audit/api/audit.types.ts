@@ -1,28 +1,40 @@
 // ==================== CORE TYPES ====================
 
-export interface AuditSystem {
+export interface MilitaryUnit {
   id: string;
   name: string;
-  version: string;
-  status: 'online' | 'offline' | 'scanning';
-  lastScan: string | null;
-  securityLevel: 'low' | 'medium' | 'high' | 'critical';
+  location: string;
+  status: 'active' | 'deployed' | 'headquarters';
+  subnets: Subnet[];
+  createdAt: string;
+  description?: string;
 }
 
-export interface SecurityScanResult {
+export interface Subnet {
   id: string;
-  systemId: string;
+  unitId: string;
+  name: string;
+  network: string;
+  mask: string;
+  description?: string;
+  devicesCount: number;
+  lastScan: string | null;
+}
+
+export interface ScanResult {
+  id: string;
+  subnetId: string;
   timestamp: string;
   status: 'completed' | 'failed' | 'in_progress';
-  vulnerabilities: Vulnerability[];
+  devicesScanned: number;
+  devicesFound: number;
+  vulnerabilitiesFound: number;
   scanDuration: number;
-  totalChecks: number;
-  passedChecks: number;
-  failedChecks: number;
 }
 
 export interface Vulnerability {
   id: string;
+  deviceId: string;
   title: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   category: 'system' | 'network' | 'application' | 'configuration';
@@ -36,28 +48,37 @@ export interface Vulnerability {
 
 export interface AuditSettings {
   scanInterval: number;
-  autoRemediation: boolean;
+  autoReporting: boolean;
   notificationEnabled: boolean;
-  reportFormat: 'pdf' | 'html' | 'json';
-  scanDepth: 'basic' | 'standard' | 'deep';
-  excludedPaths: string[];
+  reportFormat: 'pdf' | 'html' | 'json' | 'xml';
   maxScanDuration: number;
+  deepScan?: boolean;
+  notificationEmail?: string;
+  realtimeNotifications?: boolean;
+  reportDetailLevel?: 'basic' | 'detailed' | 'comprehensive';
+  autoArchive?: boolean;
 }
 
 // ==================== REQUEST TYPES ====================
 
 export interface StartScanCommand {
-  systemId: string;
-  scanType: 'quick' | 'full' | 'custom';
-  options?: ScanOptions;
+  subnetId: string;
+  scanType: 'quick' | 'comprehensive' | 'targeted';
 }
 
-export interface ScanOptions {
-  checkNetwork: boolean;
-  checkFilesystem: boolean;
-  checkUsers: boolean;
-  checkServices: boolean;
-  checkFirewall: boolean;
+export interface CreateUnitCommand {
+  name: string;
+  location: string;
+  status: 'active' | 'deployed' | 'headquarters';
+  description?: string;
+}
+
+export interface CreateSubnetCommand {
+  unitId: string;
+  name: string;
+  network: string;
+  mask: string;
+  description?: string;
 }
 
 export interface UpdateSettingsCommand {
@@ -70,53 +91,29 @@ export interface ScanStatusResponse {
   scanId: string;
   status: 'in_progress' | 'completed' | 'failed';
   progress: number;
-  currentCheck: string;
+  currentAction: string;
+  devicesProcessed: number;
+  totalDevices: number;
   estimatedTimeRemaining: number | null;
-}
-
-export interface SystemsListResponse {
-  systems: AuditSystem[];
-  totalCount: number;
-}
-
-export interface ScanHistoryResponse {
-  scans: SecurityScanResult[];
-  totalCount: number;
 }
 
 // ==================== STATE TYPES ====================
 
 export interface AuditState {
-  systems: AuditSystem[];
+  units: MilitaryUnit[];
   currentScan: ScanStatusResponse | null;
   settings: AuditSettings;
-  scanHistory: SecurityScanResult[];
+  scanHistory: ScanResult[];
   isLoading: boolean;
   error: string | null;
 }
 
 // ==================== CONSTANTS ====================
 
-export const SCAN_CATEGORIES = {
-  SYSTEM: 'system',
-  NETWORK: 'network',
-  APPLICATION: 'application',
-  CONFIGURATION: 'configuration'
-} as const;
-
-export const SEVERITY_LEVELS = {
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical'
-} as const;
-
 export const DEFAULT_SETTINGS: AuditSettings = {
-  scanInterval: 3600000, // 1 hour
-  autoRemediation: false,
+  scanInterval: 3600000,
+  autoReporting: true,
   notificationEnabled: true,
   reportFormat: 'pdf',
-  scanDepth: 'standard',
-  excludedPaths: ['/proc', '/sys', '/dev'],
-  maxScanDuration: 1800000 // 30 minutes
+  maxScanDuration: 1800000
 };

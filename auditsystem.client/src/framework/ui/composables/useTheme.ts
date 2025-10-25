@@ -1,0 +1,69 @@
+// src/framework/ui/composables/useTheme.ts
+import { ref, computed, watch } from 'vue'
+
+export type Theme = 'light' | 'dark' | 'auto'
+
+/**
+ * Композабл для управления темой приложения
+ * 
+ * @example
+ * const { theme, toggleTheme, isDark } = useTheme()
+ * 
+ * // Переключить тему
+ * toggleTheme()
+ * 
+ * // Установить конкретную тему
+ * theme.value = 'dark'
+ */
+export function useTheme() {
+  const storedTheme = localStorage.getItem('theme') as Theme | null
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+
+  const theme = ref<Theme>(storedTheme || 'auto')
+  const isDark = computed(() => {
+    if (theme.value === 'auto') {
+      return systemPrefersDark
+    }
+    return theme.value === 'dark'
+  })
+
+  // Применение темы к документу
+  const applyTheme = () => {
+    const effectiveTheme = isDark.value ? 'dark' : 'light'
+    document.documentElement.className = `theme-${effectiveTheme}`
+    localStorage.setItem('theme', theme.value)
+  }
+
+  // Переключение темы
+  const toggleTheme = () => {
+    const themes: Theme[] = ['light', 'dark', 'auto']
+    const currentIndex = themes.indexOf(theme.value)
+    const nextIndex = (currentIndex + 1) % themes.length
+    theme.value = themes[nextIndex]
+  }
+
+  // Установка конкретной темы
+  const setTheme = (newTheme: Theme) => {
+    theme.value = newTheme
+  }
+
+  // Следим за изменениями системных предпочтений
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+    if (theme.value === 'auto') {
+      applyTheme()
+    }
+  }
+
+  mediaQuery.addEventListener('change', handleSystemThemeChange)
+
+  // Автоматическое применение темы при изменениях
+  watch(theme, applyTheme, { immediate: true })
+
+  return {
+    theme,
+    isDark,
+    toggleTheme,
+    setTheme,
+  }
+}
