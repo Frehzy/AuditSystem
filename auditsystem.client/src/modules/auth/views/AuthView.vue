@@ -60,9 +60,6 @@
         </footer>
       </div>
     </div>
-
-    <!-- Уведомления -->
-    <BaseToast ref="toastRef" />
   </div>
 </template>
 
@@ -72,23 +69,23 @@
   import { useAuth } from '../composables/useAuth';
   import { useServerHealth } from '../composables/useServerHealth';
   import { useThemeStore } from '@/framework/stores/theme.store';
-  import { notificationService } from '@/core/services/core/ui/notification.service';
-  import { BaseToast } from '@/framework/ui';
+  import { useToast } from '@/framework/ui/composables/useToast';
   import AuthForm from '../components/AuthForm.vue';
   import ServerStatus from '../components/ServerStatus.vue';
   import { RobotIcon, MoonIcon, SunIcon } from '@/assets/icons';
   import { APP_CONFIG } from '@/core/config/app.config';
   import { logger } from '@/core/utils/logger';
 
-  // Импорт стилей темы
-  import '@/assets/styles/theme.css';
-
   const router = useRouter();
   const auth = useAuth();
-  const serverHealth = useServerHealth();
+  const toast = useToast();
+  const serverHealth = useServerHealth({
+    checkInterval: APP_CONFIG.API.HEALTH_CHECK_INTERVAL,
+    notifyOnStatusChange: true
+  });
   const themeStore = useThemeStore();
-  const toastRef = ref<InstanceType<typeof BaseToast> | null>(null);
 
+  const loggerContext = logger.create('AuthView');
   const serverUrl = ref(APP_CONFIG.API.BASE_URL);
   const isDevelopment = import.meta.env.DEV;
 
@@ -110,7 +107,7 @@
    */
   const toggleTheme = (): void => {
     themeStore.toggle();
-    logger.info('Theme toggled', { theme: themeStore.theme });
+    loggerContext.info('Theme toggled', { theme: themeStore.theme });
   };
 
   /**
@@ -157,22 +154,29 @@
   const handleLogin = async (credentials: { username: string; password: string }): Promise<void> => {
     if (auth.isLoading.value || !isServerAvailable.value) return;
 
+    loggerContext.info('Login attempt', { username: credentials.username });
+
     const success = await auth.login(credentials);
 
     if (success) {
-      // Запускаем периодические проверки здоровья сервера
-      serverHealth.startPeriodicChecks(30000);
+      // Показываем уведомление об успешном входе через toast
+      toast.success('Вход выполнен успешно!');
 
-      // Показываем уведомление об успешном входе через notificationService
-      notificationService.success('Вход выполнен успешно!');
+      loggerContext.info('Login successful, redirecting to audit');
 
-      // Переход в чат с небольшой задержкой для лучшего UX
-      setTimeout(() => {
-        router.push('/audit');
-      }, 500);
+      // Даем время для обновления состояния стора
+      await nextTick();
+
+      // Явная проверка статуса аутентификации перед переходом
+      if (auth.isAuthenticated.value) {
+        // Используем replace чтобы избежать навигации назад к login
+        await router.replace('/audit');
+      } else {
+        loggerContext.error('Authentication state not updated after login');
+        toast.error('Ошибка аутентификации');
+      }
     } else {
-      // Ошибка авторизации уже установлена в auth.error
-      logger.error('Login failed', { error: auth.error.value });
+      loggerContext.error('Login failed', { error: auth.error.value });
     }
   };
 
@@ -187,36 +191,42 @@
    * Обработка "Забыли пароль"
    */
   const handleForgotPassword = (): void => {
-    notificationService.info('Функция восстановления пароля в разработке');
-    logger.info('Forgot password flow requested');
+    toast.info('Функция восстановления пароля в разработке');
+    loggerContext.info('Forgot password flow requested');
   };
 
   /**
    * Инициализация
    */
   onMounted(async () => {
-    logger.info('AuthView mounted');
-
-    // Инициализация темы
-    themeStore.initializeTheme();
+    loggerContext.info('AuthView mounted');
 
     // Перенаправление если уже авторизован
     if (auth.isAuthenticated.value) {
-      logger.info('User already authenticated, redirecting to audit');
-      serverHealth.startPeriodicChecks(30000);
+      loggerContext.info('User already authenticated, redirecting to audit');
+
+      // Начальная проверка сервера и запуск периодических проверок
+      try {
+        await serverHealth.checkServerConnection();
+        serverHealth.startPeriodicChecks();
+        loggerContext.info('Server health checks started');
+      } catch (error) {
+        loggerContext.error('Failed to initialize server health checks', { error });
+      }
 
       // Небольшая задержка для лучшего UX
       await nextTick();
-      router.push('/audit');
+      await router.replace('/audit');
       return;
     }
 
-    // Начальная проверка сервера
+    // Начальная проверка сервера и запуск периодических проверок
     try {
       await serverHealth.checkServerConnection();
-      serverHealth.startPeriodicChecks(30000);
+      serverHealth.startPeriodicChecks();
+      loggerContext.info('Server health checks started');
     } catch (error) {
-      logger.error('Failed to initialize server health checks', { error });
+      loggerContext.error('Failed to initialize server health checks', { error });
     }
   });
 
@@ -225,11 +235,12 @@
    */
   onUnmounted(() => {
     serverHealth.stopPeriodicChecks();
-    logger.info('AuthView unmounted');
+    loggerContext.info('AuthView unmounted');
   });
 </script>
 
 <style scoped>
+  /* Стили остаются без изменений */
   .auth-view {
     min-height: 100vh;
     min-height: 100dvh;
@@ -358,6 +369,7 @@
     .auth-view__logo-icon svg {
       width: 24px;
       height: 24px;
+      color: currentColor;
     }
 
   .auth-view__logo-text {
@@ -409,6 +421,7 @@
   .auth-view__theme-icon svg {
     width: 16px;
     height: 16px;
+    color: currentColor;
   }
 
   .auth-view__status {

@@ -1,5 +1,6 @@
 // src/modules/auth/composables/useAuth.ts
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/framework/stores/auth.store';
 import { authApiService } from '../api/authApi.service';
 import { errorHandler } from '@/core/services/core/utils/error-handler.service';
@@ -7,6 +8,7 @@ import { logger } from '@/core/utils/logger';
 import type { LoginCommand, ApiResult, UserDto } from '../api/auth.types';
 
 export const useAuth = () => {
+  const router = useRouter();
   const authStore = useAuthStore();
   const loggerContext = logger.create('useAuth');
 
@@ -21,9 +23,18 @@ export const useAuth = () => {
 
     try {
       const response = await authApiService.login(credentials);
+
+      // Убедимся, что данные корректны перед сохранением
+      if (!response.token || !response.user) {
+        throw new Error('Invalid response: missing token or user data');
+      }
+
       authStore.setAuthData(response.token, response.user);
 
-      loggerContext.auth('Login completed successfully');
+      loggerContext.auth('Login completed successfully', {
+        userId: response.user.id,
+        username: response.user.username
+      });
       return true;
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.login');
@@ -48,8 +59,11 @@ export const useAuth = () => {
       const handledError = errorHandler.handle(error, 'auth.logout');
       loggerContext.error('Logout API call failed', { error: handledError.message });
     } finally {
-      authStore.clearAuthData();
+      authStore.clearAuth();
       loggerContext.auth('Logout completed');
+
+      // Redirect to login after logout
+      await router.push('/login');
     }
   };
 
@@ -58,7 +72,7 @@ export const useAuth = () => {
 
     if (!token || !authStore.isAuthenticated) {
       loggerContext.warn('Token validation failed - invalid or missing token');
-      authStore.clearAuthData();
+      authStore.clearAuth();
       return false;
     }
 
@@ -67,7 +81,7 @@ export const useAuth = () => {
 
       if (!isValid) {
         loggerContext.warn('Token validation failed - server rejected token');
-        authStore.clearAuthData();
+        authStore.clearAuth();
       } else {
         loggerContext.auth('Token validation successful');
       }
@@ -76,48 +90,25 @@ export const useAuth = () => {
     } catch (error) {
       const handledError = errorHandler.handle(error, 'auth.validateToken');
       loggerContext.error('Token validation error', { error: handledError.message });
-      authStore.clearAuthData();
+      authStore.clearAuth();
       return false;
     }
   };
 
+  // Улучшенная функция обновления токена
   const refreshToken = async (): Promise<boolean> => {
-    if (!authStore.shouldRefreshToken()) {
+    if (!authStore.shouldRefreshToken) {
       return true;
     }
 
     loggerContext.auth('Token refresh required');
+    // TODO: Implement actual token refresh logic
     return false;
   };
 
-  const register = async (userData: {
-    username: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-  }): Promise<ApiResult<UserDto>> => {
-    return await authApiService.register(userData);
-  };
-
-  const requestPasswordReset = async (email: string): Promise<ApiResult<void>> => {
-    return await authApiService.requestPasswordReset(email);
-  };
-
-  const updateUserProfile = (userData: Partial<UserDto>): void => {
-    const currentUser = authStore.user;
-    if (currentUser) {
-      const updatedUser = { ...currentUser, ...userData };
-      authStore.setAuthData(authStore.token!, updatedUser);
-      loggerContext.auth('User profile updated', { userId: updatedUser.id });
-    }
-  };
-
-  const hasRole = (role: string): boolean => {
-    return authStore.user?.role === role;
-  };
-
-  const hasAnyRole = (roles: string[]): boolean => {
-    return roles.includes(authStore.user?.role || '');
+  // Вспомогательная функция для проверки аутентификации
+  const checkAuthStatus = (): boolean => {
+    return authStore.isAuthenticated;
   };
 
   return {
@@ -134,15 +125,31 @@ export const useAuth = () => {
     logout,
     validateCurrentToken,
     refreshToken,
-    register,
-    requestPasswordReset,
-    updateUserProfile,
-    hasRole,
-    hasAnyRole,
+    checkAuthStatus,
+    register: authApiService.register,
+    requestPasswordReset: authApiService.requestPasswordReset,
+
+    // User management
+    updateUserProfile: (userData: Partial<UserDto>): void => {
+      const currentUser = authStore.user;
+      if (currentUser && authStore.token) {
+        const updatedUser = { ...currentUser, ...userData };
+        authStore.setAuthData(authStore.token, updatedUser);
+        loggerContext.auth('User profile updated', { userId: updatedUser.id });
+      }
+    },
+
+    hasRole: (role: string): boolean => {
+      return authStore.user?.role === role;
+    },
+
+    hasAnyRole: (roles: string[]): boolean => {
+      return roles.includes(authStore.user?.role || '');
+    },
 
     // Token utilities
     getTokenRemainingTime: authStore.getTokenRemainingTime,
-    shouldRefreshToken: authStore.shouldRefreshToken,
+    shouldRefreshToken: computed(() => authStore.shouldRefreshToken),
   };
 };
 

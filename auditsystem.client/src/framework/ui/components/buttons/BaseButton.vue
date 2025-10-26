@@ -1,25 +1,30 @@
+<!-- src/framework/ui/components/buttons/BaseButton.vue -->
 <template>
-  <button :type="buttonType"
+  <button :type="type"
           :disabled="isDisabled"
           :class="buttonClasses"
-          @click="handleButtonClick"
-          :aria-label="ariaLabel"
-          :aria-busy="isLoading">
-    <span v-if="isLoading" class="base-button__loading-content">
-      <BaseSpinner :size="spinnerSize"
-                   :color="spinnerColor"
-                   class="base-button__spinner" />
-      <span v-if="showLoadingText" class="base-button__loading-text">
-        {{ loadingText }}
+          @click="handleClick"
+          @keydown="handleKeydown">
+    <span v-if="isLoading" class="base-button__loading">
+      <!-- Заменяем BaseSpinner на простую анимацию -->
+      <span class="base-button__spinner"></span>
+      <span v-if="$slots.loader" class="base-button__loader-text">
+        <slot name="loader" />
       </span>
     </span>
 
     <span v-else class="base-button__content">
-      <slot name="icon-left"></slot>
+      <span v-if="$slots.prefix" class="base-button__prefix">
+        <slot name="prefix" />
+      </span>
+
       <span class="base-button__text">
         <slot />
       </span>
-      <slot name="icon-right"></slot>
+
+      <span v-if="$slots.suffix" class="base-button__suffix">
+        <slot name="suffix" />
+      </span>
     </span>
   </button>
 </template>
@@ -28,31 +33,26 @@
   import { computed } from 'vue';
 
   interface Props {
-    buttonType?: 'button' | 'submit' | 'reset';
-    disabled?: boolean;
-    isLoading?: boolean;
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
+    type?: 'button' | 'submit' | 'reset';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
     size?: 'sm' | 'md' | 'lg';
+    isLoading?: boolean;
+    disabled?: boolean;
     fullWidth?: boolean;
-    loadingText?: string;
-    showLoadingText?: boolean;
-    ariaLabel?: string;
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    buttonType: 'button',
-    disabled: false,
-    isLoading: false,
+    type: 'button',
     variant: 'primary',
     size: 'md',
+    isLoading: false,
+    disabled: false,
     fullWidth: false,
-    loadingText: 'Loading...',
-    showLoadingText: false,
-    ariaLabel: undefined,
   });
 
   const emit = defineEmits<{
     click: [event: MouseEvent];
+    keydown: [event: KeyboardEvent];
   }>();
 
   const isDisabled = computed(() => props.disabled || props.isLoading);
@@ -62,215 +62,203 @@
     `base-button--${props.variant}`,
     `base-button--${props.size}`,
     {
-      'base-button--disabled': isDisabled.value,
       'base-button--loading': props.isLoading,
+      'base-button--disabled': isDisabled.value,
       'base-button--full-width': props.fullWidth,
     },
   ]);
 
-  const spinnerSize = computed(() => {
-    const sizes = { sm: '14px', md: '16px', lg: '18px' };
-    return sizes[props.size];
-  });
-
-  const spinnerColor = computed(() => {
-    const colors = {
-      primary: 'currentColor',
-      secondary: 'currentColor',
-      danger: 'currentColor',
-      ghost: 'currentColor',
-      success: 'currentColor',
-    };
-    return colors[props.variant];
-  });
-
-  const handleButtonClick = (event: MouseEvent): void => {
+  const handleClick = (event: MouseEvent): void => {
     if (!isDisabled.value) {
       emit('click', event);
     }
+  };
+
+  const handleKeydown = (event: KeyboardEvent): void => {
+    emit('keydown', event);
   };
 </script>
 
 <style scoped>
   .base-button {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 16px;
     border: 1px solid transparent;
     border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
     font-weight: 500;
-    transition: all var(--transition-normal);
-    min-height: 40px;
-    width: auto;
-    min-width: max-content;
-    position: relative;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    outline: none;
     font-family: inherit;
-    line-height: 1.4;
-    background: var(--gradient-primary);
-    color: white;
-    box-shadow: var(--shadow-sm);
+    line-height: 1.5;
+    user-select: none;
+    white-space: nowrap;
+    vertical-align: middle;
   }
 
-  /* Primary variant */
+    .base-button:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+  /* Variants */
   .base-button--primary {
     background: var(--gradient-primary);
     color: white;
-    border-color: transparent;
+    box-shadow: var(--shadow-primary);
   }
 
     .base-button--primary:hover:not(.base-button--disabled) {
       background: var(--gradient-primary-hover);
       transform: translateY(-1px);
-      box-shadow: var(--shadow-primary);
+      box-shadow: var(--shadow-lg);
     }
 
-    .base-button--primary:active:not(.base-button--disabled) {
-      transform: translateY(0);
-      box-shadow: var(--shadow-sm);
-    }
-
-  /* Secondary variant */
   .base-button--secondary {
-    background: var(--color-surface);
-    color: var(--color-text-primary);
-    border-color: var(--color-border);
+    background: var(--color-gray-100);
+    color: var(--color-gray-900);
+    border-color: var(--color-gray-300);
   }
 
     .base-button--secondary:hover:not(.base-button--disabled) {
-      background: var(--color-surface-hover);
-      border-color: var(--color-primary-light);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+      background: var(--color-gray-200);
+      border-color: var(--color-gray-400);
     }
 
-  /* Danger variant */
+  .base-button--outline {
+    background: transparent;
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+    .base-button--outline:hover:not(.base-button--disabled) {
+      background: var(--color-primary);
+      color: white;
+    }
+
+  .base-button--ghost {
+    background: transparent;
+    color: var(--color-gray-700);
+    border-color: transparent;
+  }
+
+    .base-button--ghost:hover:not(.base-button--disabled) {
+      background: var(--color-gray-100);
+      color: var(--color-gray-900);
+    }
+
   .base-button--danger {
     background: var(--color-error);
     color: white;
-    border-color: var(--color-error);
   }
 
     .base-button--danger:hover:not(.base-button--disabled) {
       background: var(--color-error-dark);
-      border-color: var(--color-error-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-    }
-
-  /* Success variant */
-  .base-button--success {
-    background: var(--color-success);
-    color: white;
-    border-color: var(--color-success);
-  }
-
-    .base-button--success:hover:not(.base-button--disabled) {
-      background: var(--color-success-dark);
-      border-color: var(--color-success-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-
-  /* Ghost variant */
-  .base-button--ghost {
-    background: transparent;
-    color: var(--color-primary);
-    border-color: transparent;
-    box-shadow: none;
-  }
-
-    .base-button--ghost:hover:not(.base-button--disabled) {
-      background: rgba(14, 165, 233, 0.08);
-      color: var(--color-primary-dark);
       transform: translateY(-1px);
     }
 
   /* Sizes */
   .base-button--sm {
-    padding: 8px 12px;
+    padding: 6px 12px;
+    font-size: 13px;
     min-height: 32px;
-    font-size: 12px;
-    border-radius: 6px;
+  }
+
+  .base-button--md {
+    padding: 8px 16px;
+    font-size: 14px;
+    min-height: 36px;
   }
 
   .base-button--lg {
     padding: 12px 20px;
-    min-height: 48px;
-    font-size: 16px;
-    border-radius: 10px;
+    font-size: 15px;
+    min-height: 44px;
   }
 
   /* States */
-  .base-button--disabled,
-  .base-button--loading {
+  .base-button--disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none !important;
-    box-shadow: none !important;
   }
 
   .base-button--full-width {
     width: 100%;
   }
 
-  /* Content */
-  .base-button__content {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+  /* Loading state */
+  .base-button--loading {
+    cursor: wait;
   }
 
-  .base-button__loading-content {
-    display: inline-flex;
+  .base-button__loading {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
 
   .base-button__spinner {
-    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  .base-button__loader-text {
+    font-size: inherit;
+  }
+
+  .base-button__content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .base-button__prefix,
+  .base-button__suffix {
+    display: flex;
+    align-items: center;
   }
 
   .base-button__text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 1;
   }
 
-  .base-button__loading-text {
-    white-space: nowrap;
-  }
-
-  /* Focus styles */
-  .base-button:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  /* Адаптивность */
-  @media (max-width: 480px) {
-    .base-button {
-      min-height: 44px;
-      border-radius: 8px;
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
     }
 
-    .base-button--sm {
-      min-height: 36px;
-    }
-
-    .base-button--lg {
-      min-height: 52px;
+    to {
+      transform: rotate(360deg);
     }
   }
 
-  @media (max-width: 360px) {
-    .base-button {
-      min-height: 42px;
-      font-size: 13px;
-      padding: 8px 12px;
-    }
+  /* Dark theme adjustments */
+  .theme-dark .base-button--secondary {
+    background: var(--color-gray-800);
+    color: var(--color-gray-100);
+    border-color: var(--color-gray-700);
   }
+
+    .theme-dark .base-button--secondary:hover:not(.base-button--disabled) {
+      background: var(--color-gray-700);
+      border-color: var(--color-gray-600);
+    }
+
+  .theme-dark .base-button--ghost {
+    color: var(--color-gray-300);
+  }
+
+    .theme-dark .base-button--ghost:hover:not(.base-button--disabled) {
+      background: var(--color-gray-800);
+      color: var(--color-gray-100);
+    }
 </style>

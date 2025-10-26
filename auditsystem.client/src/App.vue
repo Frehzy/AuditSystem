@@ -1,3 +1,4 @@
+<!-- src/App.vue -->
 <template>
   <div id="app" :class="themeClass">
     <RouterView />
@@ -11,8 +12,12 @@
   import BaseToast from '@/framework/ui/components/feedback/BaseToast.vue';
   import { useAppStore } from '@/framework/stores/app.store';
   import { useThemeStore } from '@/framework/stores/theme.store';
+  import { provideToast, createToastApi } from '@/framework/ui/composables/useToast';
   import { logger } from '@/core/utils/logger';
   import './assets/styles/theme.css'
+
+  // Предоставление toast API всему приложению
+  provideToast(createToastApi());
 
   const appStore = useAppStore();
   const themeStore = useThemeStore();
@@ -48,8 +53,13 @@
   };
 
   onMounted(() => {
-    // Инициализация темы - используем существующий метод initialize
+    // Инициализация темы
     themeStore.initialize();
+
+    // Сохранение router в глобальной области для navigation.service
+    if (import.meta.env.DEV) {
+      (window as any).__VUE_ROUTER__ = useRouter();
+    }
 
     // Добавляем слушатель системных предпочтений темы
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -86,11 +96,9 @@
     loggerContext.info('Application unmounted');
   });
 
-  // Явно указываем, что эти импорты используются в шаблоне
-  // Это устраняет предупреждения TypeScript
-  void RouterView;
-  void BaseToast;
-  void themeClass.value;
+  // Импорт useRouter для глобального доступа
+  import { useRouter } from 'vue-router';
+  const router = useRouter();
 </script>
 
 <style>

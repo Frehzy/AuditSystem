@@ -98,7 +98,7 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
     state.value.totalChecks++;
 
     try {
-      // Простая проверка доступности сервера
+      // Простая проверка доступности сервера через apiClient
       const isHealthy = await apiClient.checkHealth();
       const endTime = performance.now();
       const responseTimeMs = Math.round(endTime - startTime);
@@ -125,7 +125,7 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
       } else {
         consecutiveFailures++;
         state.value.retryCount++;
-        loggerContext.warn('Server health check failed', {
+        loggerContext.warn('Server health check failed - server responded but not healthy', {
           retryCount: state.value.retryCount,
           consecutiveFailures
         });
@@ -142,7 +142,6 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
       }
 
       return isHealthy;
-
     } catch (error: unknown) {
       const endTime = performance.now();
       const responseTimeMs = Math.round(endTime - startTime);

@@ -76,20 +76,24 @@ class NavigationServiceImpl implements NavigationService {
         }
       }
 
-      const url = this.buildUrl(to);
-
-      if (target.replace) {
-        window.history.replaceState(to.state, '', url);
-        this.updateCurrentHistoryItem(to);
-      } else {
-        window.history.pushState(to.state, '', url);
-        this.addToHistory(to);
+      // Use Vue Router for navigation instead of direct history manipulation
+      const router = await this.getRouter();
+      if (!router) {
+        throw new Error('Router not available');
       }
 
-      this.updatePageMetadata(to);
-
-      if (this.config.scrollRestoration) {
-        this.restoreScrollPosition();
+      if (target.replace) {
+        await router.replace({
+          path: to.path,
+          query: to.query,
+          hash: to.hash
+        });
+      } else {
+        await router.push({
+          path: to.path,
+          query: to.query,
+          hash: to.hash
+        });
       }
 
       this.logger.router('Navigation completed', {
@@ -119,20 +123,22 @@ class NavigationServiceImpl implements NavigationService {
   }
 
   back(): void {
-    if (this.canGoBack()) {
-      window.history.back();
+    const router = this.getRouterSync();
+    if (router) {
+      router.back();
       this.logger.router('Navigation back');
     } else {
-      this.logger.warn('Cannot navigate back - already at start of history');
+      window.history.back();
     }
   }
 
   forward(): void {
-    if (this.canGoForward()) {
-      window.history.forward();
+    const router = this.getRouterSync();
+    if (router) {
+      router.forward();
       this.logger.router('Navigation forward');
     } else {
-      this.logger.warn('Cannot navigate forward - already at end of history');
+      window.history.forward();
     }
   }
 
@@ -163,10 +169,15 @@ class NavigationServiceImpl implements NavigationService {
   }
 
   getCurrentPath(): string {
-    return window.location.pathname;
+    const router = this.getRouterSync();
+    return router ? router.currentRoute.value.path : window.location.pathname;
   }
 
   getCurrentQuery(): Record<string, string> {
+    const router = this.getRouterSync();
+    if (router) {
+      return { ...router.currentRoute.value.query } as Record<string, string>;
+    }
     return this.parseQueryString(window.location.search);
   }
 
@@ -235,6 +246,17 @@ class NavigationServiceImpl implements NavigationService {
   }
 
   private getCurrentNavigationTarget(): NavigationTarget {
+    const router = this.getRouterSync();
+    if (router) {
+      const route = router.currentRoute.value;
+      return {
+        path: route.path,
+        query: { ...route.query } as Record<string, string>,
+        hash: route.hash,
+        state: window.history.state
+      };
+    }
+
     return {
       path: window.location.pathname,
       query: this.parseQueryString(window.location.search),
@@ -253,35 +275,20 @@ class NavigationServiceImpl implements NavigationService {
     };
   }
 
-  private buildUrl(target: NavigationTarget): string {
-    let url = target.path;
-
-    if (target.query && Object.keys(target.query).length > 0) {
-      const searchParams = new URLSearchParams();
-      Object.entries(target.query).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          searchParams.append(key, String(value));
-        }
-      });
-      url += `?${searchParams.toString()}`;
+  private async getRouter(): Promise<any> {
+    // Dynamically import router to avoid circular dependencies
+    try {
+      const routerModule = await import('@/router');
+      return routerModule.default;
+    } catch (error) {
+      this.logger.error('Failed to import router', { error });
+      return null;
     }
-
-    if (target.hash) {
-      url += `#${target.hash}`;
-    }
-
-    return url;
   }
 
-  private parseQueryString(search: string): Record<string, string> {
-    const params: Record<string, string> = {};
-    const searchParams = new URLSearchParams(search);
-
-    searchParams.forEach((value, key) => {
-      params[key] = value;
-    });
-
-    return params;
+  private getRouterSync(): any {
+    // Try to get router from window object (set during app initialization)
+    return (window as any).__VUE_ROUTER__ || null;
   }
 
   private addToHistory(target: NavigationTarget): void {
@@ -353,6 +360,17 @@ class NavigationServiceImpl implements NavigationService {
     return a.path === b.path &&
       JSON.stringify(a.query) === JSON.stringify(b.query) &&
       a.hash === b.hash;
+  }
+
+  private parseQueryString(search: string): Record<string, string> {
+    const params: Record<string, string> = {};
+    const searchParams = new URLSearchParams(search);
+
+    searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+
+    return params;
   }
 }
 

@@ -24,7 +24,7 @@ class NotificationServiceImpl implements NotificationService {
     this.notifications.set(id, notification);
     this.notifySubscribers();
 
-    // Исправлено: проверка на undefined
+    // Автоматическое скрытие уведомления
     if (notification.duration && notification.duration > 0) {
       setTimeout(() => {
         this.dismiss(id);
@@ -110,5 +110,5 @@ class NotificationServiceImpl implements NotificationService {
   }
 }
 
-// Экспортируем экземпляр сервиса как default
+// Экспортируем экземпляр сервиса
 export const notificationService: NotificationService = new NotificationServiceImpl();

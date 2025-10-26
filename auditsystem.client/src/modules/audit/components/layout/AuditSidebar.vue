@@ -4,7 +4,7 @@
     <div class="sidebar__header">
       <div class="sidebar__brand" :class="{ 'sidebar__brand--collapsed': isCollapsed }">
         <ShieldIcon class="sidebar__brand-icon" />
-        <span v-if="!isCollapsed" class="sidebar__brand-text">Военный Аудит</span>
+        <span v-if="!isCollapsed" class="sidebar__brand-text">Аудит Astra Linux</span>
       </div>
     </div>
 
@@ -48,7 +48,7 @@
         </div>
         <div v-if="!isCollapsed" class="user-info__details">
           <div class="user-info__name">{{ userName }}</div>
-          <div class="user-info__role">Военный аудитор</div>
+          <div class="user-info__role">Аудитор Astra Linux</div>
         </div>
       </div>
     </div>

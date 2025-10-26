@@ -1,28 +1,30 @@
+// src/framework/stores/auth.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { storage } from './storage.service';
+import { storageService } from '@/core/services/core/auth/storage.service';
 import { tokenService } from '@/core/services/core/auth/token.service';
 import { logger } from '@/core/utils/logger';
 import type { UserDto } from '@/modules/auth/api/auth.types';
 
 export const useAuthStore = defineStore('auth', () => {
-  // State
-  const token = ref(storage.getToken());
-  const user = ref(storage.getUser());
+  // State - получаем данные из storageService
+  const token = ref(storageService.getToken());
+  const user = ref(storageService.getUser());
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
   // Computed
   const isAuthenticated = computed(() => {
     if (!token.value) return false;
-    return tokenService.isValidFormat(token.value) &&
-      !tokenService.isTokenExpired(token.value);
+    try {
+      return tokenService.isValidFormat(token.value) && !tokenService.isTokenExpired(token.value);
+    } catch {
+      return false;
+    }
   });
 
   const userInfo = computed(() => user.value);
-  const hasRole = computed(() => (role: string) =>
-    user.value?.role === role
-  );
+  const hasRole = computed(() => (role: string) => user.value?.role === role);
 
   // Actions
   const setAuthData = (newToken: string, userData: UserDto) => {
@@ -30,8 +32,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = userData;
     error.value = null;
 
-    storage.setToken(newToken);
-    storage.setUser(userData);
+    // Сохраняем в storage
+    storageService.setToken(newToken);
+    storageService.setUser(userData);
 
     logger.auth('Auth data set', {
       userId: userData.id,
@@ -44,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
     error.value = null;
 
-    storage.clearAuth();
+    storageService.clearAuth();
     logger.auth('Auth data cleared');
   };
 
@@ -59,23 +62,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  const refreshToken = async () => {
-    if (!token.value) return null;
-
-    try {
-      // Здесь будет логика обновления токена
-      logger.auth('Token refresh attempted');
-      return token.value;
-    } catch (err) {
-      clearAuth();
-      throw err;
-    }
-  };
-
-  // Дополнительные методы для совместимости
-  const clearAuthData = clearAuth; // Алиас для clearAuth
-
-  const shouldRefreshToken = () => {
+  // Улучшенная функция проверки необходимости обновления токена
+  const shouldRefreshToken = computed(() => {
     if (!token.value) return false;
     try {
       const remainingTime = tokenService.getTokenRemainingTime(token.value);
@@ -83,13 +71,14 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       return false;
     }
-  };
+  });
 
   const getTokenRemainingTime = () => {
     if (!token.value) return 0;
     return tokenService.getTokenRemainingTime(token.value);
   };
 
+  // State для удобства
   const state = computed(() => ({
     token: token.value,
     user: user.value,
@@ -112,10 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     setAuthData,
     clearAuth,
-    clearAuthData,
+    clearAuthData: clearAuth, // Алиас
     setLoading,
     setError,
-    refreshToken,
     shouldRefreshToken,
     getTokenRemainingTime,
     state

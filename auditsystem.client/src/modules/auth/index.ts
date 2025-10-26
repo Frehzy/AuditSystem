@@ -7,10 +7,10 @@ export { useServerHealth } from './composables/useServerHealth';
 export { authApiService } from './api/authApi.service';
 
 // Types
-export type { 
-  LoginCommand, 
-  LoginResponseData, 
-  UserDto, 
+export type {
+  LoginCommand,
+  LoginResponseData,
+  UserDto,
   AuthState,
   AuthValidationErrors,
   ApiResponse,

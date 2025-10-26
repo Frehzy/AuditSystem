@@ -1,36 +1,14 @@
 // src/framework/ui/composables/useToast.ts
 import { inject, provide } from 'vue'
-
-export interface ToastOptions {
-  title?: string
-  duration?: number
-  dismissible?: boolean
-  action?: {
-    label: string
-    onClick: () => void
-  }
-}
-
-export interface Toast {
-  id: string
-  type: 'success' | 'error' | 'warning' | 'info'
-  message: string
-  title?: string
-  duration?: number
-  dismissible: boolean
-  action?: {
-    label: string
-    onClick: () => void
-  }
-  createdAt: number
-}
+import { notificationService } from '@/core/services/core/ui/notification.service';
+import type { NotificationType, NotificationOptions } from '@/core/types/services';
 
 export interface ToastApi {
-  show: (type: Toast['type'], message: string, options?: ToastOptions) => string
-  success: (message: string, options?: ToastOptions) => string
-  error: (message: string, options?: ToastOptions) => string
-  warning: (message: string, options?: ToastOptions) => string
-  info: (message: string, options?: ToastOptions) => string
+  show: (type: NotificationType, message: string, options?: NotificationOptions) => string
+  success: (message: string, options?: NotificationOptions) => string
+  error: (message: string, options?: NotificationOptions) => string
+  warning: (message: string, options?: NotificationOptions) => string
+  info: (message: string, options?: NotificationOptions) => string
   dismiss: (id: string) => void
   clearAll: () => void
 }
@@ -48,7 +26,21 @@ export function useToast(): ToastApi {
   const api = inject(ToastSymbol) as ToastApi
 
   if (!api) {
-    throw new Error('Toast provider not found. Please wrap your app with ToastProvider.')
+    // Fallback to direct notification service if provider not found
+    return {
+      show: (type: NotificationType, message: string, options?: NotificationOptions) =>
+        notificationService.show(type, message, options),
+      success: (message: string, options?: NotificationOptions) =>
+        notificationService.success(message, options),
+      error: (message: string, options?: NotificationOptions) =>
+        notificationService.error(message, options),
+      warning: (message: string, options?: NotificationOptions) =>
+        notificationService.warning(message, options),
+      info: (message: string, options?: NotificationOptions) =>
+        notificationService.info(message, options),
+      dismiss: (id: string) => notificationService.dismiss(id),
+      clearAll: () => notificationService.clearAll()
+    };
   }
 
   return api
@@ -59,4 +51,24 @@ export function useToast(): ToastApi {
  */
 export function provideToast(api: ToastApi): void {
   provide(ToastSymbol, api)
+}
+
+/**
+ * Создание API для уведомлений на основе notificationService
+ */
+export function createToastApi(): ToastApi {
+  return {
+    show: (type: NotificationType, message: string, options?: NotificationOptions) =>
+      notificationService.show(type, message, options),
+    success: (message: string, options?: NotificationOptions) =>
+      notificationService.success(message, options),
+    error: (message: string, options?: NotificationOptions) =>
+      notificationService.error(message, options),
+    warning: (message: string, options?: NotificationOptions) =>
+      notificationService.warning(message, options),
+    info: (message: string, options?: NotificationOptions) =>
+      notificationService.info(message, options),
+    dismiss: (id: string) => notificationService.dismiss(id),
+    clearAll: () => notificationService.clearAll()
+  };
 }

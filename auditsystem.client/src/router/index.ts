@@ -8,6 +8,9 @@ import { logger } from '@/core/utils/logger';
 // Динамические импорты для code splitting
 const AuthView = () => import('@/modules/auth/views/AuthView.vue');
 const AuditView = () => import('@/modules/audit/views/AuditView.vue');
+const MonitoringView = () => import('@/modules/audit/components/views/MonitoringView.vue');
+const ReportsView = () => import('@/modules/audit/components/views/ReportsView.vue');
+const SettingsView = () => import('@/modules/audit/components/views/SettingsView.vue');
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -42,15 +45,44 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/audit',
-    name: 'AuditSystem',
+    name: 'Audit',
     component: AuditView,
     meta: {
       requiresAuth: true,
-      title: 'Чат - AuditSystem Client',
+      title: 'Аудит - AuditSystem Client',
       layout: 'default',
       transition: 'slide-right',
-      breadcrumb: 'Чат',
-    }
+      breadcrumb: 'Аудит',
+    },
+    children: [
+      {
+        path: '',
+        name: 'Reports',
+        component: ReportsView,
+        meta: {
+          title: 'Отчеты - AuditSystem Client',
+          breadcrumb: 'Отчеты'
+        }
+      },
+      {
+        path: 'monitoring',
+        name: 'Monitoring',
+        component: MonitoringView,
+        meta: {
+          title: 'Мониторинг - AuditSystem Client',
+          breadcrumb: 'Мониторинг'
+        }
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: SettingsView,
+        meta: {
+          title: 'Настройки - AuditSystem Client',
+          breadcrumb: 'Настройки'
+        }
+      }
+    ]
   },
   {
     path: '/:pathMatch(.*)*',
@@ -79,73 +111,70 @@ const router = createRouter({
 });
 
 /**
- * Навигационные guards
+ * Проверка аутентификации
  */
-const authGuard = (to: RouteLocationNormalized, from: RouteLocationNormalized): boolean | string => {
-  if (!to.meta) {
-    logger.warn('Route meta is undefined', { path: to.path, name: to.name });
-    return true;
+const isAuthenticated = (): boolean => {
+  const token = storageService.getToken();
+  if (!token) return false;
+
+  try {
+    return tokenService.isValidFormat(token) && !tokenService.isTokenExpired(token);
+  } catch {
+    return false;
   }
-
-  const token = storageService.getToken(); // Используем существующий метод
-  const isAuthenticated = token ? tokenService.isValidFormat(token) && !tokenService.isTokenExpired(token) : false;
-
-  logger.router('Navigation guard check', {
-    from: from?.name || 'unknown',
-    to: to.name,
-    isAuthenticated,
-    requiresAuth: to.meta.requiresAuth,
-    requiresGuest: to.meta.requiresGuest,
-  });
-
-  // Проверка аутентификации для защищенных маршрутов
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    logger.router('Redirecting to login - authentication required');
-    return '/login';
-  }
-
-  // Перенаправление авторизованных пользователей с гостевых маршрутов
-  if (to.meta.requiresGuest && isAuthenticated) {
-    logger.router('Redirecting to audit - user already authenticated');
-    return '/audit';
-  }
-
-  return true;
 };
 
 /**
- * Глобальная навигационная охрана
+ * Навигационные guards
  */
 router.beforeEach((to, from, next) => {
-  const result = authGuard(to, from);
+  const loggerContext = logger.create('Router');
 
-  if (result === true) {
-    // Установка заголовка страницы
-    if (to.meta.title) {
-      document.title = to.meta.title as string;
-    }
-    next();
-  } else {
-    if (typeof result === 'string') {
-      next(result);
-    } else if (result === false) {
-      next(false);
-    } else {
-      next();
-    }
+  loggerContext.router('Navigation guard check', {
+    from: from.name?.toString() || from.path || 'unknown',
+    to: to.name?.toString() || to.path,
+    requiresAuth: to.meta?.requiresAuth,
+    requiresGuest: to.meta?.requiresGuest
+  });
+
+  const authenticated = isAuthenticated();
+
+  // Проверка аутентификации для защищенных маршрутов
+  if (to.meta?.requiresAuth && !authenticated) {
+    loggerContext.warn('Redirecting to login - authentication required');
+    next('/login');
+    return;
   }
+
+  // Перенаправление авторизованных пользователей с гостевых маршрутов
+  if (to.meta?.requiresGuest && authenticated) {
+    loggerContext.warn('Redirecting to audit - user already authenticated');
+    next('/audit');
+    return;
+  }
+
+  // Установка заголовка страницы
+  if (to.meta?.title) {
+    document.title = to.meta.title as string;
+  }
+
+  next();
 });
 
 router.afterEach((to, from) => {
-  logger.router('Navigation completed', {
-    from: from?.name || 'unknown',
-    to: to.name,
-    transition: to.meta.transition,
+  const loggerContext = logger.create('Router');
+
+  loggerContext.router('Navigation completed', {
+    from: from.name?.toString() || from.path || 'unknown',
+    to: to.name?.toString() || to.path,
+    transition: to.meta?.transition,
   });
 });
 
 router.onError((error) => {
-  logger.error('Router error', {
+  const loggerContext = logger.create('Router');
+
+  loggerContext.error('Router error', {
     error: error.message,
     stack: error.stack,
   });

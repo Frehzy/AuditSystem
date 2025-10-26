@@ -3,7 +3,7 @@
   <header class="header">
     <div class="header__content">
       <div class="breadcrumbs">
-        <span class="breadcrumbs__item">Военная сеть</span>
+        <span class="breadcrumbs__item">Аудит Astra Linux</span>
         <span class="breadcrumbs__separator">/</span>
         <span class="breadcrumbs__item breadcrumbs__item--current">
           {{ currentPageTitle }}

@@ -9,6 +9,8 @@ export interface UserDto {
   updatedAt?: string;
   lastLoginAt?: string;
   isActive?: boolean;
+  avatar?: string;
+  permissions?: string[];
 }
 
 // ==================== REQUEST TYPES ====================
@@ -24,6 +26,8 @@ export interface RegisterCommand {
   email: string;
   password: string;
   confirmPassword: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface ValidateTokenRequest {
@@ -32,6 +36,13 @@ export interface ValidateTokenRequest {
 
 export interface RefreshTokenRequest {
   refreshToken: string;
+}
+
+export interface ResetPasswordCommand {
+  email: string;
+  token?: string;
+  newPassword?: string;
+  confirmPassword?: string;
 }
 
 // ==================== RESPONSE TYPES ====================
@@ -126,7 +137,8 @@ export const isUserDto = (user: unknown): user is UserDto => {
     typeof user === 'object' &&
     'id' in user && typeof (user as UserDto).id === 'string' &&
     'username' in user && typeof (user as UserDto).username === 'string' &&
-    'email' in user && typeof (user as UserDto).email === 'string';
+    'email' in user && typeof (user as UserDto).email === 'string' &&
+    'role' in user && typeof (user as UserDto).role === 'string';
 };
 
 // Проверка прямого ответа логина (без обертки)
@@ -148,4 +160,15 @@ export const AUTH_ERRORS = {
   NETWORK_ERROR: 'Ошибка сети',
   SERVER_ERROR: 'Ошибка сервера',
   UNKNOWN_ERROR: 'Неизвестная ошибка',
+  VALIDATION_ERROR: 'Ошибка валидации',
+  SESSION_EXPIRED: 'Сессия истекла',
 } as const;
+
+export const AUTH_ROLES = {
+  ADMIN: 'admin',
+  USER: 'user',
+  AUDITOR: 'auditor',
+  GUEST: 'guest',
+} as const;
+
+export type AuthRole = typeof AUTH_ROLES[keyof typeof AUTH_ROLES];

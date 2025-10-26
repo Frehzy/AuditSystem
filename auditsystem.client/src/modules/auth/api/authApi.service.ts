@@ -8,7 +8,10 @@ import type {
   ValidateTokenResponseData,
   RegisterCommand,
   ApiResult,
-  UserDto
+  UserDto,
+  ResetPasswordCommand,
+  RefreshTokenRequest,
+  RefreshTokenResponseData
 } from './auth.types';
 
 interface AuthApiConfig {
@@ -239,6 +242,29 @@ class AuthApiService {
   }
 
   /**
+   * Подтверждение сброса пароля
+   */
+  async confirmPasswordReset(command: ResetPasswordCommand): Promise<ApiResult<void>> {
+    const endpoint = `${this.config.basePath}/reset-password`;
+
+    try {
+      await this.executeRequest(endpoint, 'POST', command);
+      this.logger.auth('Password reset confirmed', { email: command.email });
+      return { success: true, data: undefined };
+    } catch (error: unknown) {
+      const handledError = errorHandler.handle(error, 'auth.confirmPasswordReset');
+      this.logger.error('Password reset confirmation failed', {
+        error: handledError.message
+      });
+
+      return {
+        success: false,
+        error: handledError.message
+      };
+    }
+  }
+
+  /**
    * Обновление профиля пользователя
    */
   async updateProfile(userData: Partial<UserDto>): Promise<UserDto> {
@@ -279,6 +305,30 @@ class AuthApiService {
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.checkUsername');
       this.logger.error('Username check failed', {
+        error: handledError.message
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Проверка доступности email
+   */
+  async checkEmailAvailability(email: string): Promise<boolean> {
+    const endpoint = `${this.config.basePath}/check-email`;
+
+    try {
+      const response = await this.executeRequest<{ available: boolean }>(
+        endpoint,
+        'POST',
+        { email },
+        { requireAuth: false }
+      );
+
+      return response.available;
+    } catch (error: unknown) {
+      const handledError = errorHandler.handle(error, 'auth.checkEmail');
+      this.logger.error('Email check failed', {
         error: handledError.message
       });
       return false;

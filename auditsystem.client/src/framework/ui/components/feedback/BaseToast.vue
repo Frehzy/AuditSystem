@@ -1,3 +1,4 @@
+// src/framework/ui/components/feedback/BaseToast.vue
 <template>
   <teleport to="body">
     <transition-group name="toast-list" tag="div" class="base-toast-container">
@@ -6,10 +7,11 @@
            :class="['base-toast', `base-toast--${toast.type}`]"
            role="alert"
            :aria-live="getAriaLive(toast.type)"
-           :aria-atomic="true">
+           :aria-atomic="true"
+           @mouseenter="pauseToast(toast.id)"
+           @mouseleave="resumeToast(toast.id)">
         <div class="base-toast__content">
           <div class="base-toast__icon">
-            <!-- Исправлены пути к иконкам -->
             <component :is="getIconComponent(toast.type)" />
           </div>
 
@@ -25,14 +27,16 @@
           <button v-if="toast.dismissible"
                   @click="handleDismissToast(toast.id)"
                   class="base-toast__close"
-                  :aria-label="`Close ${toast.type} notification`">
-            ×
+                  :aria-label="`Закрыть ${getToastTypeName(toast.type)} уведомление`">
+            <CloseIcon />
           </button>
         </div>
 
+        <!-- Прогресс-бар теперь ВИДИМЫЙ и анимированный -->
         <div v-if="toast.duration && toast.duration > 0" class="base-toast__progress">
           <div class="base-toast__progress-bar"
-               :style="getProgressBarStyle(toast)"></div>
+               :style="getProgressBarStyle(toast)"
+               :class="{ 'base-toast__progress-bar--paused': isToastPaused(toast.id) }"></div>
         </div>
       </div>
     </transition-group>
@@ -40,36 +44,49 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onUnmounted, defineAsyncComponent } from 'vue'
+  import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
   import type { Component } from 'vue';
+  import { notificationService } from '@/core/services/core/ui/notification.service';
+  import type { Notification } from '@/core/types/services';
 
-  // Асинхронные импорты иконок для уменьшения размера бандла
+  // Асинхронные импорты иконок
   const SuccessIcon = defineAsyncComponent(() => import('@/assets/icons/status/SuccessIcon.vue'));
   const ErrorIcon = defineAsyncComponent(() => import('@/assets/icons/status/ErrorIcon.vue'));
   const WarningIcon = defineAsyncComponent(() => import('@/assets/icons/status/WarningIcon.vue'));
   const InfoIcon = defineAsyncComponent(() => import('@/assets/icons/status/InfoIcon.vue'));
+  const CloseIcon = defineAsyncComponent(() => import('@/assets/icons/actions/CloseIcon.vue'));
 
-  interface ToastOptions {
-    title?: string
-    duration?: number
-    dismissible?: boolean
-  }
-
-  interface Toast {
-    id: string;
-    type: 'success' | 'error' | 'warning' | 'info';
-    message: string;
-    title?: string;
-    duration?: number;
-    dismissible: boolean;
-    createdAt: number;
-  }
-
-  const toasts = ref<Toast[]>([]);
+  const toasts = ref<Notification[]>([]);
   const toastTimers = new Map<string, number>();
+  const pausedToasts = new Map<string, number>(); // Map<toastId, remainingTime>
+  const progressIntervals = new Map<string, number>();
+  const progressStates = ref<Map<string, number>>(new Map()); // Map<toastId, progressPercentage>
+
+  // Подписка на изменения уведомлений
+  const unsubscribe = notificationService.subscribe((notifications: Notification[]) => {
+    toasts.value = notifications;
+
+    // Управление таймерами для новых уведомлений
+    notifications.forEach(notification => {
+      if (!toastTimers.has(notification.id) && notification.duration && notification.duration > 0) {
+        startToastTimer(notification.id, notification.duration);
+        startProgressAnimation(notification.id, notification.duration);
+      }
+    });
+
+    // Очистка таймеров для удаленных уведомлений
+    const currentIds = new Set(notifications.map(n => n.id));
+    toastTimers.forEach((timer, id) => {
+      if (!currentIds.has(id)) {
+        clearToastTimer(id);
+        clearProgressInterval(id);
+        progressStates.value.delete(id);
+      }
+    });
+  });
 
   // Функция для получения компонента иконки по типу
-  const getIconComponent = (type: Toast['type']): Component => {
+  const getIconComponent = (type: Notification['type']): Component => {
     switch (type) {
       case 'success': return SuccessIcon;
       case 'error': return ErrorIcon;
@@ -79,79 +96,132 @@
     }
   };
 
-  const showToast = (type: Toast['type'], message: string, options?: ToastOptions) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const toast: Toast = {
-      id,
-      type,
-      message,
-      title: options?.title,
-      duration: options?.duration || 5000,
-      dismissible: options?.dismissible !== false,
-      createdAt: Date.now()
-    };
-
-    toasts.value.push(toast);
-
-    if (toast.duration && toast.duration > 0) {
-      const timer = window.setTimeout(() => {
-        handleDismissToast(toast.id);
-      }, toast.duration);
-
-      toastTimers.set(toast.id, timer);
+  const getToastTypeName = (type: Notification['type']): string => {
+    switch (type) {
+      case 'success': return 'успех';
+      case 'error': return 'ошибка';
+      case 'warning': return 'предупреждение';
+      case 'info': return 'информация';
+      default: return 'уведомление';
     }
-
-    return id;
-  }
+  };
 
   const handleDismissToast = (id: string) => {
+    clearToastTimer(id);
+    clearProgressInterval(id);
+    pausedToasts.delete(id);
+    progressStates.value.delete(id);
+    notificationService.dismiss(id);
+  };
+
+  const startToastTimer = (id: string, duration: number) => {
+    const timer = window.setTimeout(() => {
+      if (!pausedToasts.has(id)) {
+        handleDismissToast(id);
+      }
+    }, duration);
+
+    toastTimers.set(id, timer);
+  };
+
+  const clearToastTimer = (id: string) => {
     const timer = toastTimers.get(id);
     if (timer) {
       clearTimeout(timer);
       toastTimers.delete(id);
     }
-    toasts.value = toasts.value.filter(toast => toast.id !== id);
-  }
+  };
 
-  const clearAllToasts = () => {
-    toasts.value = [];
-    toastTimers.forEach(timer => clearTimeout(timer));
-    toastTimers.clear();
-  }
+  const startProgressAnimation = (id: string, duration: number) => {
+    // Очищаем существующий интервал
+    clearProgressInterval(id);
 
-  const getProgressBarStyle = (toast: Toast) => {
-    if (!toast.duration) return {};
+    const startTime = Date.now();
+    progressStates.value.set(id, 100); // Начинаем с 100%
 
-    const elapsed = Date.now() - toast.createdAt;
-    const progress = Math.max(0, (toast.duration - elapsed) / toast.duration * 100);
+    const interval = window.setInterval(() => {
+      if (!pausedToasts.has(id)) {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.max(0, 100 - (elapsed / duration) * 100);
+
+        progressStates.value.set(id, progress);
+
+        if (progress <= 0) {
+          clearProgressInterval(id);
+        }
+      }
+    }, 50); // Обновляем каждые 50ms для плавной анимации
+
+    progressIntervals.set(id, interval);
+  };
+
+  const clearProgressInterval = (id: string) => {
+    const interval = progressIntervals.get(id);
+    if (interval) {
+      clearInterval(interval);
+      progressIntervals.delete(id);
+    }
+  };
+
+  const pauseToast = (id: string) => {
+    const toast = toasts.value.find(t => t.id === id);
+    if (toast && toast.duration) {
+      const elapsed = Date.now() - toast.createdAt;
+      const remainingTime = toast.duration - elapsed;
+
+      if (remainingTime > 0) {
+        pausedToasts.set(id, remainingTime);
+        clearToastTimer(id);
+        clearProgressInterval(id);
+      }
+    }
+  };
+
+  const resumeToast = (id: string) => {
+    const remainingTime = pausedToasts.get(id);
+    if (remainingTime && remainingTime > 0) {
+      const toast = toasts.value.find(t => t.id === id);
+      if (toast) {
+        startToastTimer(id, remainingTime);
+        startProgressAnimation(id, remainingTime);
+      }
+    }
+    pausedToasts.delete(id);
+  };
+
+  const isToastPaused = (id: string): boolean => {
+    return pausedToasts.has(id);
+  };
+
+  const getProgressBarStyle = (toast: Notification) => {
+    if (!toast.duration || toast.duration <= 0) return { width: '0%' };
+
+    // Используем сохраненное состояние прогресса
+    const progress = progressStates.value.get(toast.id) || 100;
 
     return {
       width: `${progress}%`,
+      transition: 'width 0.05s linear'
     };
-  }
+  };
 
-  const getAriaLive = (type: Toast['type']): 'assertive' | 'polite' => {
+  const getAriaLive = (type: Notification['type']): 'assertive' | 'polite' => {
     return type === 'error' ? 'assertive' : 'polite';
-  }
-
-  // Публичный API
-  const toast = {
-    success: (message: string, options?: ToastOptions) => showToast('success', message, options),
-    error: (message: string, options?: ToastOptions) => showToast('error', message, options),
-    warning: (message: string, options?: ToastOptions) => showToast('warning', message, options),
-    info: (message: string, options?: ToastOptions) => showToast('info', message, options),
   };
 
   // Очистка при размонтировании
   onUnmounted(() => {
-    clearAllToasts();
-  });
+    unsubscribe();
 
-  defineExpose({
-    showToast,
-    handleDismissToast,
-    clearAllToasts,
-    toast,
+    // Очищаем все таймеры и интервалы
+    toastTimers.forEach(timer => clearTimeout(timer));
+    toastTimers.clear();
+
+    progressIntervals.forEach(interval => clearInterval(interval));
+    progressIntervals.clear();
+
+    pausedToasts.clear();
+    progressStates.value.clear();
   });
 </script>
 
@@ -222,7 +292,6 @@
   .base-toast__close {
     background: none;
     border: none;
-    font-size: 20px;
     cursor: pointer;
     padding: 4px;
     margin: -4px;
@@ -232,6 +301,11 @@
     flex-shrink: 0;
     line-height: 1;
     color: var(--color-text-muted);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
     .base-toast__close:hover {
@@ -240,43 +314,80 @@
       color: var(--color-primary);
     }
 
+    .base-toast__close svg {
+      width: 14px;
+      height: 14px;
+    }
+
+  /* СТИЛИ ДЛЯ ПРОГРЕСС-БАРА - ТЕПЕРЬ ВИДИМЫЕ */
   .base-toast__progress {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background: var(--color-border);
-    z-index: 1;
+    height: 4px; /* Увеличили высоту для лучшей видимости */
+    background: rgba(0, 0, 0, 0.1); /* Фон для контраста */
+    z-index: 3;
+    overflow: hidden;
+    border-radius: 0 0 12px 12px;
   }
 
   .base-toast__progress-bar {
     height: 100%;
     background: currentColor;
-    opacity: 0.6;
-    transition: width 0.1s linear;
+    opacity: 0.9; /* Увеличили прозрачность */
+    transition: width 0.05s linear;
+    transform-origin: left center;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2); /* Тень для лучшей видимости */
   }
 
-  /* Type variants */
+  .base-toast__progress-bar--paused {
+    transition: none !important;
+    animation: progress-pulse 1.5s infinite;
+    opacity: 0.7;
+  }
+
+  /* Type variants - УВЕЛИЧИВАЕМ КОНТРАСТ ДЛЯ ПРОГРЕСС-БАРА */
   .base-toast--success {
     border-left: 4px solid var(--color-success);
     color: var(--color-success);
   }
+
+    .base-toast--success .base-toast__progress-bar {
+      background: var(--color-success);
+      opacity: 0.9;
+    }
 
   .base-toast--error {
     border-left: 4px solid var(--color-error);
     color: var(--color-error);
   }
 
+    .base-toast--error .base-toast__progress-bar {
+      background: var(--color-error);
+      opacity: 0.9;
+    }
+
   .base-toast--warning {
     border-left: 4px solid var(--color-warning);
     color: var(--color-warning);
   }
 
+    .base-toast--warning .base-toast__progress-bar {
+      background: var(--color-warning);
+      opacity: 0.9;
+    }
+
   .base-toast--info {
     border-left: 4px solid var(--color-info);
     color: var(--color-info);
   }
+
+    .base-toast--info .base-toast__progress-bar {
+      background: var(--color-info);
+      opacity: 0.9;
+    }
 
   /* Animations */
   @keyframes toast-in {
@@ -288,6 +399,20 @@
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  @keyframes progress-pulse {
+    0% {
+      opacity: 0.6;
+    }
+
+    50% {
+      opacity: 0.9;
+    }
+
+    100% {
+      opacity: 0.6;
     }
   }
 
@@ -322,6 +447,10 @@
     .base-toast__content {
       padding: 14px;
     }
+
+    .base-toast__progress {
+      height: 3px; /* Немного меньше на мобильных */
+    }
   }
 
   @media (max-width: 480px) {
@@ -337,5 +466,14 @@
     .base-toast__message {
       font-size: 13px;
     }
+  }
+
+  /* Улучшенная видимость прогресс-бара в разных темах */
+  .theme-light .base-toast__progress {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .theme-dark .base-toast__progress {
+    background: rgba(255, 255, 255, 0.1);
   }
 </style>

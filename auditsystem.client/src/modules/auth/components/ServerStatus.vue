@@ -18,6 +18,9 @@
       </div>
 
       <div class="server-status__indicator">
+        <div class="server-status__status-icon">
+          <StatusIcon :status="status" />
+        </div>
         <div class="server-status__dot"></div>
         <span class="server-status__text">{{ statusText }}</span>
       </div>
@@ -31,7 +34,9 @@
         <span v-if="status === 'checking'" class="server-status__spinner">
           <SpinnerIcon />
         </span>
-        <span v-else class="server-status__retry-icon">↻</span>
+        <span v-else class="server-status__retry-icon">
+          <RefreshIcon />
+        </span>
       </button>
     </div>
 
@@ -43,7 +48,8 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import { GlobeIcon, SpinnerIcon } from '@/assets/icons';
+  import { GlobeIcon, SpinnerIcon, RefreshIcon } from '@/assets/icons';
+  import StatusIcon from './StatusIcon.vue';
 
   interface Props {
     serverUrl: string;
@@ -235,6 +241,19 @@
     border: 1px solid transparent;
   }
 
+  .server-status__status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+  }
+
+    .server-status__status-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
   .server-status__dot {
     width: 8px;
     height: 8px;
@@ -294,6 +313,11 @@
     align-items: center;
     justify-content: center;
   }
+
+    .server-status__retry-icon svg {
+      width: 16px;
+      height: 16px;
+    }
 
   .server-status__timestamp {
     margin-top: 12px;

@@ -2,17 +2,19 @@
 import { logger } from '@/core/utils/logger';
 import { errorHandler } from '../utils/error-handler.service';
 import { httpService } from './http.service';
+import { APP_CONFIG } from '@/core/config/app.config';
 import type { ApiClient, ApiRequestOptions } from '@/core/types';
 
 class ApiClientImpl implements ApiClient {
   private readonly logger = logger.create('ApiClient');
-  private baseUrl: string = '';
+  private baseUrl: string = APP_CONFIG.API.BASE_URL;
   private authToken: string | null = null;
 
   constructor(baseUrl?: string) {
     if (baseUrl) {
       this.setBaseUrl(baseUrl);
     }
+    this.logger.debug('ApiClient initialized', { baseUrl: this.baseUrl });
   }
 
   async get<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
@@ -35,18 +37,54 @@ class ApiClientImpl implements ApiClient {
     return this.request<T>('DELETE', endpoint, null, options);
   }
 
+  // В классе ApiClientImpl обновить метод checkHealth:
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await httpService.get(`${this.baseUrl}/health`, {
-        timeout: 5000,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      // Пробуем несколько возможных эндпоинтов для проверки здоровья
+      const healthEndpoints = ['/api/health', '/api/health/db'];
 
-      return response.status >= 200 && response.status < 300;
+      for (const endpoint of healthEndpoints) {
+        try {
+          const response = await httpService.get(`${this.baseUrl}${endpoint}`, {
+            timeout: 3000,
+            headers: {
+              'Accept': 'application/json',
+            },
+          });
+
+          if (response.status >= 200 && response.status < 300) {
+            this.logger.debug('Health check passed', { endpoint });
+            return true;
+          }
+        } catch (error) {
+          // Продолжаем пробовать следующий эндпоинт
+          this.logger.debug(`Health check failed for ${endpoint}`, {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          continue;
+        }
+      }
+
+      // Если все эндпоинты не сработали, пробуем базовый URL
+      try {
+        const response = await httpService.get(`${this.baseUrl}/`, {
+          timeout: 3000,
+        });
+
+        return response.status >= 200 && response.status < 300;
+      } catch (finalError) {
+        this.logger.warn('All health checks failed', {
+          error: finalError instanceof Error ? finalError.message : 'Unknown error',
+          baseUrl: this.baseUrl
+        });
+        return false;
+      }
+
     } catch (error) {
-      this.logger.warn('Health check failed', { error });
+      this.logger.warn('Health check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        baseUrl: this.baseUrl
+      });
       return false;
     }
   }
@@ -197,10 +235,10 @@ class ApiClientImpl implements ApiClient {
     }
 
     return {
-      timeout: options.timeout,
+      timeout: options.timeout || APP_CONFIG.API.TIMEOUT,
       headers,
-      retryAttempts: options.retryOnNetworkError !== false ? options.retryAttempts : 0,
-      retryDelay: options.retryDelay,
+      retryAttempts: options.retryOnNetworkError !== false ? (options.retryAttempts || APP_CONFIG.API.MAX_RETRIES) : 0,
+      retryDelay: options.retryDelay || APP_CONFIG.API.RETRY_DELAY,
     };
   }
 
