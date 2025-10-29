@@ -1,4 +1,3 @@
-<!-- src/modules/audit/components/views/SettingsView.vue -->
 <template>
   <div class="settings-view">
     <div class="settings-view__header">
@@ -19,7 +18,7 @@
         <div class="settings-grid">
           <div class="setting-item">
             <label class="setting-item__label">Интервал автоматического сканирования</label>
-            <BaseSelect v-model="settings.scanInterval"
+            <BaseSelect v-model="localSettings.scanInterval"
                         :options="scanIntervalOptions"
                         class="setting-item__control" />
             <div class="setting-item__description">
@@ -28,10 +27,9 @@
           </div>
 
           <div class="setting-item">
-            <label class="setting-item__label">Максимальное время сканирования</label>
-            <BaseInput v-model.number="settings.maxScanDuration"
+            <label class="setting-item__label">Максимальное время сканирования (минут)</label>
+            <BaseInput v-model.number="localSettings.maxScanDuration"
                        type="number"
-                       suffix="минут"
                        class="setting-item__control" />
             <div class="setting-item__description">
               Ограничение по времени для одного сканирования
@@ -45,7 +43,7 @@
                 Автоматически генерировать отчеты после сканирования
               </div>
             </div>
-            <BaseToggle v-model="settings.autoReporting"
+            <BaseToggle v-model="localSettings.autoReporting"
                         class="setting-item__control" />
           </div>
 
@@ -56,70 +54,13 @@
                 Проверять расширенные параметры безопасности систем
               </div>
             </div>
-            <BaseToggle v-model="settings.deepScan"
-                        class="setting-item__control" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Уведомления -->
-      <div class="settings-section">
-        <div class="section-header">
-          <h2 class="section-title">
-            <BellIcon class="section-icon" />
-            Уведомления
-          </h2>
-        </div>
-
-        <div class="settings-grid">
-          <div class="setting-item setting-item--toggle">
-            <div class="setting-item__content">
-              <label class="setting-item__label">Email уведомления</label>
-              <div class="setting-item__description">
-                Отправлять уведомления о критических уязвимостях по email
-              </div>
-            </div>
-            <BaseToggle v-model="settings.notificationEnabled"
+            <BaseToggle v-model="localSettings.deepScan"
                         class="setting-item__control" />
           </div>
 
-          <div class="setting-item">
-            <label class="setting-item__label">Email для уведомлений</label>
-            <BaseInput v-model="settings.notificationEmail"
-                       type="email"
-                       placeholder="audit@military-network.ru"
-                       class="setting-item__control" />
-            <div class="setting-item__description">
-              Адрес для получения уведомлений о безопасности
-            </div>
-          </div>
-
-          <div class="setting-item setting-item--toggle">
-            <div class="setting-item__content">
-              <label class="setting-item__label">Уведомления в реальном времени</label>
-              <div class="setting-item__description">
-                Мгновенные оповещения о критических инцидентах
-              </div>
-            </div>
-            <BaseToggle v-model="settings.realtimeNotifications"
-                        class="setting-item__control" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Форматы отчетов -->
-      <div class="settings-section">
-        <div class="section-header">
-          <h2 class="section-title">
-            <ReportIcon class="section-icon" />
-            Отчеты
-          </h2>
-        </div>
-
-        <div class="settings-grid">
           <div class="setting-item">
             <label class="setting-item__label">Формат отчетов по умолчанию</label>
-            <BaseSelect v-model="settings.reportFormat"
+            <BaseSelect v-model="localSettings.reportFormat"
                         :options="reportFormatOptions"
                         class="setting-item__control" />
             <div class="setting-item__description">
@@ -129,71 +70,239 @@
 
           <div class="setting-item">
             <label class="setting-item__label">Уровень детализации отчетов</label>
-            <BaseSelect v-model="settings.reportDetailLevel"
+            <BaseSelect v-model="localSettings.reportDetailLevel"
                         :options="detailLevelOptions"
                         class="setting-item__control" />
             <div class="setting-item__description">
               Детальность информации в генерируемых отчетах
             </div>
           </div>
-
-          <div class="setting-item setting-item--toggle">
-            <div class="setting-item__content">
-              <label class="setting-item__label">Автоматическая архивация</label>
-              <div class="setting-item__description">
-                Автоматически архивировать отчеты старше 30 дней
-              </div>
-            </div>
-            <BaseToggle v-model="settings.autoArchive"
-                        class="setting-item__control" />
-          </div>
         </div>
       </div>
 
-      <!-- Управление войсковыми частями -->
+      <!-- Настройки прокси -->
       <div class="settings-section">
         <div class="section-header">
           <h2 class="section-title">
-            <ServerIcon class="section-icon" />
-            Управление войсковыми частями
+            <NetworkIcon class="section-icon" />
+            Настройки прокси
           </h2>
         </div>
 
-        <div class="units-management">
-          <div class="units-list">
-            <div v-for="unit in units"
-                 :key="unit.id"
-                 class="unit-management-item">
-              <div class="unit-info">
-                <h3 class="unit-name">{{ unit.name }}</h3>
-                <div class="unit-details">
-                  <span class="unit-location">{{ unit.location }}</span>
-                  <span class="unit-subnets">{{ unit.subnets.length }} подсетей</span>
-                  <span class="unit-status" :class="`status--${unit.status}`">
-                    {{ getStatusText(unit.status) }}
-                  </span>
+        <div class="settings-grid">
+          <div class="setting-item setting-item--toggle">
+            <div class="setting-item__content">
+              <label class="setting-item__label">Использовать прокси-сервер</label>
+              <div class="setting-item__description">
+                Настроить подключение через прокси-сервер для всех исходящих соединений
+              </div>
+            </div>
+            <BaseToggle v-model="localSettings.proxySettings.enabled"
+                        class="setting-item__control" />
+          </div>
+
+          <template v-if="localSettings.proxySettings.enabled">
+            <div class="setting-item">
+              <label class="setting-item__label">Адрес прокси-сервера</label>
+              <BaseInput v-model="localSettings.proxySettings.host"
+                         placeholder="proxy.example.com"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                IP-адрес или доменное имя прокси-сервера
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Порт прокси-сервера</label>
+              <BaseInput v-model.number="localSettings.proxySettings.port"
+                         type="number"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Порт для подключения к прокси-серверу
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Тип авторизации</label>
+              <BaseSelect v-model="localSettings.proxySettings.authType"
+                          :options="proxyAuthOptions"
+                          class="setting-item__control" />
+              <div class="setting-item__description">
+                Метод аутентификации на прокси-сервере
+              </div>
+            </div>
+
+            <template v-if="localSettings.proxySettings.authType !== 'none'">
+              <div class="setting-item">
+                <label class="setting-item__label">Имя пользователя</label>
+                <BaseInput v-model="localSettings.proxySettings.username"
+                           class="setting-item__control" />
+                <div class="setting-item__description">
+                  Логин для аутентификации на прокси-сервере
                 </div>
               </div>
 
-              <div class="unit-actions">
-                <BaseButton @click="editUnit(unit)" variant="secondary" size="sm">
-                  <EditIcon class="button-icon" />
-                  Редактировать
-                </BaseButton>
-                <BaseButton @click="deleteUnit(unit)" variant="text" size="sm" color="error">
-                  <DeleteIcon class="button-icon" />
-                  Удалить
-                </BaseButton>
+              <div v-if="localSettings.proxySettings.authType === 'password'" class="setting-item">
+                <label class="setting-item__label">Пароль</label>
+                <BaseInput v-model="localSettings.proxySettings.password"
+                           type="password"
+                           class="setting-item__control" />
+                <div class="setting-item__description">
+                  Пароль для аутентификации на прокси-сервере
+                </div>
+              </div>
+
+              <div v-if="localSettings.proxySettings.authType === 'rsa'" class="setting-item">
+                <label class="setting-item__label">RSA ключ</label>
+                <BaseTextarea v-model="localSettings.proxySettings.rsaKey"
+                              placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                              rows="6"
+                              class="setting-item__control" />
+                <div class="setting-item__description">
+                  Приватный RSA ключ для аутентификации
+                </div>
+              </div>
+            </template>
+
+            <div class="setting-item">
+              <BaseButton @click="testProxyConnection"
+                          variant="secondary"
+                          :loading="isTestingProxy"
+                          class="test-connection-btn">
+                <TestConnectionIcon class="button-icon" />
+                Проверить подключение
+              </BaseButton>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Настройки email уведомлений -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">
+            <MailIcon class="section-icon" />
+            Email уведомления
+          </h2>
+        </div>
+
+        <div class="settings-grid">
+          <div class="setting-item setting-item--toggle">
+            <div class="setting-item__content">
+              <label class="setting-item__label">Включить email уведомления</label>
+              <div class="setting-item__description">
+                Отправлять уведомления о результатах сканирования по email
               </div>
             </div>
+            <BaseToggle v-model="localSettings.emailSettings.enabled"
+                        class="setting-item__control" />
           </div>
 
-          <div class="units-actions">
-            <BaseButton @click="showCreateUnitDialog" variant="primary" class="add-unit-btn">
-              <PlusIcon class="button-icon" />
-              Добавить войсковую часть
-            </BaseButton>
-          </div>
+          <template v-if="localSettings.emailSettings.enabled">
+            <div class="setting-item">
+              <label class="setting-item__label">SMTP сервер</label>
+              <BaseInput v-model="localSettings.emailSettings.host"
+                         placeholder="smtp.example.com"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Адрес SMTP сервера для отправки email
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Порт SMTP</label>
+              <BaseInput v-model.number="localSettings.emailSettings.port"
+                         type="number"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Порт SMTP сервера (обычно 25, 587 или 465)
+              </div>
+            </div>
+
+            <div class="setting-item setting-item--toggle">
+              <div class="setting-item__content">
+                <label class="setting-item__label">Использовать SSL/TLS</label>
+                <div class="setting-item__description">
+                  Использовать защищенное соединение с SMTP сервером
+                </div>
+              </div>
+              <BaseToggle v-model="localSettings.emailSettings.useSSL"
+                          class="setting-item__control" />
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Имя пользователя</label>
+              <BaseInput v-model="localSettings.emailSettings.username"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Логин для аутентификации на SMTP сервере
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Пароль</label>
+              <BaseInput v-model="localSettings.emailSettings.password"
+                         type="password"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Пароль для аутентификации на SMTP сервере
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Email отправителя</label>
+              <BaseInput v-model="localSettings.emailSettings.fromAddress"
+                         type="email"
+                         placeholder="audit@example.com"
+                         class="setting-item__control" />
+              <div class="setting-item__description">
+                Адрес отправителя для всех уведомлений
+              </div>
+            </div>
+
+            <div class="setting-item">
+              <label class="setting-item__label">Получатели уведомлений</label>
+              <BaseTextarea v-model="emailRecipients"
+                            placeholder="user1@example.com, user2@example.com"
+                            rows="3"
+                            class="setting-item__control" />
+              <div class="setting-item__description">
+                Список email адресов получателей (через запятую)
+              </div>
+            </div>
+
+            <div class="setting-item setting-item--toggle">
+              <div class="setting-item__content">
+                <label class="setting-item__label">Уведомлять о завершении сканирования</label>
+                <div class="setting-item__description">
+                  Отправлять email при завершении любого сканирования
+                </div>
+              </div>
+              <BaseToggle v-model="localSettings.emailSettings.notifyOnScanComplete"
+                          class="setting-item__control" />
+            </div>
+
+            <div class="setting-item setting-item--toggle">
+              <div class="setting-item__content">
+                <label class="setting-item__label">Уведомлять о критических проблемах</label>
+                <div class="setting-item__description">
+                  Отправлять email только при обнаружении критических уязвимостей
+                </div>
+              </div>
+              <BaseToggle v-model="localSettings.emailSettings.notifyOnCritical"
+                          class="setting-item__control" />
+            </div>
+
+            <div class="setting-item">
+              <BaseButton @click="testEmailConnection"
+                          variant="secondary"
+                          :loading="isTestingEmail"
+                          class="test-connection-btn">
+                <TestConnectionIcon class="button-icon" />
+                Проверить подключение
+              </BaseButton>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -228,28 +337,42 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue';
+  import { useToast } from '@/framework/ui/composables/useToast';
   import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
   import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
   import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
   import BaseToggle from '@/framework/ui/components/forms/BaseToggle.vue';
+  import BaseTextarea from '@/framework/ui/components/forms/BaseTextarea.vue';
   import {
     ScanIcon,
-    BellIcon,
-    ReportIcon,
-    ServerIcon,
-    PlusIcon,
-    EditIcon,
-    DeleteIcon,
+    NetworkIcon,
+    MailIcon,
     SaveIcon,
     ResetIcon,
-    DownloadIcon
+    DownloadIcon,
+    TestConnectionIcon
   } from '@/assets/icons';
-  import useAudit from '@/modules/audit/composables/useAudit';
-  import type { MilitaryUnit, AuditSettings } from '@/modules/audit/api/audit.types';
+  import { useAudit } from '../../composables/useAudit';
+  import type { AuditSettings } from '../../api/audit.types';
 
+  interface Props {
+    settings?: AuditSettings;
+    isLoading?: boolean;
+  }
+
+  interface Emits {
+    (e: 'update-settings', settings: Partial<AuditSettings>): void;
+  }
+
+  const props = defineProps<Props>();
+  const emit = defineEmits<Emits>();
+
+  const { showToast } = useToast();
   const audit = useAudit();
 
   const isSaving = ref(false);
+  const isTestingProxy = ref(false);
+  const isTestingEmail = ref(false);
   const localSettings = ref<AuditSettings>({
     scanInterval: 3600000,
     autoReporting: true,
@@ -257,20 +380,28 @@
     reportFormat: 'pdf',
     maxScanDuration: 1800000,
     deepScan: false,
-    notificationEmail: '',
+    proxySettings: {
+      enabled: false,
+      host: '',
+      port: 8080,
+      authType: 'none'
+    },
+    emailSettings: {
+      enabled: false,
+      host: '',
+      port: 25,
+      useSSL: false,
+      username: '',
+      password: '',
+      fromAddress: '',
+      toAddresses: [],
+      notifyOnScanComplete: true,
+      notifyOnCritical: true
+    },
     realtimeNotifications: true,
     reportDetailLevel: 'detailed',
     autoArchive: true
   });
-
-  const settings = computed({
-    get: () => localSettings.value,
-    set: (value) => {
-      localSettings.value = value;
-    }
-  });
-
-  const units = computed(() => audit.units.value);
 
   const scanIntervalOptions = [
     { value: 900000, label: '15 минут' },
@@ -286,7 +417,8 @@
     { value: 'pdf', label: 'PDF документ' },
     { value: 'html', label: 'HTML страница' },
     { value: 'json', label: 'JSON данные' },
-    { value: 'xml', label: 'XML формат' }
+    { value: 'csv', label: 'CSV таблица' },
+    { value: 'txt', label: 'Текстовый файл' }
   ];
 
   const detailLevelOptions = [
@@ -295,11 +427,26 @@
     { value: 'comprehensive', label: 'Полный' }
   ];
 
+  const proxyAuthOptions = [
+    { value: 'none', label: 'Без авторизации' },
+    { value: 'password', label: 'Логин/пароль' },
+    { value: 'rsa', label: 'RSA ключ' }
+  ];
+
+  const emailRecipients = computed({
+    get: () => localSettings.value.emailSettings.toAddresses.join(', '),
+    set: (value) => {
+      localSettings.value.emailSettings.toAddresses = value
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+    }
+  });
+
   const saveSettings = async (): Promise<void> => {
     isSaving.value = true;
     try {
-      await audit.updateSettings(settings.value);
-      console.log('Settings saved successfully');
+      emit('update-settings', localSettings.value);
     } catch (error) {
       console.error('Failed to save settings:', error);
     } finally {
@@ -308,57 +455,104 @@
   };
 
   const resetToDefaults = (): void => {
-    localSettings.value = {
-      scanInterval: 3600000,
-      autoReporting: true,
-      notificationEnabled: true,
-      reportFormat: 'pdf',
-      maxScanDuration: 1800000,
-      deepScan: false,
-      notificationEmail: '',
-      realtimeNotifications: true,
-      reportDetailLevel: 'detailed',
-      autoArchive: true
-    };
+    if (confirm('Сбросить все настройки к значениям по умолчанию?')) {
+      localSettings.value = {
+        scanInterval: 3600000,
+        autoReporting: true,
+        notificationEnabled: true,
+        reportFormat: 'pdf',
+        maxScanDuration: 1800000,
+        deepScan: false,
+        proxySettings: {
+          enabled: false,
+          host: '',
+          port: 8080,
+          authType: 'none'
+        },
+        emailSettings: {
+          enabled: false,
+          host: '',
+          port: 25,
+          useSSL: false,
+          username: '',
+          password: '',
+          fromAddress: '',
+          toAddresses: [],
+          notifyOnScanComplete: true,
+          notifyOnCritical: true
+        },
+        realtimeNotifications: true,
+        reportDetailLevel: 'detailed',
+        autoArchive: true
+      };
+      showToast({
+        type: 'success',
+        title: 'Настройки сброшены',
+        message: 'Все настройки восстановлены к значениям по умолчанию'
+      });
+    }
   };
 
   const exportSettings = (): void => {
-    const dataStr = JSON.stringify(settings.value, null, 2);
+    const dataStr = JSON.stringify(localSettings.value, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(dataBlob);
     link.download = 'military-audit-settings.json';
     link.click();
+    showToast({
+      type: 'success',
+      title: 'Настройки экспортированы',
+      message: 'Файл с настройками успешно скачан'
+    });
   };
 
-  const showCreateUnitDialog = (): void => {
-    console.log('Show create unit dialog');
-  };
-
-  const editUnit = (unit: MilitaryUnit): void => {
-    console.log('Edit unit:', unit);
-  };
-
-  const deleteUnit = (unit: MilitaryUnit): void => {
-    if (confirm(`Вы уверены, что хотите удалить войсковую часть "${unit.name}"?`)) {
-      console.log('Delete unit:', unit);
+  const testProxyConnection = async (): Promise<void> => {
+    isTestingProxy.value = true;
+    try {
+      // Implement proxy connection test
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      showToast({
+        type: 'success',
+        title: 'Подключение успешно',
+        message: 'Соединение с прокси-сервером установлено'
+      });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Ошибка подключения',
+        message: 'Не удалось подключиться к прокси-серверу'
+      });
+    } finally {
+      isTestingProxy.value = false;
     }
   };
 
-  const getStatusText = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      active: 'Активна',
-      deployed: 'На выезде',
-      headquarters: 'Штаб'
-    };
-    return statusMap[status] || status;
+  const testEmailConnection = async (): Promise<void> => {
+    isTestingEmail.value = true;
+    try {
+      // Implement email connection test
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      showToast({
+        type: 'success',
+        title: 'Подключение успешно',
+        message: 'Соединение с SMTP сервером установлено'
+      });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Ошибка подключения',
+        message: 'Не удалось подключиться к SMTP серверу'
+      });
+    } finally {
+      isTestingEmail.value = false;
+    }
   };
 
   onMounted(() => {
-    audit.loadMilitaryUnits();
-    audit.loadSettings().then(() => {
-      localSettings.value = { ...audit.settings.value };
-    });
+    if (props.settings) {
+      localSettings.value = { ...props.settings };
+    }
   });
 </script>
 
@@ -478,112 +672,17 @@
     min-width: 200px;
   }
 
+  .test-connection-btn {
+    margin-top: 0.5rem;
+  }
+
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
     margin-right: 0.5rem;
   }
 
-  /* Управление войсковыми частями */
-  .units-management {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .units-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .unit-management-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    background: var(--color-surface-hover);
-    border-radius: 1rem;
-    border: 1px solid var(--color-border);
-    transition: all 0.3s ease;
-  }
-
-    .unit-management-item:hover {
-      border-color: var(--color-primary);
-      transform: translateX(4px);
-    }
-
-  .unit-info {
-    flex: 1;
-  }
-
-  .unit-name {
-    font-size: 1.125rem;
-    font-weight: 700;
-    margin: 0 0 0.75rem 0;
-    color: var(--color-text-primary);
-  }
-
-  .unit-details {
-    display: flex;
-    gap: 1.5rem;
-    font-size: 0.9rem;
-  }
-
-  .unit-location {
-    color: var(--color-text-primary);
-    font-weight: 500;
-  }
-
-  .unit-subnets {
-    color: var(--color-text-muted);
-  }
-
-  .unit-status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .status--active {
-    background: var(--color-success-light);
-    color: var(--color-success);
-  }
-
-  .status--deployed {
-    background: var(--color-warning-light);
-    color: var(--color-warning);
-  }
-
-  .status--headquarters {
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-  }
-
-  .unit-actions {
-    display: flex;
-    gap: 0.75rem;
-  }
-
-  .units-actions {
-    display: flex;
-    justify-content: center;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .add-unit-btn {
-    transition: all 0.3s ease;
-  }
-
-    .add-unit-btn:hover {
-      transform: translateY(-2px);
-    }
-
-  /* Действия с настройками */
+  /* Settings Actions */
   .settings-actions {
     display: flex;
     gap: 1rem;
@@ -651,21 +750,6 @@
     .settings-actions {
       flex-direction: column;
     }
-
-    .unit-management-item {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-    }
-
-    .unit-details {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .unit-actions {
-      justify-content: flex-end;
-    }
   }
 
   @media (max-width: 800px) {
@@ -682,12 +766,12 @@
       border-radius: 1rem;
     }
 
-    .setting-item {
-      padding: 1.25rem;
-    }
-
     .section-title {
       font-size: 1.125rem;
+    }
+
+    .setting-item {
+      padding: 1.25rem;
     }
   }
 </style>

@@ -1,25 +1,25 @@
 // src/modules/auth/composables/useAuth.ts
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/framework/stores/auth.store';
+import { useAppStore } from '@/framework/stores/app.store';
 import { authApiService } from '../api/authApi.service';
 import { errorHandler } from '@/core/services/core/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
-import type { LoginCommand, ApiResult, UserDto } from '../api/auth.types';
+import type { LoginCommand, UserDto } from '../api/auth.types';
 
 export const useAuth = () => {
   const router = useRouter();
-  const authStore = useAuthStore();
+  const appStore = useAppStore();
   const loggerContext = logger.create('useAuth');
 
   const login = async (credentials: LoginCommand): Promise<boolean> => {
-    if (authStore.isLoading) {
+    if (appStore.authLoading) {
       loggerContext.warn('Login attempt while already loading');
       return false;
     }
 
-    authStore.setLoading(true);
-    authStore.setError(null);
+    appStore.setAuthLoading(true);
+    appStore.setAuthError(null);
 
     try {
       const response = await authApiService.login(credentials);
@@ -29,7 +29,7 @@ export const useAuth = () => {
         throw new Error('Invalid response: missing token or user data');
       }
 
-      authStore.setAuthData(response.token, response.user);
+      appStore.setAuthData(response.token, response.user);
 
       loggerContext.auth('Login completed successfully', {
         userId: response.user.id,
@@ -38,7 +38,7 @@ export const useAuth = () => {
       return true;
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.login');
-      authStore.setError(handledError.message);
+      appStore.setAuthError(handledError.message);
 
       loggerContext.error('Login failed', {
         error: handledError.message,
@@ -46,7 +46,7 @@ export const useAuth = () => {
       });
       return false;
     } finally {
-      authStore.setLoading(false);
+      appStore.setAuthLoading(false);
     }
   };
 
@@ -59,7 +59,7 @@ export const useAuth = () => {
       const handledError = errorHandler.handle(error, 'auth.logout');
       loggerContext.error('Logout API call failed', { error: handledError.message });
     } finally {
-      authStore.clearAuth();
+      appStore.clearAuth();
       loggerContext.auth('Logout completed');
 
       // Redirect to login after logout
@@ -68,11 +68,11 @@ export const useAuth = () => {
   };
 
   const validateCurrentToken = async (): Promise<boolean> => {
-    const token = authStore.token;
+    const token = appStore.token;
 
-    if (!token || !authStore.isAuthenticated) {
+    if (!token || !appStore.isAuthenticated) {
       loggerContext.warn('Token validation failed - invalid or missing token');
-      authStore.clearAuth();
+      appStore.clearAuth();
       return false;
     }
 
@@ -81,7 +81,7 @@ export const useAuth = () => {
 
       if (!isValid) {
         loggerContext.warn('Token validation failed - server rejected token');
-        authStore.clearAuth();
+        appStore.clearAuth();
       } else {
         loggerContext.auth('Token validation successful');
       }
@@ -90,35 +90,51 @@ export const useAuth = () => {
     } catch (error) {
       const handledError = errorHandler.handle(error, 'auth.validateToken');
       loggerContext.error('Token validation error', { error: handledError.message });
-      authStore.clearAuth();
+      appStore.clearAuth();
       return false;
     }
   };
 
   // Улучшенная функция обновления токена
   const refreshToken = async (): Promise<boolean> => {
-    if (!authStore.shouldRefreshToken) {
+    // TODO: Implement actual token refresh logic
+    // For now, just check if token exists and is valid
+    if (appStore.token && appStore.isAuthenticated) {
       return true;
     }
-
-    loggerContext.auth('Token refresh required');
-    // TODO: Implement actual token refresh logic
     return false;
   };
 
   // Вспомогательная функция для проверки аутентификации
   const checkAuthStatus = (): boolean => {
-    return authStore.isAuthenticated;
+    return appStore.isAuthenticated;
   };
+
+  // Получение оставшегося времени токена
+  const getTokenRemainingTime = (): number => {
+    const token = appStore.token;
+    if (!token) return 0;
+
+    try {
+      return tokenService.getTokenRemainingTime(token);
+    } catch {
+      return 0;
+    }
+  };
+
+  // Проверка необходимости обновления токена
+  const shouldRefreshToken = computed(() => {
+    const remainingTime = getTokenRemainingTime();
+    return remainingTime > 0 && remainingTime < 5 * 60 * 1000; // 5 minutes
+  });
 
   return {
     // State
-    state: authStore.state,
-    isLoading: computed(() => authStore.isLoading),
-    error: computed(() => authStore.error),
-    isAuthenticated: computed(() => authStore.isAuthenticated),
-    user: computed(() => authStore.user),
-    token: computed(() => authStore.token),
+    isLoading: computed(() => appStore.authLoading),
+    error: computed(() => appStore.authError),
+    isAuthenticated: computed(() => appStore.isAuthenticated),
+    user: computed(() => appStore.user),
+    token: computed(() => appStore.token),
 
     // Actions
     login,
@@ -131,26 +147,30 @@ export const useAuth = () => {
 
     // User management
     updateUserProfile: (userData: Partial<UserDto>): void => {
-      const currentUser = authStore.user;
-      if (currentUser && authStore.token) {
+      const currentUser = appStore.user;
+      const currentToken = appStore.token;
+      if (currentUser && currentToken) {
         const updatedUser = { ...currentUser, ...userData };
-        authStore.setAuthData(authStore.token, updatedUser);
+        appStore.setAuthData(currentToken, updatedUser);
         loggerContext.auth('User profile updated', { userId: updatedUser.id });
       }
     },
 
     hasRole: (role: string): boolean => {
-      return authStore.user?.role === role;
+      return appStore.user?.role === role;
     },
 
     hasAnyRole: (roles: string[]): boolean => {
-      return roles.includes(authStore.user?.role || '');
+      return roles.includes(appStore.user?.role || '');
     },
 
     // Token utilities
-    getTokenRemainingTime: authStore.getTokenRemainingTime,
-    shouldRefreshToken: computed(() => authStore.shouldRefreshToken),
+    getTokenRemainingTime,
+    shouldRefreshToken,
   };
 };
 
 export type UseAuthReturn = ReturnType<typeof useAuth>;
+
+// Import tokenService for token utilities
+import { tokenService } from '@/core/services/core/auth/token.service';

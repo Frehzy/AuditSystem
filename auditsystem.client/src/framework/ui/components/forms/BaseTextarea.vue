@@ -13,7 +13,7 @@
                 :placeholder="placeholder"
                 :disabled="disabled"
                 :readonly="readonly"
-                :rows="rows"
+                :rows="computedRows"
                 :maxlength="maxlength"
                 :class="textareaClasses"
                 @input="onInput"
@@ -61,7 +61,7 @@
     readonly?: boolean
     error?: string
     helpText?: string
-    rows?: number
+    rows?: number | string
     maxlength?: number
     showCounter?: boolean
     clearable?: boolean
@@ -95,6 +95,7 @@
 
   const textareaId = computed(() => props.id || `textarea-${useId()}`)
   const currentLength = computed(() => props.modelValue?.length || 0)
+  const computedRows = computed(() => Number(props.rows)) // Преобразуем в число
 
   const hasActions = computed(() => props.clearable)
 

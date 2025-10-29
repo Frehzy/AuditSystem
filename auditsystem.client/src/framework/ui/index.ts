@@ -69,7 +69,6 @@ export { useTheme } from './composables/useTheme';
 
 // ========== ТИПЫ ==========
 export type { FormField, ValidationRule, FormOptions } from './composables/useForm';
-export type { Toast, ToastOptions } from './composables/useToast';
 export type { Size, Variant, Placement } from './types/common';
 
 // ========== УТИЛИТЫ ==========

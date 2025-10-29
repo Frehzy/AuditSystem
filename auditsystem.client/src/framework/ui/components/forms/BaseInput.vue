@@ -15,7 +15,7 @@
       <input :id="computedInputId"
              ref="inputRef"
              :type="computedInputType"
-             :value="modelValue"
+             :value="computedValue"
              :placeholder="placeholder"
              :disabled="disabled"
              :readonly="readonly"
@@ -67,7 +67,7 @@
 
     <!-- Счетчик символов -->
     <div v-if="maxlength && showCounter" class="base-input__counter">
-      {{ modelValue?.length || 0 }}/{{ maxlength }}
+      {{ computedValue?.length || 0 }}/{{ maxlength }}
     </div>
   </div>
 </template>
@@ -80,7 +80,7 @@
   interface Props {
     id?: string
     type?: 'text' | 'password' | 'email' | 'number' | 'tel' | 'url'
-    modelValue: string
+    modelValue: string | number // Изменено: принимаем и string и number
     label?: string
     placeholder?: string
     required?: boolean
@@ -133,6 +133,11 @@
     return props.type
   })
 
+  // Преобразуем значение в строку для отображения
+  const computedValue = computed(() => {
+    return String(props.modelValue ?? '')
+  })
+
   const hasSuffix = computed(() => {
     return (
       props.clearable ||
@@ -165,7 +170,13 @@
   // Методы
   const handleInput = (event: Event) => {
     const target = event.target as HTMLInputElement
-    emit('update:modelValue', target.value)
+    // Для числовых полей преобразуем обратно в число
+    if (props.type === 'number') {
+      const numValue = target.value === '' ? '' : Number(target.value)
+      emit('update:modelValue', numValue)
+    } else {
+      emit('update:modelValue', target.value)
+    }
   }
 
   const handleBlur = (event: FocusEvent) => {

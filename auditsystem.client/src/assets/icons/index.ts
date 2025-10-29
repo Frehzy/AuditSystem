@@ -17,6 +17,11 @@ export { default as RefreshIcon } from './actions/RefreshIcon.vue';
 export { default as ResetIcon } from './actions/ResetIcon.vue';
 export { default as SaveIcon } from './actions/SaveIcon.vue';
 export { default as UploadIcon } from './actions/UploadIcon.vue';
+export { default as PlayIcon } from './actions/PlayIcon.vue';
+export { default as StopIcon } from './actions/StopIcon.vue';
+export { default as PauseIcon } from './actions/PauseIcon.vue';
+export { default as WrenchIcon } from './actions/WrenchIcon.vue';
+export { default as FormatIcon } from './actions/FormatIcon.vue';
 
 // ========== СТРЕЛКИ ==========
 export { default as ArrowDownIcon } from './arrows/ArrowDownIcon.vue';
@@ -40,6 +45,7 @@ export { default as StarIcon } from './status/StarIcon.vue';
 export { default as SuccessIcon } from './status/SuccessIcon.vue';
 export { default as WarningIcon } from './status/WarningIcon.vue';
 export { default as XCircleIcon } from './status/XCircleIcon.vue';
+export { default as AlertTriangleIcon } from './status/AlertTriangleIcon.vue';
 
 // ========== ФАЙЛЫ И ДОКУМЕНТЫ ==========
 export { default as AuditIcon } from './files/AuditIcon.vue';
@@ -48,6 +54,15 @@ export { default as FileTextIcon } from './files/FileTextIcon.vue';
 export { default as FolderIcon } from './files/FolderIcon.vue';
 export { default as ReportIcon } from './files/ReportIcon.vue';
 export { default as ScanIcon } from './files/ScanIcon.vue';
+export { default as HostIcon } from './files/HostIcon.vue';
+export { default as NetworkIcon } from './files/NetworkIcon.vue';
+export { default as ScriptIcon } from './files/ScriptIcon.vue';
+export { default as HistoryIcon } from './files/HistoryIcon.vue';
+export { default as ActivityIcon } from './files/ActivityIcon.vue';
+export { default as FileCheckIcon } from './files/FileCheckIcon.vue';
+export { default as FixIcon } from './files/FixIcon.vue';
+export { default as CheckScriptIcon } from './files/CheckScriptIcon.vue';
+export { default as FixScriptIcon } from './files/FixScriptIcon.vue';
 
 // ========== ИНТЕРФЕЙС ==========
 export { default as BarChartIcon } from './interface/BarChartIcon.vue';
@@ -77,6 +92,7 @@ export { default as KeyIcon } from './security/KeyIcon.vue';
 export { default as LockIcon } from './security/LockIcon.vue';
 export { default as LogoutIcon } from './security/LogoutIcon.vue';
 export { default as ShieldIcon } from './security/ShieldIcon.vue';
+export { default as TestConnectionIcon } from './security/TestConnectionIcon.vue';
 
 // ========== СИСТЕМА И ТЕМА ==========
 export { default as BugIcon } from './system/BugIcon.vue';

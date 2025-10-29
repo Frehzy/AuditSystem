@@ -8,10 +8,9 @@
 
 <script setup lang="ts">
   import { onMounted, onUnmounted, computed } from 'vue';
-  import { RouterView } from 'vue-router';
+  import { RouterView, useRouter } from 'vue-router';
   import BaseToast from '@/framework/ui/components/feedback/BaseToast.vue';
   import { useAppStore } from '@/framework/stores/app.store';
-  import { useThemeStore } from '@/framework/stores/theme.store';
   import { provideToast, createToastApi } from '@/framework/ui/composables/useToast';
   import { logger } from '@/core/utils/logger';
   import './assets/styles/theme.css'
@@ -20,13 +19,12 @@
   provideToast(createToastApi());
 
   const appStore = useAppStore();
-  const themeStore = useThemeStore();
   const loggerContext = logger.create('App');
 
   /**
    * Текущий класс темы
    */
-  const themeClass = computed(() => `theme-${themeStore.theme}`);
+  const themeClass = computed(() => `theme-${appStore.currentTheme}`);
 
   /**
    * Обработчик онлайн/офлайн статуса
@@ -54,7 +52,7 @@
 
   onMounted(() => {
     // Инициализация темы
-    themeStore.initialize();
+    appStore.initializeTheme();
 
     // Сохранение router в глобальной области для navigation.service
     if (import.meta.env.DEV) {
@@ -80,7 +78,7 @@
     loggerContext.info('Application mounted', {
       online: navigator.onLine,
       userAgent: navigator.userAgent,
-      theme: themeStore.theme
+      theme: appStore.currentTheme
     });
 
     // Cleanup function
@@ -95,10 +93,6 @@
   onUnmounted(() => {
     loggerContext.info('Application unmounted');
   });
-
-  // Импорт useRouter для глобального доступа
-  import { useRouter } from 'vue-router';
-  const router = useRouter();
 </script>
 
 <style>

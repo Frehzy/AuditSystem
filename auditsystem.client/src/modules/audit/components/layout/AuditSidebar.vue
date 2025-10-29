@@ -1,4 +1,3 @@
-<!-- src/modules/audit/components/layout/AuditSidebar.vue -->
 <template>
   <aside class="sidebar" :class="{ 'sidebar--collapsed': isCollapsed }">
     <div class="sidebar__header">
@@ -14,9 +13,10 @@
           <router-link :to="item.path"
                        class="nav-link"
                        :class="{
-              'nav-link--active': currentRoute.path.startsWith(item.path),
+              'nav-link--active': $route.path.startsWith(item.path),
               'nav-link--collapsed': isCollapsed
-            }">
+            }"
+                       @click="handleNavClick(item)">
             <component :is="item.icon" class="nav-link__icon" />
             <span v-if="!isCollapsed" class="nav-link__text">{{ item.title }}</span>
 
@@ -57,14 +57,16 @@
 
 <script setup lang="ts">
   import { computed, markRaw } from 'vue';
-  import { useRoute } from 'vue-router';
+  import { useRouter, useRoute } from 'vue-router';
   import { useAuth } from '@/modules/auth/composables/useAuth';
-  import { useThemeStore } from '@/framework/stores/theme.store';
+  import { useAppStore } from '@/framework/stores/app.store';
   import {
     ShieldIcon,
     SettingsIcon,
     ScanIcon,
     ReportIcon,
+    ScriptIcon,
+    ServerIcon,
     MenuIcon,
     UserIcon,
     MoonIcon,
@@ -81,29 +83,45 @@
   interface Emits {
     (e: 'toggle-theme'): void;
     (e: 'toggle-sidebar'): void;
+    (e: 'nav-change', item: NavItem): void;
   }
 
   defineProps<{
     isCollapsed?: boolean;
+    activeView?: string;
   }>();
+
   const emit = defineEmits<Emits>();
 
-  const currentRoute = useRoute();
+  const router = useRouter();
+  const route = useRoute();
   const auth = useAuth();
-  const themeStore = useThemeStore();
+  const appStore = useAppStore();
 
   const navItems: NavItem[] = [
-    {
-      id: 'reports',
-      title: 'Отчеты',
-      path: '/audit',
-      icon: markRaw(ReportIcon)
-    },
     {
       id: 'monitoring',
       title: 'Мониторинг',
       path: '/audit/monitoring',
       icon: markRaw(ScanIcon)
+    },
+    {
+      id: 'reports',
+      title: 'Отчеты',
+      path: '/audit/reports',
+      icon: markRaw(ReportIcon)
+    },
+    {
+      id: 'scripts',
+      title: 'Скрипты',
+      path: '/audit/scripts',
+      icon: markRaw(ScriptIcon)
+    },
+    {
+      id: 'units',
+      title: 'Войсковые части',
+      path: '/audit/units',
+      icon: markRaw(ServerIcon)
     },
     {
       id: 'settings',
@@ -114,7 +132,7 @@
   ];
 
   const userName = computed(() => auth.user.value?.username || 'Аудитор');
-  const isDarkTheme = computed(() => themeStore.isDark);
+  const isDarkTheme = computed(() => appStore.isDark);
   const themeIcon = computed(() => isDarkTheme.value ? markRaw(SunIcon) : markRaw(MoonIcon));
 
   const handleToggleTheme = (): void => {
@@ -123,6 +141,10 @@
 
   const handleToggleSidebar = (): void => {
     emit('toggle-sidebar');
+  };
+
+  const handleNavClick = (item: NavItem): void => {
+    emit('nav-change', item);
   };
 </script>
 
@@ -184,7 +206,7 @@
   .sidebar__brand-text {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--color-primary);
+    color: var(--color-text-primary);
     white-space: nowrap;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -286,6 +308,7 @@
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
     margin-left: 0.75rem;
+    color: var(--color-text-primary);
   }
 
   .nav-link--collapsed:hover .nav-link__tooltip {
@@ -416,6 +439,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--color-text-primary);
   }
 
   .user-info__role {

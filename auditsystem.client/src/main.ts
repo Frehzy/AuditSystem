@@ -1,20 +1,24 @@
+// src/main.ts
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import { logger } from '@/core/utils/logger';
+import { mockService } from '@/core/services/mock/mock.service';
+import { APP_CONFIG } from '@/core/config/app.config';
 import './assets/styles/theme.css'
-
-// Интерфейс для Vue DevTools
-interface VueDevToolsHook {
-  emit?: (event: string, payload: unknown) => void;
-}
 
 /**
  * Инициализация приложения
  */
 const initializeApp = async () => {
   try {
+    // Инициализация mock service в development режиме
+    if (APP_CONFIG.APP.ENV === 'development' && APP_CONFIG.FEATURES.USE_MOCK) {
+      mockService.enable();
+      console.log('🔧 Mock service enabled - using mock data');
+    }
+
     // Создание экземпляра приложения
     const app = createApp(App);
     const pinia = createPinia();
@@ -28,7 +32,7 @@ const initializeApp = async () => {
       app.config.globalProperties.$logger = logger;
     }
 
-    // Глобальная обработка ошибок Vue - исправлен тип
+    // Глобальная обработка ошибок Vue
     app.config.errorHandler = (err: unknown, _instance: unknown, info: string) => {
       console.error('Vue error:', err, info);
       logger.error('Vue error occurred', { error: err, info });
@@ -40,7 +44,8 @@ const initializeApp = async () => {
 
     logger.info('Application initialized successfully', {
       environment: import.meta.env.MODE,
-      version: import.meta.env.VITE_APP_VERSION || '1.0.0'
+      version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+      mockEnabled: mockService.isMockEnabled()
     });
 
   } catch (error: unknown) {
@@ -102,30 +107,3 @@ window.addEventListener('unhandledrejection', (event) => {
     stack: event.reason?.stack
   });
 });
-
-// DevTools подключение в development
-if (import.meta.env.DEV) {
-  // Безопасная проверка и использование DevTools
-  const existingHook = (window as { __VUE_DEVTOOLS_GLOBAL_HOOK__?: VueDevToolsHook }).__VUE_DEVTOOLS_GLOBAL_HOOK__;
-
-  if (existingHook) {
-    // DevTools уже установлен, можно добавить кастомные обработчики
-    const originalEmit = existingHook.emit;
-
-    if (typeof originalEmit === 'function') {
-      existingHook.emit = function (event: string, payload: unknown) {
-        // Логируем определенные события DevTools
-        if (event === 'vuex:travel') {
-          logger.debug('Vue DevTools time travel', payload);
-        }
-
-        // Вызываем оригинальный метод
-        originalEmit.call(this, event, payload);
-      };
-
-      logger.debug('Vue DevTools hook enhanced');
-    }
-  } else {
-    logger.debug('Vue DevTools not detected');
-  }
-}

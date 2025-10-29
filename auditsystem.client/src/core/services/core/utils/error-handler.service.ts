@@ -8,140 +8,97 @@ class ErrorHandlerImpl implements ErrorHandler {
   handle(error: unknown, context?: string): AppError {
     const appError = this.normalizeError(error, context);
 
-    // Log based on error type
-    if (this.isAuthError(appError)) {
-      this.logger.warn('Authentication error', {
-        context,
-        message: appError.message,
-        code: appError.code
-      });
-    } else if (this.isNetworkError(appError)) {
-      this.logger.error('Network error', {
-        context,
-        message: appError.message,
-        code: appError.code
-      });
-    } else if (this.isServerError(appError)) {
-      this.logger.error('Server error', {
-        context,
-        message: appError.message,
-        code: appError.code,
-        status: appError.status
-      });
-    } else if (this.isValidationError(appError)) {
-      this.logger.warn('Validation error', {
-        context,
-        message: appError.message,
-        code: appError.code
-      });
-    } else {
-      this.logger.error('Application error', {
-        context,
-        message: appError.message,
-        code: appError.code,
-        details: appError.details
-      });
-    }
+    this.logger.error('Error handled', {
+      message: appError.message,
+      code: appError.code,
+      context: appError.context,
+      status: appError.status
+    });
 
     return appError;
   }
 
   create(message: string, code?: string, details?: unknown, status?: number): AppError {
-    const error: AppError = {
+    return {
       name: 'AppError',
       message,
       code: code || 'UNKNOWN_ERROR',
       details,
       status,
       timestamp: Date.now(),
-      stack: new Error().stack
-    } as AppError;
-
-    return error;
+      context: 'manual'
+    };
   }
 
   wrap(error: unknown, message: string, code?: string): AppError {
-    const appError = this.normalizeError(error);
-    appError.message = `${message}: ${appError.message}`;
+    const originalError = error instanceof Error ? error : new Error(String(error));
+    const appError = this.normalizeError(originalError);
 
-    if (code) {
-      appError.code = code;
-    }
-
-    return appError;
+    return {
+      ...appError,
+      message: `${message}: ${appError.message}`,
+      code: code || appError.code,
+      timestamp: Date.now()
+    };
   }
 
   isNetworkError(error: unknown): boolean {
-    const appError = this.normalizeError(error);
-    return [
-      'NETWORK_ERROR',
-      'TIMEOUT_ERROR',
-      'CONNECTION_ERROR',
-      'NETWORK_REQUEST_FAILED'
-    ].includes(appError.code) ||
-      appError.message.includes('Network Error') ||
-      appError.message.includes('Failed to fetch') ||
-      appError.message.includes('timeout');
+    const err = error as AppError;
+    return err.code === 'NETWORK_ERROR' ||
+      err.message?.includes('network') ||
+      err.message?.includes('fetch') ||
+      err.message?.includes('timeout');
   }
 
   isAuthError(error: unknown): boolean {
-    const appError = this.normalizeError(error);
-    return [
-      'UNAUTHORIZED',
-      'FORBIDDEN',
-      'AUTH_ERROR',
-      'TOKEN_EXPIRED',
-      'INVALID_TOKEN'
-    ].includes(appError.code) ||
-      appError.status === 401 ||
-      appError.status === 403;
+    const err = error as AppError;
+    return err.status === 401 ||
+      err.status === 403 ||
+      err.code === 'UNAUTHORIZED' ||
+      err.code === 'FORBIDDEN' ||
+      err.message?.includes('auth') ||
+      err.message?.includes('token');
   }
 
   isServerError(error: unknown): boolean {
-    const appError = this.normalizeError(error);
-    return appError.status ? appError.status >= 500 : false;
+    const err = error as AppError;
+    return (err.status !== undefined && err.status >= 500) ||
+      err.code === 'SERVER_ERROR' ||
+      err.code === 'SERVICE_UNAVAILABLE';
   }
 
   isClientError(error: unknown): boolean {
-    const appError = this.normalizeError(error);
-    return appError.status ? appError.status >= 400 && appError.status < 500 : false;
+    const err = error as AppError;
+    return (err.status !== undefined && err.status >= 400 && err.status < 500);
   }
 
   isValidationError(error: unknown): boolean {
-    const appError = this.normalizeError(error);
-    return [
-      'VALIDATION_ERROR',
-      'UNPROCESSABLE_ENTITY'
-    ].includes(appError.code) ||
-      appError.status === 400 ||
-      appError.status === 422;
+    const err = error as AppError;
+    return err.status === 400 ||
+      err.code === 'VALIDATION_ERROR' ||
+      err.message?.includes('validation');
   }
 
   getUserMessage(error: unknown): string {
-    const appError = this.normalizeError(error);
+    const err = error as AppError;
 
-    // User-friendly messages based on error type
-    if (this.isNetworkError(appError)) {
-      return 'Проблемы с подключением к интернету. Проверьте соединение и попробуйте снова.';
+    if (this.isNetworkError(error)) {
+      return 'Ошибка сети. Проверьте подключение к интернету.';
     }
 
-    if (this.isAuthError(appError)) {
-      if (appError.code === 'TOKEN_EXPIRED') {
-        return 'Сессия истекла. Пожалуйста, войдите снова.';
-      }
-      return 'Ошибка авторизации. Проверьте свои учетные данные.';
+    if (this.isAuthError(error)) {
+      return 'Ошибка авторизации. Пожалуйста, войдите снова.';
     }
 
-    if (this.isServerError(appError)) {
-      return 'Внутренняя ошибка сервера. Пожалуйста, попробуйте позже.';
+    if (this.isServerError(error)) {
+      return 'Ошибка сервера. Пожалуйста, попробуйте позже.';
     }
 
-    if (this.isValidationError(appError)) {
-      return 'Проверьте введенные данные и попробуйте снова.';
+    if (this.isValidationError(error)) {
+      return 'Ошибка в данных. Проверьте введенные значения.';
     }
 
-    // Default message
-    return appError.message || 'Произошла непредвиденная ошибка.';
+    return err.message || 'Произошла непредвиденная ошибка.';
   }
 
   private normalizeError(error: unknown, context?: string): AppError {
@@ -150,66 +107,48 @@ class ErrorHandlerImpl implements ErrorHandler {
     }
 
     if (error instanceof Error) {
-      // Исправлено: правильное преобразование через unknown
-      const errorAny = error as unknown as Record<string, unknown>;
       return {
         name: error.name,
         message: error.message,
         code: this.getErrorCode(error),
-        details: errorAny.details,
-        status: errorAny.status as number | undefined,
+        details: error.stack,
         timestamp: Date.now(),
-        stack: error.stack,
-        context
-      } as AppError;
+        context: context || 'unknown'
+      };
     }
 
-    if (typeof error === 'string') {
-      return this.create(error, 'UNKNOWN_ERROR');
-    }
-
-    // Исправлено: правильное преобразование через unknown
-    const errorDetails = error as unknown as Record<string, unknown>;
-    return this.create(
-      'An unknown error occurred',
-      'UNKNOWN_ERROR',
-      errorDetails
-    );
+    return {
+      name: 'UnknownError',
+      message: String(error),
+      code: 'UNKNOWN_ERROR',
+      timestamp: Date.now(),
+      context: context || 'unknown'
+    };
   }
 
   private isAppError(error: unknown): error is AppError {
-    return (
-      typeof error === 'object' &&
+    return typeof error === 'object' &&
       error !== null &&
       'message' in error &&
-      'code' in error &&
-      'timestamp' in error
-    );
+      'timestamp' in error;
   }
 
   private getErrorCode(error: Error): string {
-    // Исправлено: правильное преобразование через unknown
-    const errorAny = error as unknown as Record<string, unknown>;
-
-    // Extract code from error object
-    if (errorAny.code) {
-      return errorAny.code as string;
-    }
-
-    // Map common error types
     if (error.name === 'TypeError') return 'TYPE_ERROR';
-    if (error.name === 'RangeError') return 'RANGE_ERROR';
     if (error.name === 'ReferenceError') return 'REFERENCE_ERROR';
+    if (error.name === 'RangeError') return 'RANGE_ERROR';
     if (error.name === 'SyntaxError') return 'SYNTAX_ERROR';
-    if (error.name === 'URIError') return 'URI_ERROR';
-
-    // Map from message
-    if (error.message.includes('Network Error')) return 'NETWORK_ERROR';
     if (error.message.includes('timeout')) return 'TIMEOUT_ERROR';
-    if (error.message.includes('aborted')) return 'REQUEST_ABORTED';
-
+    if (error.message.includes('network')) return 'NETWORK_ERROR';
     return 'UNKNOWN_ERROR';
   }
 }
 
-export const errorHandler: ErrorHandler = new ErrorHandlerImpl();
+// Создаем экземпляр для экспорта
+const errorHandler = new ErrorHandlerImpl();
+
+// Экспортируем как named export
+export { errorHandler };
+
+// И как default export для совместимости
+export default errorHandler;

@@ -1,271 +1,421 @@
-<!-- src/modules/audit/components/views/MonitoringView.vue -->
 <template>
   <div class="monitoring-view">
     <div class="monitoring-view__header">
-      <h1 class="monitoring-view__title">Мониторинг сети</h1>
+      <h1 class="monitoring-view__title">Мониторинг безопасности</h1>
       <p class="monitoring-view__subtitle">Управление сканированием и отслеживание состояния систем</p>
     </div>
 
     <div class="monitoring-view__content">
-      <!-- Активное сканирование -->
-      <div class="monitoring-section">
+      <!-- Быстрый запуск сканирования -->
+      <div class="quick-scan-section">
         <div class="section-header">
-          <h2 class="section-title">Активное сканирование</h2>
-          <BaseButton @click="handleStartQuickScan"
+          <h2 class="section-title">Быстрый запуск</h2>
+          <BaseButton @click="showQuickScanConfig = true"
                       variant="primary"
-                      :loading="isScanning"
-                      :disabled="!!currentScanData"
-                      class="scan-button">
+                      class="configure-scan-btn">
+            <SettingsIcon class="button-icon" />
+            Настроить сканирование
+          </BaseButton>
+        </div>
+
+        <div class="quick-scan-actions">
+          <BaseButton @click="startQuickScan"
+                      variant="primary"
+                      :loading="isStartingScan"
+                      :disabled="!canStartScan"
+                      size="lg"
+                      class="quick-scan-btn">
             <ScanIcon class="button-icon" />
-            Запустить сканирование
+            Быстрое сканирование
+          </BaseButton>
+
+          <BaseButton @click="startComprehensiveScan"
+                      variant="secondary"
+                      :loading="isStartingScan"
+                      :disabled="!canStartScan"
+                      size="lg"
+                      class="comprehensive-scan-btn">
+            <ShieldIcon class="button-icon" />
+            Полное сканирование
           </BaseButton>
         </div>
 
-        <div class="scan-progress" v-if="currentScanData">
-          <div class="scan-progress__header">
-            <div class="scan-progress__info">
-              <span class="scan-progress__title">Сканирование выполняется</span>
-              <span class="scan-progress__subtitle">{{ currentScanData.currentAction }}</span>
+        <div v-if="!canStartScan" class="scan-requirements">
+          <BaseAlert type="warning">
+            Для запуска сканирования необходимо добавить войсковые части и настроить скрипты проверки
+          </BaseAlert>
+        </div>
+      </div>
+
+      <!-- Активные задачи -->
+      <div class="active-tasks-section">
+        <div class="section-header">
+          <h2 class="section-title">Активные задачи</h2>
+          <BaseButton @click="refreshTasks"
+                      variant="text"
+                      size="sm"
+                      :loading="isLoadingTasks">
+            <RefreshIcon class="button-icon" />
+            Обновить
+          </BaseButton>
+        </div>
+
+        <div class="tasks-grid">
+          <div v-for="task in activeTasks"
+               :key="task.id"
+               class="task-card"
+               :class="`task-card--${task.status}`">
+            <div class="task-card__header">
+              <h3 class="task-card__title">{{ task.name }}</h3>
+              <span class="task-card__status">{{ getStatusText(task.status) }}</span>
             </div>
-            <span class="scan-progress__percent">{{ currentScanData.progress }}%</span>
-          </div>
 
-          <div class="scan-progress__bar">
-            <div class="scan-progress__fill"
-                 :style="{ width: `${currentScanData.progress}%` }" />
-          </div>
+            <div class="task-card__progress">
+              <div class="progress-bar">
+                <div class="progress-bar__fill"
+                     :style="{ width: `${task.progress}%` }"></div>
+              </div>
+              <span class="progress-text">{{ task.progress }}%</span>
+            </div>
 
-          <div class="scan-progress__details">
-            <span>Обработано: {{ currentScanData.devicesProcessed }}/{{ currentScanData.totalDevices }}</span>
-            <span v-if="currentScanData.estimatedTimeRemaining">
-              Осталось: {{ formatRemainingTime(currentScanData.estimatedTimeRemaining) }}
-            </span>
+            <div class="task-card__details">
+              <div class="task-detail">
+                <ServerIcon class="detail-icon" />
+                <span>{{ getUnitsCount(task.unitIds) }} частей</span>
+              </div>
+              <div class="task-detail">
+                <ScriptIcon class="detail-icon" />
+                <span>{{ getScriptsCount(task.scriptIds) }} скриптов</span>
+              </div>
+              <div class="task-detail">
+                <ClockIcon class="detail-icon" />
+                <span>{{ formatDuration(task.createdAt) }}</span>
+              </div>
+            </div>
+
+            <div class="task-card__actions">
+              <BaseButton @click="viewTaskDetails(task)"
+                          variant="text"
+                          size="sm">
+                Детали
+              </BaseButton>
+              <BaseButton v-if="task.status === 'running'"
+                          @click="cancelTask(task)"
+                          variant="text"
+                          size="sm"
+                          color="error">
+                Отменить
+              </BaseButton>
+            </div>
           </div>
         </div>
 
-        <div class="empty-state" v-else>
+        <div v-if="activeTasks.length === 0" class="empty-state">
           <ScanIcon class="empty-state__icon" />
-          <p class="empty-state__text">Сканирование не запущено</p>
-          <p class="empty-state__description">Запустите сканирование для проверки состояния сети</p>
+          <p class="empty-state__text">Нет активных задач</p>
+          <p class="empty-state__description">Запустите сканирование для начала мониторинга</p>
         </div>
       </div>
 
-      <!-- Войсковые части -->
-      <div class="monitoring-section">
+      <!-- История сканирований -->
+      <div class="scan-history-section">
         <div class="section-header">
-          <h2 class="section-title">Войсковые части</h2>
-          <BaseButton @click="handleShowCreateUnitDialog"
-                      variant="secondary"
-                      size="sm"
-                      class="add-button">
-            <PlusIcon class="button-icon" />
-            Добавить часть
-          </BaseButton>
+          <h2 class="section-title">История сканирований</h2>
+          <BaseSelect v-model="historyFilter"
+                      :options="historyFilterOptions"
+                      size="sm" />
         </div>
 
-        <div class="units-grid">
-          <div v-for="unit in militaryUnits"
-               :key="unit.id"
-               class="unit-card"
-               @click="handleSelectUnit(unit)"
-               :class="{ 'unit-card--selected': selectedUnitData?.id === unit.id }">
-            <div class="unit-card__header">
-              <h3 class="unit-card__title">{{ unit.name }}</h3>
-              <span class="unit-card__status" :class="`status--${unit.status}`">
-                {{ getUnitStatusText(unit.status) }}
-              </span>
-            </div>
-
-            <div class="unit-card__content">
-              <div class="unit-card__info">
-                <span class="unit-card__location">{{ unit.location }}</span>
-                <span class="unit-card__subnets">{{ unit.subnets.length }} подсетей</span>
-              </div>
-
-              <div class="unit-card__description" v-if="unit.description">
-                {{ unit.description }}
-              </div>
-            </div>
-
-            <div class="unit-card__footer">
-              <span class="unit-card__date">
-                Создано: {{ formatUnitDate(unit.createdAt) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="empty-state" v-if="militaryUnits.length === 0">
-          <ServerIcon class="empty-state__icon" />
-          <p class="empty-state__text">Войсковые части не найдены</p>
-          <BaseButton @click="handleShowCreateUnitDialog"
-                      variant="primary"
-                      class="add-button">
-            <PlusIcon class="button-icon" />
-            Добавить первую часть
-          </BaseButton>
-        </div>
-      </div>
-
-      <!-- Выбранная часть -->
-      <div class="monitoring-section" v-if="selectedUnitData">
-        <div class="section-header">
-          <h2 class="section-title">Подсети: {{ selectedUnitData.name }}</h2>
-          <BaseButton @click="handleShowCreateSubnetDialog"
-                      variant="secondary"
-                      size="sm"
-                      class="add-button">
-            <PlusIcon class="button-icon" />
-            Добавить подсеть
-          </BaseButton>
-        </div>
-
-        <div class="subnets-table">
+        <div class="history-table">
           <div class="table-header">
-            <div class="table-cell">Название</div>
-            <div class="table-cell">Сеть</div>
-            <div class="table-cell">Устройства</div>
-            <div class="table-cell">Последнее сканирование</div>
+            <div class="table-cell">Задача</div>
+            <div class="table-cell">Статус</div>
+            <div class="table-cell">Прогресс</div>
+            <div class="table-cell">Время</div>
             <div class="table-cell">Действия</div>
           </div>
 
-          <div v-for="subnet in selectedUnitData.subnets"
-               :key="subnet.id"
+          <div v-for="task in filteredHistory"
+               :key="task.id"
                class="table-row">
             <div class="table-cell">
-              <div class="subnet-name">
-                <strong>{{ subnet.name }}</strong>
-                <span v-if="subnet.description" class="subnet-description">
-                  {{ subnet.description }}
+              <div class="task-name">
+                <strong>{{ task.name }}</strong>
+                <span v-if="task.description" class="task-description">
+                  {{ task.description }}
                 </span>
               </div>
             </div>
 
             <div class="table-cell">
-              <code class="network-address">{{ subnet.network }}/{{ subnet.mask }}</code>
-            </div>
-
-            <div class="table-cell">
-              <span class="devices-count">{{ subnet.devicesCount }} устройств</span>
-            </div>
-
-            <div class="table-cell">
-              <span class="last-scan" :class="{ 'never-scanned': !subnet.lastScan }">
-                {{ subnet.lastScan ? formatSubnetRelativeTime(subnet.lastScan) : 'Никогда' }}
+              <span class="status-badge" :class="`status--${task.status}`">
+                {{ getStatusText(task.status) }}
               </span>
             </div>
 
             <div class="table-cell">
+              <div class="progress-cell">
+                <div class="progress-bar--small">
+                  <div class="progress-bar__fill"
+                       :style="{ width: `${task.progress}%` }"></div>
+                </div>
+                <span>{{ task.progress }}%</span>
+              </div>
+            </div>
+
+            <div class="table-cell">
+              <span class="task-time">{{ formatTaskTime(task.createdAt) }}</span>
+            </div>
+
+            <div class="table-cell">
               <div class="actions">
-                <BaseButton @click="handleStartSubnetScan(subnet)"
-                            variant="primary"
-                            size="sm"
-                            :loading="isScanning"
-                            class="scan-subnet-btn">
-                  <ScanIcon class="button-icon" />
-                  Сканировать
+                <BaseButton @click="viewTaskReport(task)"
+                            variant="text"
+                            size="sm">
+                  Отчет
+                </BaseButton>
+                <BaseButton @click="rerunTask(task)"
+                            variant="text"
+                            size="sm">
+                  Повторить
                 </BaseButton>
               </div>
             </div>
           </div>
         </div>
+
+        <div v-if="filteredHistory.length === 0" class="empty-state">
+          <HistoryIcon class="empty-state__icon" />
+          <p class="empty-state__text">История сканирований пуста</p>
+        </div>
       </div>
     </div>
+
+    <!-- Диалог настройки сканирования -->
+    <BaseModal v-if="showQuickScanConfig"
+               :modelValue="showQuickScanConfig"
+               title="Настройка сканирования"
+               size="large"
+               @update:modelValue="showQuickScanConfig = $event"
+               @close="showQuickScanConfig = false">
+      <QuickScanConfig :units="units"
+                       :scripts="scripts"
+                       @start-scan="handleStartScan"
+                       @cancel="showQuickScanConfig = false" />
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue';
+  import { useToast } from '@/framework/ui/composables/useToast';
   import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
-  import { ScanIcon, ServerIcon, PlusIcon } from '@/assets/icons';
-  import useAudit from '@/modules/audit/composables/useAudit';
-  import type { MilitaryUnit, Subnet } from '@/modules/audit/api/audit.types';
+  import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
+  import BaseAlert from '@/framework/ui/components/feedback/BaseAlert.vue';
+  import BaseModal from '@/framework/ui/components/overlay/BaseModal.vue';
+  import QuickScanConfig from '../common/QuickScanConfig.vue';
+  import {
+    ScanIcon,
+    ShieldIcon,
+    SettingsIcon,
+    RefreshIcon,
+    ServerIcon,
+    ScriptIcon,
+    ClockIcon,
+    HistoryIcon
+  } from '@/assets/icons';
+  import { useMonitoring } from '../../composables/useMonitoring';
+  import { useMilitaryUnits } from '../../composables/useMilitaryUnits';
+  import { useScripts } from '../../composables/useScripts';
+  import type { StartScanCommand, ScanTask } from '../../api/audit.types';
 
-  const audit = useAudit();
+  interface Props {
+    units?: any[];
+    scripts?: any[];
+    tasks?: any[];
+    currentScan?: any;
+    isLoading?: boolean;
+  }
 
-  const isScanning = ref(false);
-  const selectedUnitData = ref<MilitaryUnit | null>(null);
+  interface Emits {
+    (e: 'start-scan', command: StartScanCommand): void;
+    (e: 'cancel-scan', taskId: string): void;
+  }
 
-  const militaryUnits = computed(() => audit.units.value);
-  const currentScanData = computed(() => audit.currentScan.value);
+  const props = defineProps<Props>();
+  const emit = defineEmits<Emits>();
 
-  const handleStartQuickScan = async (): Promise<void> => {
-    if (!selectedUnitData.value || selectedUnitData.value.subnets.length === 0) {
-      alert('Выберите войсковую часть с подсетями для сканирования');
+  const { showToast } = useToast();
+  const monitoring = useMonitoring();
+  const militaryUnits = useMilitaryUnits();
+  const scriptsManager = useScripts();
+
+  const showQuickScanConfig = ref(false);
+  const isStartingScan = ref(false);
+  const historyFilter = ref('all');
+  const isLoadingTasks = ref(false);
+
+  const historyFilterOptions = [
+    { value: 'all', label: 'Все задачи' },
+    { value: 'completed', label: 'Завершенные' },
+    { value: 'failed', label: 'Неудачные' },
+    { value: 'cancelled', label: 'Отмененные' }
+  ];
+
+  const canStartScan = computed(() => {
+    return militaryUnits.units.value.length > 0 && scriptsManager.scripts.value.length > 0;
+  });
+
+  const activeTasks = computed(() => {
+    return (props.tasks || []).filter(task =>
+      task.status === 'running' || task.status === 'pending'
+    );
+  });
+
+  const taskHistory = computed(() => {
+    return (props.tasks || []).filter(task =>
+      task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled'
+    );
+  });
+
+  const filteredHistory = computed(() => {
+    if (historyFilter.value === 'all') return taskHistory.value;
+    return taskHistory.value.filter(task => task.status === historyFilter.value);
+  });
+
+  const startQuickScan = async (): Promise<void> => {
+    if (!canStartScan.value) {
+      showToast({
+        type: 'warning',
+        title: 'Невозможно запустить сканирование',
+        message: 'Добавьте войсковые части и скрипты для проверки'
+      });
       return;
     }
 
-    isScanning.value = true;
-    try {
-      await audit.startScan({
-        subnetId: selectedUnitData.value.subnets[0].id,
-        scanType: 'quick'
+    await startScan({
+      name: 'Быстрое сканирование',
+      unitIds: militaryUnits.units.value.map(u => u.id),
+      hostIds: [],
+      scriptIds: scriptsManager.checkScripts.value.slice(0, 3).map(s => s.id),
+      autoFix: false
+    });
+  };
+
+  const startComprehensiveScan = async (): Promise<void> => {
+    if (!canStartScan.value) {
+      showToast({
+        type: 'warning',
+        title: 'Невозможно запустить сканирование',
+        message: 'Добавьте войсковые части и скрипты для проверки'
       });
-    } finally {
-      isScanning.value = false;
-    }
-  };
-
-  const handleStartSubnetScan = async (subnet: Subnet): Promise<void> => {
-    isScanning.value = true;
-    try {
-      await audit.startScan({
-        subnetId: subnet.id,
-        scanType: 'comprehensive'
-      });
-    } finally {
-      isScanning.value = false;
-    }
-  };
-
-  const handleSelectUnit = (unit: MilitaryUnit): void => {
-    selectedUnitData.value = unit;
-  };
-
-  const handleShowCreateUnitDialog = (): void => {
-    console.log('Show create unit dialog');
-  };
-
-  const handleShowCreateSubnetDialog = (): void => {
-    if (!selectedUnitData.value) {
-      alert('Сначала выберите войсковую часть');
       return;
     }
-    console.log('Show create subnet dialog');
+
+    await startScan({
+      name: 'Полное сканирование',
+      unitIds: militaryUnits.units.value.map(u => u.id),
+      hostIds: [],
+      scriptIds: scriptsManager.checkScripts.value.map(s => s.id),
+      autoFix: true
+    });
   };
 
-  const getUnitStatusText = (status: string): string => {
+  const startScan = async (command: StartScanCommand): Promise<void> => {
+    isStartingScan.value = true;
+    try {
+      emit('start-scan', command);
+      showQuickScanConfig.value = false;
+    } catch (error) {
+      console.error('Failed to start scan:', error);
+    } finally {
+      isStartingScan.value = false;
+    }
+  };
+
+  const handleStartScan = (command: StartScanCommand): void => {
+    emit('start-scan', command);
+    showQuickScanConfig.value = false;
+  };
+
+  const cancelTask = (task: ScanTask): void => {
+    emit('cancel-scan', task.id);
+  };
+
+  const refreshTasks = async (): Promise<void> => {
+    isLoadingTasks.value = true;
+    try {
+      await monitoring.loadScanHistory();
+    } finally {
+      isLoadingTasks.value = false;
+    }
+  };
+
+  const viewTaskDetails = (task: ScanTask): void => {
+    // Navigate to task details
+    console.log('View task details:', task);
+  };
+
+  const viewTaskReport = (task: ScanTask): void => {
+    // Navigate to report
+    console.log('View task report:', task);
+  };
+
+  const rerunTask = (task: ScanTask): void => {
+    const command: StartScanCommand = {
+      name: `Повтор: ${task.name}`,
+      unitIds: task.unitIds,
+      hostIds: task.hostIds,
+      scriptIds: task.scriptIds,
+      autoFix: task.autoFix
+    };
+    emit('start-scan', command);
+  };
+
+  const getUnitsCount = (unitIds: string[]): number => {
+    return unitIds.length;
+  };
+
+  const getScriptsCount = (scriptIds: string[]): number => {
+    return scriptIds.length;
+  };
+
+  const getStatusText = (status: string): string => {
     const statusMap: Record<string, string> = {
-      active: 'Активна',
-      deployed: 'На выезде',
-      headquarters: 'Штаб'
+      pending: 'Ожидание',
+      running: 'Выполняется',
+      completed: 'Завершено',
+      failed: 'Ошибка',
+      cancelled: 'Отменено'
     };
     return statusMap[status] || status;
   };
 
-  const formatUnitDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('ru-RU');
-  };
-
-  const formatRemainingTime = (ms: number): string => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return minutes > 0 ? `${minutes} мин ${seconds} сек` : `${seconds} сек`;
-  };
-
-  const formatSubnetRelativeTime = (dateString: string): string => {
+  const formatDuration = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor(diff / 60000);
 
-    if (hours < 1) return 'Менее часа назад';
-    if (hours < 24) return `${hours} ч назад`;
-    return `${Math.floor(hours / 24)} дн назад`;
+    if (minutes < 1) return 'Только что';
+    if (minutes < 60) return `${minutes} мин назад`;
+    return `${Math.floor(minutes / 60)} ч назад`;
+  };
+
+  const formatTaskTime = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   onMounted(() => {
-    audit.loadMilitaryUnits();
+    militaryUnits.loadUnits();
+    scriptsManager.loadScripts();
+    monitoring.loadScanHistory();
   });
 </script>
 
@@ -300,18 +450,16 @@
     font-weight: 400;
   }
 
-  .monitoring-section {
+  /* Sections */
+  .quick-scan-section,
+  .active-tasks-section,
+  .scan-history-section {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 1.25rem;
     padding: 2rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s ease;
   }
-
-    .monitoring-section:hover {
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-    }
 
   .section-header {
     display: flex;
@@ -330,223 +478,177 @@
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
-    margin-right: 0.625rem;
+    margin-right: 0.5rem;
   }
 
-  .scan-button,
-  .add-button {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Quick Scan */
+  .quick-scan-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
   }
 
-    .scan-button:hover,
-    .add-button:hover {
+  .quick-scan-btn,
+  .comprehensive-scan-btn {
+    flex: 1;
+    transition: all 0.3s ease;
+  }
+
+    .quick-scan-btn:hover,
+    .comprehensive-scan-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(var(--color-primary-rgb), 0.3);
     }
 
-  /* Прогресс сканирования */
-  .scan-progress {
-    background: linear-gradient(135deg, var(--color-surface-hover), var(--color-surface));
-    border-radius: 1rem;
-    padding: 2rem;
-    border: 1px solid var(--color-border);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  .scan-requirements {
+    margin-top: 1rem;
   }
 
-  .scan-progress__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
-  }
-
-  .scan-progress__info {
-    flex: 1;
-  }
-
-  .scan-progress__title {
-    font-weight: 700;
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 1.25rem;
-    color: var(--color-text-primary);
-  }
-
-  .scan-progress__subtitle {
-    color: var(--color-text-secondary);
-    font-size: 0.95rem;
-  }
-
-  .scan-progress__percent {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--color-primary);
-  }
-
-  .scan-progress__bar {
-    height: 0.75rem;
-    background: var(--color-border);
-    border-radius: 1rem;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .scan-progress__fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
-    border-radius: 1rem;
-    transition: width 0.5s ease;
-    box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.4);
-  }
-
-  .scan-progress__details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-  }
-
-  /* Empty State */
-  .empty-state {
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--color-text-secondary);
-  }
-
-  .empty-state__icon {
-    width: 4rem;
-    height: 4rem;
-    margin-bottom: 1.5rem;
-    color: var(--color-text-muted);
-    opacity: 0.5;
-  }
-
-  .empty-state__text {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem 0;
-    color: var(--color-text-primary);
-  }
-
-  .empty-state__description {
-    margin: 0 0 1.5rem 0;
-    font-size: 1rem;
-  }
-
-  /* Сетка войсковых частей */
-  .units-grid {
+  /* Active Tasks */
+  .tasks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 1.5rem;
   }
 
-  .unit-card {
-    background: var(--color-surface);
+  .task-card {
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-border);
     border-radius: 1rem;
     padding: 1.5rem;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    transition: all 0.3s ease;
   }
 
-    .unit-card:hover {
-      transform: translateY(-4px);
+    .task-card:hover {
       border-color: var(--color-primary);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
 
-  .unit-card--selected {
-    border-color: var(--color-primary);
-    background: linear-gradient(135deg, var(--color-primary-light), var(--color-surface));
-    box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.15);
+  .task-card--running {
+    border-left: 4px solid var(--color-primary);
   }
 
-  .unit-card__header {
+  .task-card--completed {
+    border-left: 4px solid var(--color-success);
+  }
+
+  .task-card--failed {
+    border-left: 4px solid var(--color-error);
+  }
+
+  .task-card--cancelled {
+    border-left: 4px solid var(--color-warning);
+  }
+
+  .task-card__header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
   }
 
-  .unit-card__title {
+  .task-card__title {
     font-size: 1.125rem;
-    font-weight: 700;
+    font-weight: 600;
     margin: 0;
     color: var(--color-text-primary);
     flex: 1;
   }
 
-  .unit-card__status {
+  .task-card__status {
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.375rem 0.75rem;
+    padding: 0.25rem 0.75rem;
     border-radius: 2rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    white-space: nowrap;
   }
 
-  .status--active {
-    background: var(--color-success-light);
-    color: var(--color-success);
-  }
-
-  .status--deployed {
+  .status--pending {
     background: var(--color-warning-light);
     color: var(--color-warning);
   }
 
-  .status--headquarters {
+  .status--running {
     background: var(--color-primary-light);
     color: var(--color-primary);
   }
 
-  .unit-card__content {
+  .status--completed {
+    background: var(--color-success-light);
+    color: var(--color-success);
+  }
+
+  .status--failed {
+    background: var(--color-error-light);
+    color: var(--color-error);
+  }
+
+  .status--cancelled {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+  }
+
+  .task-card__progress {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     margin-bottom: 1rem;
   }
 
-  .unit-card__info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
+  .progress-bar {
+    flex: 1;
+    height: 0.5rem;
+    background: var(--color-border);
+    border-radius: 1rem;
+    overflow: hidden;
   }
 
-  .unit-card__location {
-    color: var(--color-text-primary);
-    font-weight: 500;
+  .progress-bar__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    border-radius: 1rem;
+    transition: width 0.3s ease;
   }
 
-  .unit-card__subnets {
-    color: var(--color-text-muted);
-  }
-
-  .unit-card__description {
-    color: var(--color-text-secondary);
+  .progress-text {
     font-size: 0.875rem;
-    line-height: 1.5;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 2.5rem;
   }
 
-  .unit-card__footer {
-    border-top: 1px solid var(--color-border);
-    padding-top: 1rem;
+  .task-card__details {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
   }
 
-  .unit-card__date {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
+  .task-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-secondary);
   }
 
-  /* Таблица подсетей */
-  .subnets-table {
+  .detail-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .task-card__actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  /* History Table */
+  .history-table {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 1rem;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
   }
 
   .table-header {
@@ -584,40 +686,43 @@
     color: var(--color-text-primary);
   }
 
-  .subnet-name {
+  .task-name {
     display: flex;
     flex-direction: column;
   }
 
-  .subnet-description {
+  .task-description {
     font-size: 0.8rem;
     color: var(--color-text-muted);
     margin-top: 0.25rem;
   }
 
-  .network-address {
-    background: var(--color-surface-hover);
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
-    font-family: 'Fira Code', monospace;
-    font-size: 0.85rem;
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
-  }
-
-  .devices-count {
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .last-scan {
-    color: var(--color-success);
-    font-weight: 500;
+  .progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .never-scanned {
-    color: var(--color-text-muted);
-    font-style: italic;
+  .progress-bar--small {
+    width: 60px;
+    height: 0.375rem;
+    background: var(--color-border);
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  .task-time {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
   }
 
   .actions {
@@ -625,13 +730,32 @@
     gap: 0.5rem;
   }
 
-  .scan-subnet-btn {
-    transition: all 0.3s ease;
+  /* Empty States */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--color-text-secondary);
   }
 
-    .scan-subnet-btn:hover {
-      transform: translateY(-1px);
-    }
+  .empty-state__icon {
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text-muted);
+    opacity: 0.5;
+  }
+
+  .empty-state__text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: var(--color-text-primary);
+  }
+
+  .empty-state__description {
+    margin: 0 0 1.5rem 0;
+    font-size: 1rem;
+  }
 
   /* Responsive */
   @media (max-width: 1200px) {
@@ -639,13 +763,8 @@
       font-size: 2rem;
     }
 
-    .monitoring-section {
-      padding: 1.75rem;
-    }
-
-    .units-grid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.25rem;
+    .tasks-grid {
+      grid-template-columns: 1fr;
     }
   }
 
@@ -658,7 +777,9 @@
       font-size: 1.125rem;
     }
 
-    .monitoring-section {
+    .quick-scan-section,
+    .active-tasks-section,
+    .scan-history-section {
       padding: 1.5rem;
     }
 
@@ -666,6 +787,10 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 1rem;
+    }
+
+    .quick-scan-actions {
+      flex-direction: column;
     }
 
     .table-header,
@@ -686,17 +811,9 @@
       gap: 1.5rem;
     }
 
-    .monitoring-view__header {
-      padding-bottom: 1rem;
-    }
-
-    .units-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-
-    .scan-progress {
-      padding: 1.5rem;
+    .task-card__details {
+      flex-direction: column;
+      gap: 0.5rem;
     }
   }
 
@@ -709,26 +826,15 @@
       font-size: 1rem;
     }
 
-    .monitoring-section {
+    .quick-scan-section,
+    .active-tasks-section,
+    .scan-history-section {
       padding: 1.25rem;
       border-radius: 1rem;
     }
 
     .section-title {
       font-size: 1.25rem;
-    }
-
-    .scan-progress {
-      padding: 1.25rem;
-    }
-
-    .scan-progress__header {
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .scan-progress__percent {
-      align-self: flex-end;
     }
   }
 </style>

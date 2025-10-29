@@ -4,7 +4,7 @@
     <label :for="checkboxId" class="base-checkbox__label">
       <input :id="checkboxId"
              type="checkbox"
-             :checked="modelValue"
+             :checked="isChecked"
              :disabled="disabled"
              :indeterminate="indeterminate"
              @change="onChange"
@@ -14,7 +14,7 @@
 
       <span class="base-checkbox__control">
         <span class="base-checkbox__icon">
-          <CheckIcon v-if="modelValue && !indeterminate" :size="12" />
+          <CheckIcon v-if="isChecked && !indeterminate" :size="12" />
           <MinusIcon v-else-if="indeterminate" :size="12" />
         </span>
       </span>
@@ -36,44 +36,77 @@
   import { CheckIcon, MinusIcon } from '@/assets/icons'
 
   interface Props {
-    modelValue: boolean
+    modelValue: boolean | string[]
     label?: string
     description?: string
     disabled?: boolean
     indeterminate?: boolean
     size?: 'sm' | 'md' | 'lg'
+    value?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     indeterminate: false,
     size: 'md',
+    value: undefined,
   })
 
   const emit = defineEmits<{
-    'update:modelValue': [value: boolean]
-    'change': [value: boolean]
+    'update:modelValue': [value: boolean | string[]]
+    'change': [value: boolean | string[]]
     'blur': [event: FocusEvent]
     'focus': [event: FocusEvent]
   }>()
 
   const checkboxId = computed(() => `checkbox-${useId()}`)
 
+  const isArrayModel = computed(() => Array.isArray(props.modelValue))
+
+  const isChecked = computed(() => {
+    if (isArrayModel.value) {
+      return props.value ? (props.modelValue as string[]).includes(props.value) : false
+    }
+    return props.modelValue as boolean
+  })
+
   const containerClasses = computed(() => [
     'base-checkbox',
     `base-checkbox--${props.size}`,
     {
       'base-checkbox--disabled': props.disabled,
-      'base-checkbox--checked': props.modelValue,
+      'base-checkbox--checked': isChecked.value,
       'base-checkbox--indeterminate': props.indeterminate,
     },
   ])
 
   const onChange = (event: Event) => {
     const target = event.target as HTMLInputElement
-    const newValue = target.checked
-    emit('update:modelValue', newValue)
-    emit('change', newValue)
+    const newChecked = target.checked
+
+    if (isArrayModel.value && props.value) {
+      const currentArray = [...(props.modelValue as string[])]
+      let newArray: string[]
+
+      if (newChecked) {
+        // Добавляем значение в массив, если его там нет
+        if (!currentArray.includes(props.value)) {
+          newArray = [...currentArray, props.value]
+        } else {
+          newArray = currentArray
+        }
+      } else {
+        // Удаляем значение из массива
+        newArray = currentArray.filter(item => item !== props.value)
+      }
+
+      emit('update:modelValue', newArray)
+      emit('change', newArray)
+    } else {
+      // Обычный boolean режим
+      emit('update:modelValue', newChecked)
+      emit('change', newChecked)
+    }
   }
 
   const onBlur = (event: FocusEvent) => {

@@ -68,7 +68,7 @@
   import { useRouter } from 'vue-router';
   import { useAuth } from '../composables/useAuth';
   import { useServerHealth } from '../composables/useServerHealth';
-  import { useThemeStore } from '@/framework/stores/theme.store';
+  import { useAppStore } from '@/framework/stores/app.store';
   import { useToast } from '@/framework/ui/composables/useToast';
   import AuthForm from '../components/AuthForm.vue';
   import ServerStatus from '../components/ServerStatus.vue';
@@ -79,11 +79,11 @@
   const router = useRouter();
   const auth = useAuth();
   const toast = useToast();
+  const appStore = useAppStore();
   const serverHealth = useServerHealth({
     checkInterval: APP_CONFIG.API.HEALTH_CHECK_INTERVAL,
     notifyOnStatusChange: true
   });
-  const themeStore = useThemeStore();
 
   const loggerContext = logger.create('AuthView');
   const serverUrl = ref(APP_CONFIG.API.BASE_URL);
@@ -92,8 +92,8 @@
   /**
    * Текущая тема
    */
-  const themeClass = computed(() => `theme-${themeStore.theme}`);
-  const isDarkTheme = computed(() => themeStore.isDark);
+  const themeClass = computed(() => `theme-${appStore.resolvedTheme}`);
+  const isDarkTheme = computed(() => appStore.isDark);
 
   /**
    * Заголовок кнопки переключения темы
@@ -106,8 +106,8 @@
    * Переключение темы
    */
   const toggleTheme = (): void => {
-    themeStore.toggle();
-    loggerContext.info('Theme toggled', { theme: themeStore.theme });
+    appStore.toggleTheme();
+    loggerContext.info('Theme toggled', { theme: appStore.currentTheme });
   };
 
   /**
@@ -164,22 +164,27 @@
 
       loggerContext.info('Login successful, redirecting to audit');
 
-      // Даем время для обновления состояния стора
+      // Даем время для обновления состояния стора и computed свойств
       await nextTick();
+      await new Promise(resolve => setTimeout(resolve, 100)); // Небольшая задержка
 
       // Явная проверка статуса аутентификации перед переходом
       if (auth.isAuthenticated.value) {
+        loggerContext.info('Authentication confirmed, redirecting to audit');
         // Используем replace чтобы избежать навигации назад к login
         await router.replace('/audit');
       } else {
-        loggerContext.error('Authentication state not updated after login');
+        loggerContext.error('Authentication state not updated after login', {
+          token: !!auth.token.value,
+          user: !!auth.user.value,
+          isAuthenticated: auth.isAuthenticated.value
+        });
         toast.error('Ошибка аутентификации');
       }
     } else {
       loggerContext.error('Login failed', { error: auth.error.value });
     }
   };
-
   /**
    * Ручная проверка сервера
    */

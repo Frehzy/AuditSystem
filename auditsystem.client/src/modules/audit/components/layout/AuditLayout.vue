@@ -1,34 +1,88 @@
-<!-- src/modules/audit/components/layout/AuditLayout.vue -->
 <template>
   <div class="audit-layout">
     <AuditSidebar :is-collapsed="isSidebarCollapsed"
+                  :active-view="currentView"
                   @toggle-theme="toggleTheme"
-                  @toggle-sidebar="toggleSidebar" />
+                  @toggle-sidebar="toggleSidebar"
+                  @nav-change="handleNavChange" />
 
     <div class="layout-content" :class="{ 'layout-content--expanded': isSidebarCollapsed }">
-      <AuditHeader />
+      <AuditHeader :title="currentViewTitle"
+                   :scan-progress="currentScan?.progress"
+                   :is-scanning="!!currentScan"
+                   :is-sidebar-collapsed="isSidebarCollapsed"
+                   :show-scan-button="showScanButton"
+                   @toggle-sidebar="toggleSidebar"
+                   @start-scan="$emit('start-scan')"
+                   @cancel-scan="$emit('cancel-scan')" />
+
       <main class="main-content">
-        <router-view />
+        <slot />
       </main>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue';
-  import { useThemeStore } from '@/framework/stores/theme.store';
+  import { ref, computed } from 'vue';
+  import { useRoute } from 'vue-router';
+  import { useAppStore } from '@/framework/stores/app.store';
   import AuditSidebar from './AuditSidebar.vue';
   import AuditHeader from './AuditHeader.vue';
 
-  const themeStore = useThemeStore();
+  interface Props {
+    currentScan?: any;
+  }
+
+  interface Emits {
+    (e: 'start-scan'): void;
+    (e: 'cancel-scan'): void;
+  }
+
+  defineProps<Props>();
+  defineEmits<Emits>();
+
+  const appStore = useAppStore();
+  const route = useRoute();
+
   const isSidebarCollapsed = ref(false);
+
+  const currentView = computed(() => {
+    const path = route.path;
+    if (path.startsWith('/audit/monitoring')) return 'monitoring';
+    if (path.startsWith('/audit/reports')) return 'reports';
+    if (path.startsWith('/audit/scripts')) return 'scripts';
+    if (path.startsWith('/audit/units')) return 'units';
+    if (path.startsWith('/audit/settings')) return 'settings';
+    return 'monitoring';
+  });
+
+  const currentViewTitle = computed(() => {
+    const titles = {
+      monitoring: 'Мониторинг',
+      reports: 'Отчеты',
+      scripts: 'Скрипты',
+      units: 'Войсковые части',
+      settings: 'Настройки'
+    };
+    return titles[currentView.value];
+  });
+
+  const showScanButton = computed(() => {
+    return currentView.value === 'monitoring';
+  });
 
   const toggleSidebar = (): void => {
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
   };
 
   const toggleTheme = (): void => {
-    themeStore.toggle();
+    appStore.toggleTheme();
+  };
+
+  const handleNavChange = (item: any): void => {
+    // Navigation is handled by router links in sidebar
+    // This is just for emitting events if needed
   };
 </script>
 

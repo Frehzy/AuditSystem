@@ -1,30 +1,30 @@
-// Main View
-export { default as AuditView } from './views/AuditView.vue';
-
-// Layout Components
-export { default as AuditLayout } from './components/layout/AuditLayout.vue';
-export { default as AuditHeader } from './components/layout/AuditHeader.vue';
-export { default as AuditSidebar } from './components/layout/AuditSidebar.vue';
-
-// View Components (для вложенных маршрутов)
-export { default as ReportsView } from './components/views/ReportsView.vue';
-export { default as MonitoringView } from './components/views/MonitoringView.vue';
-export { default as SettingsView } from './components/views/SettingsView.vue';
-
-// Composables
-export { default as useAudit } from './composables/useAudit';
-
-// API
+// src/modules/audit/index.ts
+export { useAudit } from './composables/useAudit';
+export { useMilitaryUnits } from './composables/useMilitaryUnits';
+export { useScripts } from './composables/useScripts';
+export { useMonitoring } from './composables/useMonitoring';
+export { useReports } from './composables/useReports';
 export { auditApiService } from './api/auditApi.service';
 
-// Types
 export type {
+  // Core Types
   MilitaryUnit,
   Subnet,
+  Host,
+  Script,
+  ScanTask,
   ScanResult,
-  Vulnerability,
+  Report,
   AuditSettings,
+
+  // Request Types
   StartScanCommand,
   CreateUnitCommand,
-  CreateSubnetCommand
+  CreateSubnetCommand,
+  CreateHostCommand,
+  CreateScriptCommand,
+
+  // Response Types
+  NetworkScanResult,
+  ConnectionTestResult
 } from './api/audit.types';

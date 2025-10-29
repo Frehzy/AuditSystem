@@ -1,8 +1,7 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
-import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
-import { storageService } from '@/core/services/core/auth/storage.service';
-import { tokenService } from '@/core/services/core/auth/token.service';
+import type { RouteRecordRaw } from 'vue-router';
+import { useAppStore } from '@/framework/stores/app.store';
 import { logger } from '@/core/utils/logger';
 
 // Динамические импорты для code splitting
@@ -11,6 +10,8 @@ const AuditView = () => import('@/modules/audit/views/AuditView.vue');
 const MonitoringView = () => import('@/modules/audit/components/views/MonitoringView.vue');
 const ReportsView = () => import('@/modules/audit/components/views/ReportsView.vue');
 const SettingsView = () => import('@/modules/audit/components/views/SettingsView.vue');
+const ScriptsView = () => import('@/modules/audit/components/views/ScriptsView.vue');
+const MilitaryUnitsView = () => import('@/modules/audit/components/views/MilitaryUnitsView.vue');
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -26,10 +27,9 @@ declare module 'vue-router' {
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/login',
+    redirect: '/audit/monitoring',
     meta: {
-      requiresGuest: true,
-      layout: 'auth'
+      requiresAuth: true
     }
   },
   {
@@ -54,9 +54,19 @@ const routes: RouteRecordRaw[] = [
       transition: 'slide-right',
       breadcrumb: 'Аудит',
     },
+    redirect: '/audit/monitoring',
     children: [
       {
-        path: '',
+        path: 'monitoring',
+        name: 'Monitoring',
+        component: MonitoringView,
+        meta: {
+          title: 'Мониторинг - AuditSystem Client',
+          breadcrumb: 'Мониторинг'
+        }
+      },
+      {
+        path: 'reports',
         name: 'Reports',
         component: ReportsView,
         meta: {
@@ -65,12 +75,21 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
-        path: 'monitoring',
-        name: 'Monitoring',
-        component: MonitoringView,
+        path: 'scripts',
+        name: 'Scripts',
+        component: ScriptsView,
         meta: {
-          title: 'Мониторинг - AuditSystem Client',
-          breadcrumb: 'Мониторинг'
+          title: 'Скрипты - AuditSystem Client',
+          breadcrumb: 'Скрипты'
+        }
+      },
+      {
+        path: 'units',
+        name: 'MilitaryUnits',
+        component: MilitaryUnitsView,
+        meta: {
+          title: 'Войсковые части - AuditSystem Client',
+          breadcrumb: 'Войсковые части'
         }
       },
       {
@@ -87,48 +106,43 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    redirect: '/login'
+    redirect: '/audit/monitoring'
   }
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, _from, savedPosition) {
+  scrollBehavior(to, from, savedPosition) {
+    // Сохраняем позицию скролла при переходе назад/вперед
     if (savedPosition) {
       return savedPosition;
     }
 
+    // Плавный скролл к якорю
     if (to.hash) {
       return {
         el: to.hash,
         behavior: 'smooth',
+        top: 80 // Отступ для фиксированного header'а
       };
     }
 
-    return { top: 0, behavior: 'smooth' };
+    // Сброс скролла наверх для новых маршрутов
+    if (to.path !== from.path) {
+      return { top: 0, behavior: 'smooth' };
+    }
+
+    return { top: 0 };
   },
 });
 
 /**
- * Проверка аутентификации
- */
-const isAuthenticated = (): boolean => {
-  const token = storageService.getToken();
-  if (!token) return false;
-
-  try {
-    return tokenService.isValidFormat(token) && !tokenService.isTokenExpired(token);
-  } catch {
-    return false;
-  }
-};
-
-/**
  * Навигационные guards
  */
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const loggerContext = logger.create('Router');
+  const appStore = useAppStore();
 
   loggerContext.router('Navigation guard check', {
     from: from.name?.toString() || from.path || 'unknown',
@@ -137,7 +151,7 @@ router.beforeEach((to, from, next) => {
     requiresGuest: to.meta?.requiresGuest
   });
 
-  const authenticated = isAuthenticated();
+  const authenticated = appStore.isAuthenticated;
 
   // Проверка аутентификации для защищенных маршрутов
   if (to.meta?.requiresAuth && !authenticated) {
@@ -149,7 +163,14 @@ router.beforeEach((to, from, next) => {
   // Перенаправление авторизованных пользователей с гостевых маршрутов
   if (to.meta?.requiresGuest && authenticated) {
     loggerContext.warn('Redirecting to audit - user already authenticated');
-    next('/audit');
+    next('/audit/monitoring');
+    return;
+  }
+
+  // Обработка несуществующих маршрутов
+  if (to.matched.length === 0) {
+    loggerContext.warn('Route not found, redirecting to monitoring');
+    next('/audit/monitoring');
     return;
   }
 
@@ -169,15 +190,24 @@ router.afterEach((to, from) => {
     to: to.name?.toString() || to.path,
     transition: to.meta?.transition,
   });
+
+  // Track page view for analytics
+  if (to.name) {
+    logger.info('Page view', { page: to.name.toString(), path: to.path });
+  }
 });
 
 router.onError((error) => {
   const loggerContext = logger.create('Router');
+  const appStore = useAppStore();
 
   loggerContext.error('Router error', {
     error: error.message,
     stack: error.stack,
   });
+
+  // Добавляем ошибку в store для отображения пользователю
+  appStore.addError('Ошибка загрузки страницы', 'error', 'router');
 });
 
 export default router;

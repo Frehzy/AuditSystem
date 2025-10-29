@@ -4,6 +4,7 @@ import { errorHandler } from '../utils/error-handler.service';
 import { httpService } from './http.service';
 import { APP_CONFIG } from '@/core/config/app.config';
 import type { ApiClient, ApiRequestOptions } from '@/core/types';
+import { mockService } from '@/core/services/mock/mock.service';
 
 class ApiClientImpl implements ApiClient {
   private readonly logger = logger.create('ApiClient');
@@ -37,10 +38,13 @@ class ApiClientImpl implements ApiClient {
     return this.request<T>('DELETE', endpoint, null, options);
   }
 
-  // В классе ApiClientImpl обновить метод checkHealth:
   async checkHealth(): Promise<boolean> {
+    // Если включен mock режим, считаем сервер доступным
+    if (mockService.isMockEnabled()) {
+      return true;
+    }
+
     try {
-      // Пробуем несколько возможных эндпоинтов для проверки здоровья
       const healthEndpoints = ['/api/health', '/api/health/db'];
 
       for (const endpoint of healthEndpoints) {
@@ -57,7 +61,6 @@ class ApiClientImpl implements ApiClient {
             return true;
           }
         } catch (error) {
-          // Продолжаем пробовать следующий эндпоинт
           this.logger.debug(`Health check failed for ${endpoint}`, {
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -114,6 +117,11 @@ class ApiClientImpl implements ApiClient {
     data?: unknown,
     options: ApiRequestOptions = {}
   ): Promise<T> {
+    // Проверяем, нужно ли использовать mock
+    if (await this.shouldUseMock()) {
+      return this.handleMockRequest<T>(method, endpoint, data);
+    }
+
     const url = this.buildUrl(endpoint);
     const config = this.buildRequestConfig(method, data, options);
 
@@ -152,6 +160,45 @@ class ApiClientImpl implements ApiClient {
       }
 
       throw handledError;
+    }
+  }
+
+  private async shouldUseMock(): Promise<boolean> {
+    // Если mock явно включен
+    if (mockService.isMockEnabled()) {
+      return true;
+    }
+
+    // В режиме разработки проверяем доступность сервера
+    if (APP_CONFIG.APP.ENV === 'development') {
+      try {
+        const isServerAvailable = await this.checkHealth();
+        return !isServerAvailable;
+      } catch {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async handleMockRequest<T>(
+    method: string,
+    endpoint: string,
+    data?: unknown
+  ): Promise<T> {
+    // Нормализуем endpoint - добавляем начальный слеш если его нет
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    this.logger.info(`Using mock for: ${method} ${normalizedEndpoint}`, { data });
+
+    try {
+      // Маппинг endpoint на mock методы
+      const mockResult = await mockService.handleRequest(method, normalizedEndpoint, data);
+      return mockResult as T;
+    } catch (error) {
+      this.logger.error('Mock request failed:', error);
+      throw errorHandler.handle(error, `MOCK:${method}:${normalizedEndpoint}`);
     }
   }
 
@@ -223,7 +270,7 @@ class ApiClientImpl implements ApiClient {
     return `${this.baseUrl}/${normalizedEndpoint}`;
   }
 
-  private buildRequestConfig(_method: string, _data: unknown, options: ApiRequestOptions): Record<string, unknown> {
+  private buildRequestConfig(method: string, data: unknown, options: ApiRequestOptions): Record<string, unknown> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
