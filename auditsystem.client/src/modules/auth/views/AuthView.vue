@@ -146,6 +146,7 @@
     if (auth.isLoading.value || !isServerAvailable.value) return;
 
     localError.value = null;
+    auth.clearError();
     loggerContext.info('Login attempt', { username: credentials.username });
 
     const success = await auth.login(credentials);
@@ -186,7 +187,7 @@
 
   const clearError = (): void => {
     localError.value = null;
-    auth.clearError?.();
+    auth.clearError();
     appStore.setAuthError(null);
   };
 

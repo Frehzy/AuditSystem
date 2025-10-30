@@ -13,7 +13,6 @@ export interface LogEntry {
 /**
  * Улучшенный логгер с поддержкой разных уровней и контекстов
  */
-
 interface LoggerConfig {
   enabled: boolean;
   level: LogLevel;
@@ -42,7 +41,8 @@ class Logger {
     auth: '🔐',
     storage: '💾',
     router: '🛣️',
-    performance: '⏱️'
+    performance: '⏱️',
+    network: '📡'
   };
 
   constructor(context: string = 'App') {
@@ -195,6 +195,10 @@ class Logger {
 
   performance(message: string, data?: unknown): void {
     this.log('debug', message, data, this.emojis.performance);
+  }
+
+  network(message: string, data?: unknown): void {
+    this.log('info', message, data, this.emojis.network);
   }
 
   /**

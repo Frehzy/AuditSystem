@@ -77,13 +77,14 @@ class AuthApiService {
     try {
       this.activeRequests.add(requestKey);
 
+      // Бекенд возвращает данные напрямую, а не в обертке Result<T>
       const requestPromise = this.executeRequest<LoginResponseData>(
         endpoint,
         'POST',
         credentials,
         {
           requireAuth: false,
-          signal: abortController.signal // передаем сигнал отмены
+          signal: abortController.signal
         }
       );
 
@@ -92,9 +93,9 @@ class AuthApiService {
       const response = await requestPromise;
       clearTimeout(timeoutId);
 
-      // Упрощенная проверка ответа - бекенд возвращает данные напрямую
+      // Прямая проверка ответа (бекенд возвращает данные напрямую)
       if (!response || typeof response !== 'object') {
-        throw errorHandler.create('Invalid response format', 'INVALID_RESPONSE');
+        throw errorHandler.create('Invalid response format from server', 'INVALID_RESPONSE_FORMAT');
       }
 
       // Проверяем наличие обязательных полей в ответе

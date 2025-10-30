@@ -138,8 +138,32 @@ class ApiClientImpl implements ApiClient {
           url
         });
 
-        // Handle standardized API responses
+        // Обработка стандартизированных ответов API
+        // Бэкенд использует формат Result<T>
         if (responseData && typeof responseData === 'object') {
+          // Если ответ соответствует формату Result<T>
+          if ('succeeded' in responseData && typeof responseData.succeeded === 'boolean') {
+            const result = responseData as { succeeded: boolean; data?: T; errors?: string[]; message?: string };
+
+            if (result.succeeded && result.data !== undefined) {
+              return result.data as T;
+            } else if (!result.succeeded) {
+              // Создаем ошибку на основе данных от бэкенда
+              const errorMessage = result.errors?.join(', ') || result.message || 'Request failed';
+              const error = new Error(errorMessage);
+              (error as { status?: number }).status = response.status;
+              (error as { details?: unknown }).details = {
+                backendErrors: result.errors,
+                backendMessage: result.message,
+                url,
+                method
+              };
+              (error as { code?: string }).code = this.getErrorCode(response.status);
+              throw error;
+            }
+          }
+
+          // Обработка legacy форматов для обратной совместимости
           if ('data' in responseData) {
             return responseData.data as T;
           }
@@ -215,7 +239,20 @@ class ApiClientImpl implements ApiClient {
         errorMessage = responseObj.data;
       } else if (typeof responseObj.data === 'object' && responseObj.data !== null) {
         const dataObj = responseObj.data as Record<string, unknown>;
-        if (dataObj.message) {
+
+        // Обработка формата Result<T> от бэкенда
+        if ('succeeded' in dataObj && dataObj.succeeded === false) {
+          const result = dataObj as { errors?: string[]; message?: string };
+          if (result.errors && result.errors.length > 0) {
+            errorMessage = result.errors.join(', ');
+          } else if (result.message) {
+            errorMessage = result.message;
+          }
+          errorDetails.backendErrors = result.errors;
+          errorDetails.backendMessage = result.message;
+        }
+        // Legacy обработка
+        else if (dataObj.message) {
           errorMessage = String(dataObj.message);
         } else if (dataObj.error) {
           errorMessage = String(dataObj.error);

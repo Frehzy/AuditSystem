@@ -1,11 +1,10 @@
 // src/modules/auth/composables/useAuth.ts
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/framework/stores/app.store';
 import { authApiService } from '../api/authApi.service';
 import { errorHandler } from '@/core/services/core/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
-import { tokenService } from '@/core/services/core/auth/token.service';
 import type { LoginCommand, UserDto } from '../api/auth.types';
 
 export const useAuth = () => {
@@ -13,12 +12,18 @@ export const useAuth = () => {
   const appStore = useAppStore();
   const loggerContext = logger.create('useAuth');
 
+  // Local state for better reactivity
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+
   const login = async (credentials: LoginCommand): Promise<boolean> => {
-    if (appStore.authLoading) {
+    if (isLoading.value) {
       loggerContext.warn('Login attempt while already loading');
       return false;
     }
 
+    isLoading.value = true;
+    error.value = null;
     appStore.setAuthLoading(true);
     appStore.setAuthError(null);
 
@@ -53,26 +58,37 @@ export const useAuth = () => {
       let errorMessage = 'Неизвестная ошибка';
 
       if (error instanceof Error) {
+        // Улучшенная обработка ошибок с учетом структуры бэкенда
         if (error.message.includes('timeout') || error.message.includes('таймаут')) {
           errorMessage = 'Сервер не отвежает. Проверьте подключение к сети.';
         } else if (error.message.includes('network') || error.message.includes('сеть')) {
           errorMessage = 'Ошибка сети. Сервер недоступен.';
+        } else if (error.message.includes('Invalid username or password') ||
+          error.message.includes('Invalid credentials')) {
+          errorMessage = 'Неверное имя пользователя или пароль';
+        } else if (error.message.includes('Account is deactivated')) {
+          errorMessage = 'Учетная запись деактивирована';
+        } else if (error.message.includes('User not found')) {
+          errorMessage = 'Пользователь не найден';
         } else {
           errorMessage = error.message;
         }
       }
 
+      error.value = errorMessage;
       appStore.setAuthError(errorMessage);
 
       loggerContext.error('Login failed', {
         error: errorMessage,
-        code: error instanceof Error ? error.name : 'UNKNOWN'
+        code: error instanceof Error ? error.name : 'UNKNOWN',
+        originalError: error
       });
       return false;
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      isLoading.value = false;
       appStore.setAuthLoading(false);
     }
   };
@@ -104,6 +120,7 @@ export const useAuth = () => {
     } finally {
       // Всегда очищаем данные аутентификации
       appStore.clearAuth();
+      error.value = null;
       loggerContext.auth('Logout completed - auth data cleared');
 
       // Redirect to login after logout
@@ -160,27 +177,23 @@ export const useAuth = () => {
     if (!token) return 0;
 
     try {
-      return tokenService.getTokenRemainingTime(token);
+      // Простая проверка - токен валиден если он есть и пользователь аутентифицирован
+      return appStore.isAuthenticated ? 3600 : 0;
     } catch {
       return 0;
     }
   };
 
-  // Проверка необходимости обновления токена
-  const shouldRefreshToken = computed(() => {
-    const remainingTime = getTokenRemainingTime();
-    return remainingTime > 0 && remainingTime < 5 * 60 * 1000; // 5 minutes
-  });
-
-  // Добавьте этот метод
+  // Метод для очистки ошибок
   const clearError = (): void => {
+    error.value = null;
     appStore.setAuthError(null);
   };
 
   return {
     // State
-    isLoading: computed(() => appStore.authLoading),
-    error: computed(() => appStore.authError),
+    isLoading: computed(() => isLoading.value),
+    error: computed(() => error.value),
     isAuthenticated: computed(() => appStore.isAuthenticated),
     user: computed(() => appStore.user),
     token: computed(() => appStore.token),
@@ -214,7 +227,10 @@ export const useAuth = () => {
 
     // Token utilities
     getTokenRemainingTime,
-    shouldRefreshToken,
+    shouldRefreshToken: computed(() => {
+      const remainingTime = getTokenRemainingTime();
+      return remainingTime > 0 && remainingTime < 5 * 60 * 1000; // 5 minutes
+    }),
   };
 };
 

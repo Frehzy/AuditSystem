@@ -32,7 +32,7 @@ export interface ValidateTokenRequest {
 
 // ==================== RESPONSE TYPES ====================
 
-// Базовый интерфейс для ответов API
+// Базовый интерфейс для ответов API (соответствует бэкенду Result<T>)
 export interface ApiResponse<T = unknown> {
   data?: T;
   success: boolean;
@@ -42,15 +42,12 @@ export interface ApiResponse<T = unknown> {
   statusCode?: number;
 }
 
-export interface SuccessResponse<T> extends ApiResponse<T> {
-  success: true;
-  data: T;
-}
-
-export interface ErrorResponse extends ApiResponse {
-  success: false;
-  errors: string[];
-  statusCode: number;
+// Тип для успешного ответа от бэкенда
+export interface Result<T> {
+  succeeded: boolean;
+  data?: T;
+  errors?: string[];
+  message?: string;
 }
 
 // Прямой ответ от бекенда (без обертки)
@@ -62,8 +59,8 @@ export interface LoginResponseData {
 }
 
 // Типы для обернутых ответов (если бекенд использует стандартную обертку)
-export type LoginResponse = SuccessResponse<LoginResponseData>;
-export type ValidateTokenResponse = ApiResponse;
+export type LoginResponse = Result<LoginResponseData>;
+export type ValidateTokenResponse = Result<unknown>;
 
 // ==================== STATE TYPES ====================
 
@@ -87,15 +84,15 @@ export interface AuthValidationErrors {
 // ==================== TYPE GUARDS ====================
 
 export const isSuccessResponse = <T>(
-  response: ApiResponse<T>
-): response is SuccessResponse<T> => {
-  return response.success === true && response.data !== undefined;
+  response: Result<T>
+): response is Result<T> & { succeeded: true; data: T } => {
+  return response.succeeded === true && response.data !== undefined;
 };
 
 export const isErrorResponse = (
-  response: ApiResponse
-): response is ErrorResponse => {
-  return response.success === false && Array.isArray(response.errors);
+  response: Result<unknown>
+): response is Result<unknown> & { succeeded: false; errors: string[] } => {
+  return response.succeeded === false && Array.isArray(response.errors);
 };
 
 export const isUserDto = (user: unknown): user is UserDto => {
@@ -114,6 +111,32 @@ export const isDirectLoginResponse = (response: unknown): response is LoginRespo
     'token' in response && typeof (response as LoginResponseData).token === 'string' &&
     'user' in response && typeof (response as LoginResponseData).user === 'object' &&
     'id' in (response as LoginResponseData).user && typeof (response as LoginResponseData).user.id === 'string';
+};
+
+// Проверка ответа от бэкенда в формате Result<T>
+export const isBackendResult = <T>(response: unknown): response is Result<T> => {
+  return !!response &&
+    typeof response === 'object' &&
+    'succeeded' in response && typeof (response as Result<T>).succeeded === 'boolean';
+};
+
+// Извлечение данных из ответа бэкенда
+export const extractBackendData = <T>(response: unknown): T | null => {
+  if (isBackendResult<T>(response) && response.succeeded && response.data) {
+    return response.data;
+  }
+  return null;
+};
+
+// Извлечение ошибок из ответа бэкенда
+export const extractBackendError = (response: unknown): string | null => {
+  if (isBackendResult<unknown>(response) && !response.succeeded) {
+    if (response.errors && response.errors.length > 0) {
+      return response.errors.join(', ');
+    }
+    return response.message || 'Unknown error from backend';
+  }
+  return null;
 };
 
 // ==================== CONSTANTS ====================
