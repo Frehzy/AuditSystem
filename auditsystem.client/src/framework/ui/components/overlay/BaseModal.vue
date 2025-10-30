@@ -2,7 +2,7 @@
 <template>
   <teleport to="body">
     <transition name="modal" @enter="onEnter" @leave="onLeave">
-      <div v-if="modelValue" class="base-modal" :class="[wrapperClass, modalClasses]">
+      <div v-if="modelValue" class="base-modal" :class="computedClasses">
         <!-- Backdrop -->
         <div class="base-modal__backdrop" @click="handleBackdropClick"></div>
 
@@ -23,9 +23,9 @@
                   <component :is="icon" />
                 </div>
               </slot>
-              <div>
+              <div class="base-modal__title-content">
                 <h2 :id="titleId" class="base-modal__title-text">{{ title }}</h2>
-                <p v-if="subtitle" class="base-modal__subtitle">{{ subtitle }}</p>
+                <p v-if="subtitle" :id="descriptionId" class="base-modal__subtitle">{{ subtitle }}</p>
               </div>
             </div>
             <button v-if="closable"
@@ -37,7 +37,7 @@
           </header>
 
           <!-- Content -->
-          <div class="base-modal__content" :id="descriptionId">
+          <div class="base-modal__content">
             <slot name="default">
               <div v-if="message" class="base-modal__message">
                 {{ message }}
@@ -124,19 +124,27 @@
   const titleId = `modal-title-${useId()}`
   const descriptionId = `modal-description-${useId()}`
 
-  const wrapperClass = computed(() => {
-    const classFromAttrs = attrs.class || attrs['wrapper-class'] || ''
-    return `${classFromAttrs} ${props.wrapperClass}`.trim()
-  })
+  const computedClasses = computed(() => {
+    const classes = [
+      props.wrapperClass,
+      `base-modal--${props.size}`,
+      `base-modal--blur-${props.overlayBlur}`,
+      {
+        'base-modal--persistent': props.persistent,
+        'base-modal--loading': props.loading,
+      },
+    ]
 
-  const modalClasses = computed(() => [
-    `base-modal--${props.size}`,
-    `base-modal--blur-${props.overlayBlur}`,
-    {
-      'base-modal--persistent': props.persistent,
-      'base-modal--loading': props.loading,
-    },
-  ])
+    if (attrs.class) {
+      if (typeof attrs.class === 'string') {
+        classes.push(attrs.class)
+      } else if (Array.isArray(attrs.class)) {
+        classes.push(...attrs.class)
+      }
+    }
+
+    return classes.filter(Boolean)
+  })
 
   const containerStyle = computed(() => ({
     '--modal-width': getModalWidth(),
@@ -224,7 +232,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-md, 1rem);
+    padding: var(--spacing-md, 1rem);
     animation: modal-fade-in 0.2s ease-out;
   }
 
@@ -234,9 +242,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: color-mix(in srgb, var(--color-background, #000) 40%, transparent);
+    background: color-mix(in srgb, var(--color-background) 40%, transparent);
     backdrop-filter: blur(var(--backdrop-blur, 8px));
-    transition: backdrop-filter 0.3s ease;
+    transition: backdrop-filter var(--transition-normal, 0.3s) ease;
   }
 
   .base-modal--blur-sm .base-modal__backdrop {
@@ -260,14 +268,14 @@
     width: var(--modal-width, 500px);
     max-width: var(--modal-max-width, 90vw);
     max-height: 90vh;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
     border-radius: var(--radius-xl, 1rem);
-    box-shadow: var(--shadow-2xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
     display: flex;
     flex-direction: column;
     overflow: hidden;
     animation: modal-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
   }
 
   .base-modal--fullscreen .base-modal__container {
@@ -296,16 +304,20 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: var(--space-xl, 1.5rem);
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    padding: var(--spacing-xl, 1.5rem);
+    border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
   }
 
   .base-modal__title {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-md, 1rem);
+    gap: var(--spacing-md, 1rem);
+    flex: 1;
+  }
+
+  .base-modal__title-content {
     flex: 1;
   }
 
@@ -316,13 +328,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-primary-light, #dbeafe);
-    color: var(--color-primary, #3b82f6);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
     flex-shrink: 0;
     margin-top: 0.125rem;
   }
 
-    .base-modal__title-icon :deep(svg) {
+    .base-modal__title-icon ::v-deep(svg) {
       width: 1.25rem;
       height: 1.25rem;
     }
@@ -331,14 +343,14 @@
     margin: 0;
     font-size: 1.25rem;
     font-weight: var(--font-weight-semibold, 600);
-    color: var(--color-text-primary, #111827);
+    color: var(--color-text-primary);
     line-height: 1.4;
   }
 
   .base-modal__subtitle {
-    margin: var(--space-xs, 0.25rem) 0 0 0;
+    margin: var(--spacing-xs, 0.25rem) 0 0 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     line-height: 1.4;
   }
 
@@ -346,20 +358,20 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: var(--space-xs, 0.5rem);
+    padding: var(--spacing-xs, 0.5rem);
     border-radius: var(--radius-sm, 0.375rem);
     transition: all var(--transition-fast, 0.15s) ease;
-    color: var(--color-text-muted, #9ca3af);
+    color: var(--color-text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin-left: var(--space-md, 1rem);
+    margin-left: var(--spacing-md, 1rem);
   }
 
     .base-modal__close:hover {
-      background: var(--color-surface-hover, #f9fafb);
-      color: var(--color-primary, #3b82f6);
+      background: var(--color-surface-hover);
+      color: var(--color-primary);
       transform: scale(1.1);
     }
 
@@ -367,13 +379,18 @@
       transform: scale(0.95);
     }
 
+    .base-modal__close:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
   .base-modal__content {
     flex: 1;
-    padding: var(--space-xl, 1.5rem);
+    padding: var(--spacing-xl, 1.5rem);
     overflow-y: auto;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     line-height: 1.6;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
   }
 
   .base-modal__message {
@@ -385,11 +402,11 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-md, 1rem);
-    padding: var(--space-xl, 1.5rem);
-    border-top: 1px solid var(--color-border, #e5e7eb);
+    gap: var(--spacing-md, 1rem);
+    padding: var(--spacing-xl, 1.5rem);
+    border-top: 1px solid var(--color-border);
     flex-shrink: 0;
-    background: var(--color-surface, #fff);
+    background: var(--color-surface);
   }
 
   .base-modal__footer-btn {
@@ -412,7 +429,7 @@
   /* Animations */
   .modal-enter-active,
   .modal-leave-active {
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-normal, 0.3s) ease;
   }
 
   .modal-enter-from,
@@ -422,7 +439,7 @@
 
   .modal-enter-active .base-modal__container,
   .modal-leave-active .base-modal__container {
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all var(--transition-normal, 0.3s) cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .modal-enter-from .base-modal__container {
@@ -460,7 +477,7 @@
   /* Responsive */
   @media (max-width: 640px) {
     .base-modal {
-      padding: var(--space-sm, 0.5rem);
+      padding: var(--spacing-sm, 0.5rem);
     }
 
     .base-modal__container {
@@ -469,9 +486,9 @@
     }
 
     .base-modal__header {
-      padding: var(--space-lg, 1.25rem);
+      padding: var(--spacing-lg, 1.25rem);
       flex-direction: column;
-      gap: var(--space-md, 1rem);
+      gap: var(--spacing-md, 1rem);
     }
 
     .base-modal__title {
@@ -484,13 +501,13 @@
     }
 
     .base-modal__content {
-      padding: var(--space-lg, 1.25rem);
+      padding: var(--spacing-lg, 1.25rem);
     }
 
     .base-modal__footer {
-      padding: var(--space-lg, 1.25rem);
+      padding: var(--spacing-lg, 1.25rem);
       flex-direction: column-reverse;
-      gap: var(--space-sm, 0.75rem);
+      gap: var(--spacing-sm, 0.75rem);
     }
 
     .base-modal__footer-btn {
@@ -502,7 +519,7 @@
     .base-modal__title {
       flex-direction: column;
       text-align: center;
-      gap: var(--space-sm, 0.75rem);
+      gap: var(--spacing-sm, 0.75rem);
     }
 
     .base-modal__title-icon {
@@ -510,21 +527,50 @@
     }
   }
 
-  /* Dark theme support */
-  @media (prefers-color-scheme: dark) {
+  /* Accessibility improvements */
+  @media (prefers-reduced-motion: reduce) {
+    .base-modal,
+    .base-modal__container,
+    .base-modal__backdrop,
+    .base-modal__close {
+      animation: none;
+      transition: none;
+    }
+  }
+
+  @media (prefers-contrast: high) {
     .base-modal__container {
-      background: var(--color-surface-dark, #1f2937);
-      border-color: var(--color-border-dark, #374151);
+      border: 2px solid var(--color-text-primary);
     }
 
-    .base-modal__header,
-    .base-modal__footer {
-      background: var(--color-surface-dark, #1f2937);
+    .base-modal__close {
+      border: 1px solid;
+    }
+  }
+
+  /* Scrollbar styling */
+  .base-modal__content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .base-modal__content::-webkit-scrollbar-track {
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
+  }
+
+  .base-modal__content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+    .base-modal__content::-webkit-scrollbar-thumb:hover {
+      background: var(--color-text-muted);
     }
 
-    .base-modal__title-icon {
-      background: var(--color-primary-dark, #1e40af);
-      color: var(--color-primary-light, #dbeafe);
-    }
+  /* Focus styles */
+  .base-modal__close:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
   }
 </style>

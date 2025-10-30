@@ -1,18 +1,81 @@
-<!-- src/assets/icons/status/ErrorIcon.vue -->
-<!-- Иконка ошибки -->
+<!-- ErrorIcon.vue -->
 <template>
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" :stroke="color" stroke-width="2" />
-    <path d="M15 9l-6 6m0-6l6 6" :stroke="color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <svg width="20"
+       height="20"
+       viewBox="0 0 24 24"
+       fill="none"
+       xmlns="http://www.w3.org/2000/svg"
+       :class="iconClasses">
+    <circle cx="12" cy="12" r="10"
+            :stroke="computedColor"
+            stroke-width="2" />
+    <path d="M15 9l-6 6m0-6l6 6"
+          :stroke="computedColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round" />
   </svg>
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
+
   interface Props {
     color?: string;
+    size?: number;
   }
 
-  withDefaults(defineProps<Props>(), {
-    color: 'currentColor'
-  });
+  const props = withDefaults(defineProps<Props>(), {
+    color: '',
+    size: 20
+  })
+
+  const computedColor = computed(() => {
+    if (props.color) return props.color
+    return 'var(--color-error)'
+  })
+
+  const iconClasses = computed(() => ({
+    'error-icon': true,
+    'theme-transition': true
+  }))
 </script>
+
+<style scoped>
+  .error-icon {
+    transition: color var(--transition-normal);
+  }
+
+    .error-icon svg {
+      color: var(--color-error);
+    }
+
+    .error-icon:hover {
+      color: var(--color-error-dark);
+    }
+
+  .error-icon {
+    transform-origin: center;
+    transition: all var(--transition-fast);
+  }
+
+    .error-icon:hover {
+      transform: scale(1.05);
+    }
+
+  @media (prefers-reduced-motion: reduce) {
+    .error-icon {
+      transition: none;
+    }
+
+      .error-icon:hover {
+        transform: none;
+      }
+  }
+
+  @media (prefers-contrast: high) {
+    .error-icon svg {
+      stroke-width: 2.5;
+    }
+  }
+</style>

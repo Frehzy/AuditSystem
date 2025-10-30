@@ -1,13 +1,13 @@
 <!-- src/App.vue -->
 <template>
-  <div id="app" :class="themeClass">
+  <div id="app" :class="[themeClass, { 'theme-transition': enableTransitions }]">
     <RouterView />
     <BaseToast />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { onMounted, onUnmounted, computed } from 'vue';
+  import { onMounted, onUnmounted, computed, ref } from 'vue';
   import { RouterView, useRouter } from 'vue-router';
   import BaseToast from '@/framework/ui/components/feedback/BaseToast.vue';
   import { useAppStore } from '@/framework/stores/app.store';
@@ -19,7 +19,9 @@
   provideToast(createToastApi());
 
   const appStore = useAppStore();
+  const router = useRouter();
   const loggerContext = logger.create('App');
+  const enableTransitions = ref(true);
 
   /**
    * Текущий класс темы
@@ -50,25 +52,44 @@
     }
   };
 
+  /**
+   * Обработчик изменения системной темы
+   */
+  const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+    const systemTheme = e.matches ? 'dark' : 'light';
+    loggerContext.debug('System theme preference changed:', systemTheme);
+
+    // Автоматическое следование системной теме, если не выбрана пользовательская
+    if (appStore.themePreference === 'auto') { // Исправлено с 'system' на 'auto'
+      appStore.setTheme(systemTheme);
+    }
+  };
+
+  /**
+   * Обработчик для reduced motion preference
+   */
+  const handleReducedMotionChange = (e: MediaQueryListEvent) => {
+    enableTransitions.value = !e.matches;
+    loggerContext.debug('Reduced motion preference:', e.matches ? 'enabled' : 'disabled');
+  };
+
   onMounted(() => {
     // Инициализация темы
     appStore.initializeTheme();
 
     // Сохранение router в глобальной области для navigation.service
     if (import.meta.env.DEV) {
-      (window as any).__VUE_ROUTER__ = useRouter();
+      (window as any).__VUE_ROUTER__ = router;
     }
 
     // Добавляем слушатель системных предпочтений темы
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    themeMediaQuery.addEventListener('change', handleSystemThemeChange);
 
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      const systemTheme = e.matches ? 'dark' : 'light';
-      loggerContext.debug('System theme preference changed:', systemTheme);
-      // Можно добавить логику для автоматического следования системной теме
-    };
-
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    // Добавляем слушатель reduced motion preference
+    const motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    motionMediaQuery.addEventListener('change', handleReducedMotionChange);
+    enableTransitions.value = !motionMediaQuery.matches;
 
     // Инициализация слушателей событий
     window.addEventListener('online', handleOnline);
@@ -78,12 +99,15 @@
     loggerContext.info('Application mounted', {
       online: navigator.onLine,
       userAgent: navigator.userAgent,
-      theme: appStore.currentTheme
+      theme: appStore.currentTheme,
+      themePreference: appStore.themePreference,
+      reducedMotion: !enableTransitions.value
     });
 
     // Cleanup function
     return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      themeMediaQuery.removeEventListener('change', handleSystemThemeChange);
+      motionMediaQuery.removeEventListener('change', handleReducedMotionChange);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -111,7 +135,7 @@
   }
 
   body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-family-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
     background-color: var(--color-background);
     color: var(--color-text-primary);
     line-height: 1.6;
@@ -126,27 +150,28 @@
     flex-direction: column;
   }
 
-  /* Scrollbar styles */
+  /* Scrollbar styles - используем переменные из theme.css */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--color-background);
-    border-radius: 4px;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
   }
 
   ::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
   }
 
     ::-webkit-scrollbar-thumb:hover {
       background: var(--color-text-muted);
     }
 
-  /* Selection styles */
+  /* Selection styles - используем переменные из theme.css */
   ::selection {
     background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
     color: var(--color-text-primary);
@@ -157,14 +182,14 @@
     color: var(--color-text-primary);
   }
 
-  /* Focus styles for accessibility */
+  /* Focus styles for accessibility - используем focus-ring из theme.css */
   :focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid transparent;
     outline-offset: 2px;
-    border-radius: 2px;
+    box-shadow: var(--shadow-focus);
   }
 
-  /* Utility classes */
+  /* Utility classes - дополняем существующие */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -183,6 +208,7 @@
     white-space: nowrap;
   }
 
+  /* Animation classes - используем переменные переходов */
   .fade-enter-active,
   .fade-leave-active {
     transition: opacity var(--transition-normal);
@@ -223,6 +249,57 @@
     opacity: 0;
   }
 
+  /* Card-like surfaces для консистентности */
+  .surface-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+  }
+
+    .surface-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+  /* Status indicators */
+  .status-online {
+    background: var(--status-online-bg);
+    border: 1px solid var(--status-online-border);
+    color: var(--status-online-text);
+  }
+
+  .status-offline {
+    background: var(--status-offline-bg);
+    border: 1px solid var(--status-offline-border);
+    color: var(--status-offline-text);
+  }
+
+  .status-checking {
+    background: var(--status-checking-bg);
+    border: 1px solid var(--status-checking-border);
+    color: var(--status-checking-text);
+  }
+
+  /* Button-like interactive elements */
+  .interactive-element {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+  }
+
+    .interactive-element:hover {
+      background: var(--color-surface-hover);
+      border-color: var(--color-primary);
+    }
+
+    .interactive-element:focus-visible {
+      box-shadow: var(--shadow-focus);
+    }
+
   /* Print styles */
   @media print {
     * {
@@ -235,9 +312,15 @@
     .no-print {
       display: none !important;
     }
+
+    /* Используем print переменные из theme.css */
+    body {
+      background-color: var(--color-background, #ffffff) !important;
+      color: var(--color-text-primary, #000000) !important;
+    }
   }
 
-  /* Reduced motion for accessibility */
+  /* Reduced motion for accessibility - используем логику из theme.css */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -249,45 +332,166 @@
     }
   }
 
-  /* High contrast support */
+  /* High contrast support - используем логику из theme.css */
   @media (prefers-contrast: high) {
     :root {
-      --border-width: 2px;
+      --color-border: var(--color-text-primary);
+      --shadow-md: 0 0 0 1px var(--color-text-primary);
+    }
+
+    .interactive-element {
+      border: 2px solid;
     }
   }
 
-  /* Mobile first responsive design */
+  /* Container system с использованием CSS переменных для spacing */
   .container {
     width: 100%;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 var(--spacing-md, 1rem);
   }
 
   @media (min-width: 640px) {
     .container {
       max-width: 640px;
-      padding: 0 1.5rem;
+      padding: 0 var(--spacing-lg, 1.5rem);
     }
   }
 
   @media (min-width: 768px) {
     .container {
       max-width: 768px;
-      padding: 0 2rem;
+      padding: 0 var(--spacing-xl, 2rem);
     }
   }
 
   @media (min-width: 1024px) {
     .container {
       max-width: 1024px;
-      padding: 0 2.5rem;
+      padding: 0 var(--spacing-xl, 2rem);
     }
   }
 
   @media (min-width: 1280px) {
     .container {
       max-width: 1280px;
-      padding: 0 3rem;
+      padding: 0 var(--spacing-2xl, 3rem);
     }
+  }
+
+  /* Grid system для консистентности */
+  .grid {
+    display: grid;
+    gap: var(--spacing-md, 1rem);
+  }
+
+  .grid-cols-1 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Flex utilities */
+  .flex {
+    display: flex;
+  }
+
+  .flex-col {
+    flex-direction: column;
+  }
+
+  .items-center {
+    align-items: center;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+
+  .gap-sm {
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .gap-md {
+    gap: var(--spacing-md, 1rem);
+  }
+
+  .gap-lg {
+    gap: var(--spacing-lg, 1.5rem);
+  }
+
+  /* Text utilities с использованием CSS переменных */
+  .text-primary {
+    color: var(--color-text-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+
+  .text-success {
+    color: var(--color-success);
+  }
+
+  .text-error {
+    color: var(--color-error);
+  }
+
+  .text-warning {
+    color: var(--color-warning);
+  }
+
+  .text-info {
+    color: var(--color-info);
+  }
+
+  .text-sm {
+    font-size: 0.875rem;
+  }
+
+  .text-base {
+    font-size: 1rem;
+  }
+
+  .text-lg {
+    font-size: 1.125rem;
+  }
+
+  .text-xl {
+    font-size: 1.25rem;
+  }
+
+  .font-medium {
+    font-weight: 500;
+  }
+
+  .font-semibold {
+    font-weight: 600;
+  }
+
+  .font-bold {
+    font-weight: 700;
   }
 </style>

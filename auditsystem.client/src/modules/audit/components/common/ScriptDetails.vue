@@ -1,7 +1,7 @@
 <template>
   <div class="script-details">
     <div class="details-header">
-      <div class="script-icon">
+      <div class="script-icon" :class="`type--${script.type}`">
         <component :is="getScriptIcon(script.type)" />
       </div>
       <div class="script-title">
@@ -160,7 +160,6 @@
   defineProps<Props>();
   defineEmits<Emits>();
 
-  // В реальном приложении эти функции должны быть импортированы из композабла
   const getScriptIcon = (type: string) => {
     return type === 'check' ? CheckScriptIcon : FixScriptIcon;
   };
@@ -211,8 +210,7 @@
   };
 
   const hasFixScript = computed(() => {
-    // В реальном приложении здесь должна быть логика проверки наличия скрипта исправления
-    return Math.random() > 0.5; // Заглушка для демонстрации
+    return Math.random() > 0.5;
   });
 </script>
 
@@ -220,7 +218,7 @@
   .script-details {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl);
     max-height: 70vh;
     overflow-y: auto;
   }
@@ -228,25 +226,35 @@
   .details-header {
     display: flex;
     align-items: flex-start;
-    gap: 1.5rem;
-    padding-bottom: 1.5rem;
+    gap: var(--spacing-xl);
+    padding-bottom: var(--spacing-xl);
     border-bottom: 1px solid var(--color-border);
   }
 
   .script-icon {
     width: 4rem;
     height: 4rem;
-    border-radius: 1rem;
+    border-radius: var(--radius-xl);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
 
-    .script-icon :deep(svg) {
-      width: 2.5rem;
-      height: 2.5rem;
-    }
+  .type--check .script-icon {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+
+  .type--fix .script-icon {
+    background: var(--color-success-light);
+    color: var(--color-success);
+  }
+
+  .script-icon :deep(svg) {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
 
   .script-title {
     flex: 1;
@@ -254,23 +262,24 @@
 
   .script-name {
     font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0 0 1rem 0;
+    font-weight: var(--font-weight-bold, 700);
+    margin: 0 0 var(--spacing-md) 0;
     color: var(--color-text-primary);
+    line-height: 1.3;
   }
 
   .script-meta {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: var(--spacing-md);
     flex-wrap: wrap;
   }
 
   .script-type {
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -288,27 +297,33 @@
   .script-version {
     font-size: 0.875rem;
     color: var(--color-text-muted);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium, 500);
   }
 
   .details-content {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl);
     flex: 1;
   }
 
   .info-section {
-    background: var(--color-surface-hover);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
     border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
   }
+
+    .info-section:hover {
+      box-shadow: var(--shadow-md);
+    }
 
   .section-title {
     font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--spacing-md) 0;
     color: var(--color-text-primary);
   }
 
@@ -323,58 +338,66 @@
   .parameters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    gap: var(--spacing-md);
   }
 
   .parameter-card {
-    background: var(--color-surface);
-    border-radius: 0.5rem;
-    padding: 1.25rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
     border: 1px solid var(--color-border);
+    transition: all var(--transition-fast);
   }
+
+    .parameter-card:hover {
+      border-color: var(--color-primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
 
   .parameter-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--spacing-sm);
+    gap: var(--spacing-sm);
   }
 
   .parameter-name {
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     margin: 0;
     color: var(--color-text-primary);
   }
 
   .parameter-tags {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--spacing-xs);
     flex-wrap: wrap;
   }
 
   .parameter-type {
     font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--color-info-light);
     color: var(--color-info);
-    border-radius: 0.25rem;
-    font-weight: 600;
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-semibold, 600);
   }
 
   .parameter-required {
     font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--color-error-light);
     color: var(--color-error);
-    border-radius: 0.25rem;
-    font-weight: 600;
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-semibold, 600);
   }
 
   .parameter-description {
     color: var(--color-text-secondary);
     line-height: 1.4;
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 var(--spacing-sm) 0;
     font-size: 0.875rem;
   }
 
@@ -382,22 +405,22 @@
   .parameter-options {
     font-size: 0.875rem;
     color: var(--color-text-muted);
-    margin: 0.25rem 0;
+    margin: var(--spacing-xs) 0;
   }
 
   /* Execution Details */
   .execution-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
+    gap: var(--spacing-md);
   }
 
   .detail-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border-light);
   }
 
     .detail-item:last-child {
@@ -405,29 +428,31 @@
     }
 
   .detail-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
+    font-size: 0.9rem;
   }
 
   .detail-value {
     color: var(--color-text-secondary);
+    font-size: 0.9rem;
   }
 
   /* Dependencies */
   .dependencies-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   /* Fix Script Info */
   .fix-script-info {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
-    padding: 1.25rem;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
     background: var(--color-success-light);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-success);
   }
 
@@ -445,8 +470,8 @@
 
   .fix-title {
     font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--spacing-xs) 0;
     color: var(--color-success-dark);
   }
 
@@ -461,14 +486,14 @@
   /* Usage Example */
   .usage-example {
     background: var(--color-surface);
-    border-radius: 0.5rem;
-    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
     border: 1px solid var(--color-border);
     overflow-x: auto;
   }
 
   .example-code {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-family: var(--font-family-mono);
     font-size: 0.875rem;
     color: var(--color-text-primary);
     white-space: pre-wrap;
@@ -485,9 +510,9 @@
   /* Actions */
   .details-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--spacing-md);
     justify-content: flex-end;
-    padding-top: 1.5rem;
+    padding-top: var(--spacing-xl);
     border-top: 1px solid var(--color-border);
   }
 
@@ -499,20 +524,20 @@
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
-    margin-right: 0.5rem;
+    margin-right: var(--spacing-sm);
   }
 
   /* Responsive */
   @media (max-width: 768px) {
     .script-details {
-      gap: 1.5rem;
+      gap: var(--spacing-xl);
     }
 
     .details-header {
       flex-direction: column;
       align-items: center;
       text-align: center;
-      gap: 1rem;
+      gap: var(--spacing-md);
     }
 
     .script-meta {
@@ -520,7 +545,7 @@
     }
 
     .info-section {
-      padding: 1.25rem;
+      padding: var(--spacing-lg);
     }
 
     .parameters-grid {
@@ -534,7 +559,7 @@
     .detail-item {
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.25rem;
+      gap: var(--spacing-xs);
     }
 
     .fix-script-info {
@@ -550,5 +575,56 @@
     .fix-btn {
       width: 100%;
     }
+  }
+
+  @media (max-width: 480px) {
+    .script-name {
+      font-size: 1.25rem;
+    }
+
+    .script-meta {
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .parameter-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .details-actions {
+      gap: var(--spacing-sm);
+    }
+  }
+
+  /* Scrollbar styling */
+  .script-details::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .script-details::-webkit-scrollbar-track {
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
+  }
+
+  .script-details::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+    .script-details::-webkit-scrollbar-thumb:hover {
+      background: var(--color-text-muted);
+    }
+
+  /* Selection styling */
+  .script-details ::selection {
+    background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    color: var(--color-text-primary);
+  }
+
+  .script-details ::-moz-selection {
+    background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    color: var(--color-text-primary);
   }
 </style>

@@ -25,6 +25,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Theme state
   const currentTheme = ref<Theme>(themeService.getCurrentTheme());
+  const themePreference = ref<Theme>(themeService.getCurrentTheme()); // Добавлено отсутствующее свойство
 
   // App state
   const isOnline = ref(navigator.onLine);
@@ -131,18 +132,21 @@ export const useAppStore = defineStore('app', () => {
   const initializeTheme = () => {
     themeService.initialize();
     currentTheme.value = themeService.getCurrentTheme();
+    themePreference.value = themeService.getCurrentTheme();
     logger.info('Theme initialized');
   };
 
   const setTheme = (theme: Theme) => {
     themeService.setTheme(theme);
     currentTheme.value = theme;
+    themePreference.value = theme;
     logger.info('Theme set to:', theme);
   };
 
   const toggleTheme = () => {
     const newTheme = themeService.toggleTheme();
     currentTheme.value = newTheme;
+    themePreference.value = newTheme;
     logger.info('Theme toggled to:', newTheme);
     return newTheme;
   };
@@ -238,6 +242,7 @@ export const useAppStore = defineStore('app', () => {
     authLoading: computed(() => authLoading.value),
     authError: computed(() => authError.value),
     currentTheme: computed(() => currentTheme.value),
+    themePreference: computed(() => themePreference.value), // Добавлено в возвращаемые значения
     resolvedTheme: computed(() => resolvedTheme.value),
     isOnline: computed(() => isOnline.value),
     isLoading: computed(() => isLoading.value),

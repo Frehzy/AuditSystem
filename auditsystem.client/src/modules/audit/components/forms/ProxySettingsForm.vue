@@ -2,11 +2,17 @@
   <div class="proxy-settings-form">
     <form @submit.prevent="handleSubmit" class="form">
       <div class="form-content">
-        <h3 class="form-title">Настройки прокси-сервера</h3>
+        <div class="form-header">
+          <h3 class="form-title">Настройки прокси-сервера</h3>
+          <p class="form-subtitle">Настройте параметры прокси-сервера для исходящих подключений</p>
+        </div>
 
         <!-- Основные настройки -->
         <div class="form-section">
-          <h4 class="section-title">Основные параметры</h4>
+          <div class="section-header">
+            <h4 class="section-title">Основные параметры</h4>
+            <p class="section-description">Включите и настройте базовые параметры прокси-сервера</p>
+          </div>
 
           <div class="form-grid">
             <div class="form-group">
@@ -44,7 +50,10 @@
 
         <!-- Учетные данные -->
         <div v-if="formData.enabled && formData.authType !== 'none'" class="form-section">
-          <h4 class="section-title">Учетные данные прокси</h4>
+          <div class="section-header">
+            <h4 class="section-title">Учетные данные прокси</h4>
+            <p class="section-description">Настройте параметры аутентификации для доступа к прокси</p>
+          </div>
 
           <div class="form-grid">
             <div class="form-group">
@@ -79,47 +88,66 @@
 
         <!-- Тестирование подключения -->
         <div v-if="formData.enabled" class="form-section">
-          <h4 class="section-title">Проверка подключения</h4>
-
-          <div class="test-connection">
-            <BaseButton @click="testConnection"
-                        variant="secondary"
-                        :loading="isTesting"
-                        :disabled="!canTestConnection"
-                        class="test-btn">
-              <TestConnectionIcon class="button-icon" />
-              Проверить подключение
-            </BaseButton>
-
-            <div v-if="testResult" class="test-result" :class="`test-result--${testResult.type}`">
-              <component :is="testResult.icon" class="result-icon" />
-              <span class="result-message">{{ testResult.message }}</span>
-            </div>
+          <div class="section-header">
+            <h4 class="section-title">Проверка подключения</h4>
+            <p class="section-description">Протестируйте подключение к прокси-серверу перед сохранением</p>
           </div>
 
-          <div class="connection-info">
-            <h5 class="info-title">Информация о подключении:</h5>
-            <ul class="info-list">
-              <li class="info-item">
-                <CheckCircleIcon class="info-icon" />
-                <span>Прокси будет использоваться для всех исходящих подключений</span>
-              </li>
-              <li class="info-item">
-                <CheckCircleIcon class="info-icon" />
-                <span>Поддерживаются протоколы HTTP и SOCKS5</span>
-              </li>
-              <li class="info-item">
-                <CheckCircleIcon class="info-icon" />
-                <span>Автоматическое определение настроек из переменных окружения</span>
-              </li>
-            </ul>
+          <div class="test-connection">
+            <div class="test-controls">
+              <BaseButton @click="testConnection"
+                          variant="secondary"
+                          :loading="isTesting"
+                          :disabled="!canTestConnection"
+                          class="test-btn">
+                <TestConnectionIcon class="button-icon" />
+                Проверить подключение
+              </BaseButton>
+
+              <div v-if="testResult" class="test-result" :class="`test-result--${testResult.type}`">
+                <component :is="testResult.icon" class="result-icon" />
+                <span class="result-message">{{ testResult.message }}</span>
+              </div>
+            </div>
+
+            <div class="connection-info">
+              <h5 class="info-title">Информация о подключении:</h5>
+              <div class="info-grid">
+                <div class="info-item">
+                  <div class="info-icon-wrapper">
+                    <CheckCircleIcon class="info-icon" />
+                  </div>
+                  <div class="info-content">
+                    <span class="info-text">Прокси будет использоваться для всех исходящих подключений</span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon-wrapper">
+                    <CheckCircleIcon class="info-icon" />
+                  </div>
+                  <div class="info-content">
+                    <span class="info-text">Поддерживаются протоколы HTTP и SOCKS5</span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon-wrapper">
+                    <CheckCircleIcon class="info-icon" />
+                  </div>
+                  <div class="info-content">
+                    <span class="info-text">Автоматическое определение настроек из переменных окружения</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Предупреждение при отключении -->
         <div v-else class="form-section warning-section">
           <div class="warning-content">
-            <AlertIcon class="warning-icon" />
+            <div class="warning-icon-wrapper">
+              <AlertIcon class="warning-icon" />
+            </div>
             <div class="warning-text">
               <h5 class="warning-title">Прокси отключен</h5>
               <p class="warning-description">
@@ -178,12 +206,11 @@
   const props = defineProps<Props>();
   const emit = defineEmits<Emits>();
 
-  const toast = useToast(); // ИЗМЕНЕНО: используем объект toast вместо деструктуризации
+  const { showToast } = useToast();
 
   const isSubmitting = ref(false);
   const isTesting = ref(false);
 
-  // ИЗМЕНЕНО: Добавляем типизацию для полей формы
   const formData = ref<ProxySettings>({
     enabled: false,
     host: '',
@@ -214,7 +241,7 @@
 
     if (formData.value.authType === 'password') {
       return hasHost && hasPort &&
-        formData.value.username?.trim() !== '' && // ИЗМЕНЕНО: используем optional chaining
+        formData.value.username?.trim() !== '' &&
         formData.value.password?.trim() !== '';
     } else if (formData.value.authType === 'rsa') {
       return hasHost && hasPort &&
@@ -258,11 +285,11 @@
 
   const validateForm = (): boolean => {
     if (!formData.value.enabled) {
-      return true; // Прокси отключен - валидация не требуется
+      return true;
     }
 
     if (!formData.value.host.trim()) {
-      toast.showToast({
+      showToast({
         type: 'warning',
         title: 'Заполните хост прокси',
         message: 'Адрес прокси-сервера обязателен для заполнения'
@@ -271,7 +298,7 @@
     }
 
     if (!formData.value.port || formData.value.port < 1 || formData.value.port > 65535) {
-      toast.showToast({
+      showToast({
         type: 'warning',
         title: 'Неверный порт',
         message: 'Порт должен быть в диапазоне от 1 до 65535'
@@ -280,16 +307,16 @@
     }
 
     if (formData.value.authType === 'password') {
-      if (!formData.value.username?.trim()) { // ИЗМЕНЕНО: optional chaining
-        toast.showToast({
+      if (!formData.value.username?.trim()) {
+        showToast({
           type: 'warning',
           title: 'Заполните имя пользователя',
           message: 'Имя пользователя обязательно для данного типа авторизации'
         });
         return false;
       }
-      if (!formData.value.password?.trim()) { // ИЗМЕНЕНО: optional chaining
-        toast.showToast({
+      if (!formData.value.password?.trim()) {
+        showToast({
           type: 'warning',
           title: 'Заполните пароль',
           message: 'Пароль обязателен для данного типа авторизации'
@@ -297,16 +324,16 @@
         return false;
       }
     } else if (formData.value.authType === 'rsa') {
-      if (!formData.value.username?.trim()) { // ИЗМЕНЕНО: optional chaining
-        toast.showToast({
+      if (!formData.value.username?.trim()) {
+        showToast({
           type: 'warning',
           title: 'Заполните имя пользователя',
           message: 'Имя пользователя обязательно для данного типа авторизации'
         });
         return false;
       }
-      if (!formData.value.rsaKey?.trim()) { // ИЗМЕНЕНО: optional chaining
-        toast.showToast({
+      if (!formData.value.rsaKey?.trim()) {
+        showToast({
           type: 'warning',
           title: 'Заполните RSA ключ',
           message: 'RSA приватный ключ обязателен для данного типа авторизации'
@@ -320,7 +347,7 @@
 
   const testConnection = async (): Promise<void> => {
     if (!canTestConnection.value) {
-      toast.showToast({
+      showToast({
         type: 'warning',
         title: 'Заполните данные',
         message: 'Для тестирования подключения заполните все обязательные поля'
@@ -349,7 +376,7 @@
           icon: CheckCircleIcon,
           message: result.message
         };
-        toast.showToast({
+        showToast({
           type: 'success',
           title: 'Подключение успешно',
           message: 'Соединение с прокси-сервером установлено'
@@ -363,7 +390,7 @@
         icon: XCircleIcon,
         message: error instanceof Error ? error.message : 'Неизвестная ошибка'
       };
-      toast.showToast({
+      showToast({
         type: 'error',
         title: 'Ошибка подключения',
         message: 'Не удалось подключиться к прокси-серверу'
@@ -382,14 +409,14 @@
 
     try {
       emit('save', formData.value);
-      toast.showToast({
+      showToast({
         type: 'success',
         title: 'Настройки сохранены',
         message: 'Настройки прокси-сервера успешно обновлены'
       });
     } catch (error) {
       console.error('Failed to save proxy settings:', error);
-      toast.showToast({
+      showToast({
         type: 'error',
         title: 'Ошибка',
         message: 'Не удалось сохранить настройки'
@@ -401,7 +428,6 @@
 </script>
 
 <style scoped>
-  /* Стили остаются без изменений */
   .proxy-settings-form {
     max-height: 70vh;
     overflow-y: auto;
@@ -410,47 +436,72 @@
   .form {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl, 2rem);
   }
 
   .form-content {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl, 2rem);
+  }
+
+  .form-header {
+    text-align: center;
+    margin-bottom: var(--spacing-lg, 1.25rem);
   }
 
   .form-title {
     font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
+    font-weight: var(--font-weight-bold, 700);
     color: var(--color-text-primary);
-    text-align: center;
+    margin: 0 0 var(--spacing-sm, 0.75rem) 0;
+  }
+
+  .form-subtitle {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .form-section {
-    background: var(--color-surface-hover);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl, 1.5rem);
     border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .section-header {
+    margin-bottom: var(--spacing-xl, 1.5rem);
   }
 
   .section-title {
     font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-sm, 0.75rem) 0;
+  }
+
+  .section-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.4;
   }
 
   .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: var(--spacing-lg, 1.25rem);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--spacing-sm, 0.75rem);
   }
 
   .full-width {
@@ -458,7 +509,7 @@
   }
 
   .form-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
     font-size: 0.9rem;
   }
@@ -466,81 +517,106 @@
     .form-label.required::after {
       content: '*';
       color: var(--color-error);
-      margin-left: 0.25rem;
+      margin-left: var(--spacing-xs, 0.5rem);
     }
 
   /* Test Connection */
   .test-connection {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: var(--spacing-xl, 1.5rem);
+  }
+
+  .test-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 1rem);
   }
 
   .test-result {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    font-weight: 500;
+    gap: var(--spacing-md, 1rem);
+    padding: var(--spacing-md, 1rem);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-medium, 500);
+    border: 1px solid;
   }
 
   .test-result--success {
     background: var(--color-success-light);
     color: var(--color-success);
-    border: 1px solid var(--color-success);
+    border-color: var(--color-success);
   }
 
   .test-result--error {
     background: var(--color-error-light);
     color: var(--color-error);
-    border: 1px solid var(--color-error);
+    border-color: var(--color-error);
   }
 
   .result-icon {
     width: 1.25rem;
     height: 1.25rem;
+    flex-shrink: 0;
   }
 
   /* Connection Info */
   .connection-info {
-    background: var(--color-surface);
-    border-radius: 0.5rem;
-    padding: 1.25rem;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg, 1.25rem);
     border: 1px solid var(--color-border);
   }
 
   .info-title {
     font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-lg, 1.25rem) 0;
   }
 
-  .info-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .info-grid {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--spacing-md, 1rem);
   }
 
   .info-item {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
+    gap: var(--spacing-md, 1rem);
+    padding: var(--spacing-md, 1rem);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  .info-icon-wrapper {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-md);
+    background: var(--color-success-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .info-icon {
     width: 1rem;
     height: 1rem;
     color: var(--color-success);
-    flex-shrink: 0;
-    margin-top: 0.125rem;
+  }
+
+  .info-content {
+    flex: 1;
+  }
+
+  .info-text {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
   }
 
   /* Warning Section */
@@ -552,15 +628,24 @@
   .warning-content {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
+    gap: var(--spacing-lg, 1.25rem);
+  }
+
+  .warning-icon-wrapper {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background: var(--color-warning);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .warning-icon {
     width: 1.5rem;
     height: 1.5rem;
-    color: var(--color-warning);
-    flex-shrink: 0;
-    margin-top: 0.125rem;
+    color: white;
   }
 
   .warning-text {
@@ -569,9 +654,9 @@
 
   .warning-title {
     font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-warning-dark);
+    margin: 0 0 var(--spacing-sm, 0.75rem) 0;
   }
 
   .warning-description {
@@ -584,9 +669,9 @@
   /* Form Actions */
   .form-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--spacing-md, 1rem);
     justify-content: flex-end;
-    padding-top: 1.5rem;
+    padding-top: var(--spacing-xl, 1.5rem);
     border-top: 1px solid var(--color-border);
   }
 
@@ -598,11 +683,11 @@
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
-    margin-right: 0.5rem;
+    margin-right: var(--spacing-sm, 0.75rem);
   }
 
   /* Responsive */
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     .proxy-settings-form {
       max-height: 60vh;
     }
@@ -612,15 +697,27 @@
     }
 
     .form-section {
-      padding: 1.25rem;
+      padding: var(--spacing-lg, 1.25rem);
     }
 
     .warning-content {
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.75rem;
+      gap: var(--spacing-md, 1rem);
     }
 
+    .warning-icon-wrapper {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .warning-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  @media (max-width: 768px) {
     .form-actions {
       flex-direction: column;
     }
@@ -628,6 +725,46 @@
     .cancel-btn,
     .submit-btn {
       width: 100%;
+    }
+
+    .form-header {
+      margin-bottom: var(--spacing-md, 1rem);
+    }
+
+    .form-title {
+      font-size: 1.25rem;
+    }
+
+    .form-subtitle {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .proxy-settings-form {
+      max-height: 50vh;
+    }
+
+    .form {
+      gap: var(--spacing-xl, 1.5rem);
+    }
+
+    .form-content {
+      gap: var(--spacing-xl, 1.5rem);
+    }
+
+    .form-section {
+      padding: var(--spacing-md, 1rem);
+    }
+
+    .info-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm, 0.75rem);
+    }
+
+    .test-controls {
+      gap: var(--spacing-sm, 0.75rem);
     }
   }
 </style>

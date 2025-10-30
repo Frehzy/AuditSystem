@@ -1,5 +1,5 @@
 <template>
-  <div class="audit-view">
+  <div class="audit-view" :class="`theme-${theme}`">
     <AuditLayout>
       <template #header>
         <AuditHeader :title="currentViewTitle"
@@ -11,6 +11,7 @@
 
       <template #sidebar>
         <AuditSidebar :active-view="activeView"
+                      :collapsed="isSidebarCollapsed"
                       @nav-change="handleNavChange"
                       @toggle-theme="handleToggleTheme"
                       @toggle-sidebar="handleToggleSidebar" />
@@ -18,49 +19,84 @@
 
       <template #default>
         <div class="audit-content">
+          <!-- Loading State -->
           <div v-if="isLoading" class="loading-container">
-            <BaseSpinner size="large" />
-            <p>Загрузка данных...</p>
+            <div class="loading-content">
+              <BaseSpinner size="large" class="loading-spinner" />
+              <div class="loading-text">
+                <h3 class="loading-title">Загрузка данных</h3>
+                <p class="loading-description">Пожалуйста, подождите...</p>
+              </div>
+            </div>
           </div>
 
+          <!-- Error State -->
           <div v-else-if="error" class="error-container">
-            <BaseAlert type="error" :message="error" dismissible @dismiss="clearError" />
+            <BaseAlert type="error"
+                       :message="error"
+                       dismissible
+                       @dismiss="clearError"
+                       class="error-alert" />
           </div>
 
-          <router-view v-else
-                       :units="units"
-                       :scripts="scripts"
-                       :tasks="tasks"
-                       :current-scan="currentScan"
-                       :reports="reports"
-                       :settings="settings"
-                       :is-loading="isLoading"
-                       @start-scan="handleStartScan"
-                       @cancel-scan="handleCancelScan"
-                       @generate-report="handleGenerateReport"
-                       @download-report="handleDownloadReport"
-                       @update-settings="handleUpdateSettings" />
+          <!-- Main Content -->
+          <div v-else class="content-wrapper">
+            <router-view :units="units"
+                         :scripts="scripts"
+                         :tasks="tasks"
+                         :current-scan="currentScan"
+                         :reports="reports"
+                         :settings="settings"
+                         :is-loading="isLoading"
+                         @start-scan="handleStartScan"
+                         @cancel-scan="handleCancelScan"
+                         @generate-report="handleGenerateReport"
+                         @download-report="handleDownloadReport"
+                         @update-settings="handleUpdateSettings" />
+          </div>
         </div>
       </template>
     </AuditLayout>
 
     <!-- Scan Progress Dialog -->
-    <ScanProgressDialog v-if="showScanProgress"
-                        :scan-task="currentScan"
-                        @cancel="handleCancelScan"
-                        @close="showScanProgress = false" />
+    <BaseModal v-if="showScanProgress"
+               :model-value="true"
+               title="Прогресс сканирования"
+               size="lg"
+               @close="showScanProgress = false">
+      <ScanProgressDialog :scan-task="currentScan"
+                          @cancel="handleCancelScan"
+                          @close="showScanProgress = false" />
+    </BaseModal>
+
+    <!-- Quick Scan Config Modal -->
+    <QuickScanConfig v-if="showQuickScanConfig"
+                     :units="units"
+                     :scripts="scripts"
+                     @start-scan="handleQuickScanStart"
+                     @cancel="showQuickScanConfig = false" />
 
     <!-- Host Selection Dialog -->
-    <HostSelectionDialog v-if="showHostSelection"
-                         :units="units"
-                         @confirm="handleHostSelection"
-                         @close="showHostSelection = false" />
+    <BaseModal v-if="showHostSelection"
+               :model-value="true"
+               title="Выбор целей"
+               size="xl"
+               @close="showHostSelection = false">
+      <HostSelectionDialog :units="units"
+                           @confirm="handleHostSelection"
+                           @close="showHostSelection = false" />
+    </BaseModal>
 
     <!-- Script Selection Dialog -->
-    <ScriptSelectionDialog v-if="showScriptSelection"
-                           :scripts="scripts"
-                           @confirm="handleScriptSelection"
-                           @close="showScriptSelection = false" />
+    <BaseModal v-if="showScriptSelection"
+               :model-value="true"
+               title="Выбор скриптов"
+               size="xl"
+               @close="showScriptSelection = false">
+      <ScriptSelectionDialog :scripts="scripts"
+                             @confirm="handleScriptSelection"
+                             @close="showScriptSelection = false" />
+    </BaseModal>
   </div>
 </template>
 
@@ -69,13 +105,14 @@
   import { useRoute, useRouter } from 'vue-router';
   import { useToast } from '@/framework/ui/composables/useToast';
   import { useAppStore } from '@/framework/stores/app.store';
-  import { BaseSpinner, BaseAlert } from '@/framework/ui';
+  import { BaseSpinner, BaseAlert, BaseModal } from '@/framework/ui';
   import AuditLayout from '../components/layout/AuditLayout.vue';
   import AuditHeader from '../components/layout/AuditHeader.vue';
   import AuditSidebar from '../components/layout/AuditSidebar.vue';
   import ScanProgressDialog from '../components/common/ScanProgressDialog.vue';
   import HostSelectionDialog from '../components/common/HostSelectionDialog.vue';
   import ScriptSelectionDialog from '../components/common/ScriptSelectionDialog.vue';
+  import QuickScanConfig from '../components/common/QuickScanConfig.vue';
   import { useAudit } from '../composables/useAudit';
   import type { StartScanCommand } from '../api/audit.types';
 
@@ -104,12 +141,15 @@
 
   // State
   const showScanProgress = ref(false);
+  const showQuickScanConfig = ref(false);
   const showHostSelection = ref(false);
   const showScriptSelection = ref(false);
   const pendingScanCommand = ref<StartScanCommand | null>(null);
   const isSidebarCollapsed = ref(false);
 
   // Computed
+  const theme = computed(() => appStore.theme);
+
   const activeView = computed(() => {
     const routeName = route.name as string;
     switch (routeName) {
@@ -135,8 +175,6 @@
 
   // Methods
   const handleNavChange = (item: any) => {
-    // Навигация уже обрабатывается через router-link в AuditSidebar
-    // Это событие можно использовать для дополнительной логики
     console.log('Navigation changed:', item);
   };
 
@@ -152,8 +190,14 @@
     if (command) {
       executeStartScan(command);
     } else {
-      showHostSelection.value = true;
+      // Вместо старого диалога используем улучшенный QuickScanConfig
+      showQuickScanConfig.value = true;
     }
+  };
+
+  const handleQuickScanStart = (command: StartScanCommand) => {
+    showQuickScanConfig.value = false;
+    executeStartScan(command);
   };
 
   const handleCancelScan = async () => {
@@ -161,6 +205,7 @@
 
     try {
       await cancelScan(currentScan.value.id);
+      showScanProgress.value = false;
       showToast({
         type: 'success',
         title: 'Сканирование отменено',
@@ -179,11 +224,17 @@
     showHostSelection.value = false;
     showScriptSelection.value = true;
     pendingScanCommand.value = {
-      name: `Scan ${new Date().toLocaleString()}`,
+      name: `Сканирование ${new Date().toLocaleString('ru-RU')}`,
       unitIds: selectedHosts.unitIds,
       hostIds: selectedHosts.hostIds,
       scriptIds: [],
-      autoFix: false
+      autoFix: false,
+      description: '',
+      stopOnError: false,
+      parallelExecution: true,
+      generateReport: true,
+      notifyOnComplete: true,
+      emailReport: false
     };
   };
 
@@ -281,31 +332,190 @@
     display: flex;
     flex-direction: column;
     background-color: var(--color-background);
-    color: var(--color-text);
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
   }
 
   .audit-content {
     flex: 1;
-    padding: var(--spacing-md);
+    padding: var(--spacing-xl);
     overflow-y: auto;
+    background: var(--color-background);
+    position: relative;
   }
 
+  /* Loading State */
   .loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: var(--spacing-2xl);
+  }
+
+  .loading-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 200px;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
+    text-align: center;
   }
 
+  .loading-spinner {
+    color: var(--color-primary);
+  }
+
+  .loading-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .loading-title {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .loading-description {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  /* Error State */
   .error-container {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .error-alert {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-error-light);
+    background: var(--color-error-light);
+  }
+
+  /* Content Wrapper */
+  .content-wrapper {
+    animation: fade-in 0.3s ease-out;
+    height: 100%;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1024px) {
+    .audit-content {
+      padding: var(--spacing-lg);
+    }
+
+    .loading-container {
+      min-height: 300px;
+      padding: var(--spacing-xl);
+    }
+
+    .loading-title {
+      font-size: 1.25rem;
+    }
+
+    .loading-description {
+      font-size: 0.9rem;
+    }
   }
 
   @media (max-width: 768px) {
     .audit-content {
+      padding: var(--spacing-md);
+    }
+
+    .loading-container {
+      min-height: 250px;
+      padding: var(--spacing-lg);
+    }
+
+    .loading-content {
+      gap: var(--spacing-md);
+    }
+
+    .loading-title {
+      font-size: 1.125rem;
+    }
+
+    .loading-description {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .audit-content {
       padding: var(--spacing-sm);
+    }
+
+    .loading-container {
+      min-height: 200px;
+      padding: var(--spacing-md);
+    }
+
+    .loading-title {
+      font-size: 1rem;
+    }
+
+    .loading-description {
+      font-size: 0.8rem;
+    }
+  }
+
+  /* Scrollbar Styling */
+  .audit-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .audit-content::-webkit-scrollbar-track {
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
+  }
+
+  .audit-content::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+    .audit-content::-webkit-scrollbar-thumb:hover {
+      background: var(--color-text-muted);
+    }
+
+  /* Theme Transition */
+  .audit-view.theme-transition * {
+    transition: color var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal);
+  }
+
+  /* Focus Management */
+  .audit-content :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Print Styles */
+  @media print {
+    .audit-view {
+      background: white;
+      color: black;
+    }
+
+    .audit-content {
+      padding: 0;
+      overflow: visible;
     }
   }
 </style>

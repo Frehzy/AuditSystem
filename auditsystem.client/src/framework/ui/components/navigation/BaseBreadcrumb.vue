@@ -53,6 +53,7 @@
     maxItems?: number
     showHome?: boolean
     homeItem?: BreadcrumbItem
+    variant?: 'default' | 'compact'
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -64,6 +65,7 @@
       href: '/',
       icon: undefined,
     }) as BreadcrumbItem,
+    variant: 'default'
   })
 
   const emit = defineEmits<{
@@ -99,9 +101,11 @@
 
   const getItemClass = (item: BreadcrumbItem, index: number) => [
     'base-breadcrumb__link',
+    `base-breadcrumb--${props.variant}`,
     {
       'base-breadcrumb__link--current': index === displayItems.value.length - 1,
       'base-breadcrumb__link--disabled': item.disabled,
+      'base-breadcrumb__link--interactive': item.href && !item.disabled,
     },
   ]
 
@@ -121,7 +125,7 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-xs);
+    gap: var(--spacing-xs);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -130,7 +134,7 @@
   .base-breadcrumb__item {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--spacing-xs);
   }
 
   .base-breadcrumb__separator {
@@ -138,52 +142,84 @@
     align-items: center;
     color: var(--color-text-muted);
     flex-shrink: 0;
+    opacity: 0.7;
   }
 
   .base-breadcrumb__link {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
     color: var(--color-text-secondary);
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     transition: all var(--transition-fast);
+    cursor: pointer;
+    background: var(--color-surface);
+    border: 1px solid transparent;
+    position: relative;
+  }
+
+  .base-breadcrumb__link--interactive {
     cursor: pointer;
   }
 
-    .base-breadcrumb__link:hover {
+    .base-breadcrumb__link--interactive:hover {
       color: var(--color-primary);
       background: var(--color-surface-hover);
+      border-color: var(--color-border);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .base-breadcrumb__link--interactive:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .base-breadcrumb__link--interactive:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+      box-shadow: var(--shadow-focus);
     }
 
   .base-breadcrumb__link--current {
     color: var(--color-text-primary);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold, 600);
     cursor: default;
+    background: var(--color-primary-50);
+    border-color: var(--color-primary-200);
   }
 
     .base-breadcrumb__link--current:hover {
       color: var(--color-text-primary);
-      background: none;
+      background: var(--color-primary-50);
+      border-color: var(--color-primary-200);
+      transform: none;
+      box-shadow: none;
     }
 
   .base-breadcrumb__link--disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    background: var(--color-surface-hover);
   }
 
     .base-breadcrumb__link--disabled:hover {
       color: var(--color-text-secondary);
-      background: none;
+      background: var(--color-surface-hover);
+      border-color: transparent;
+      transform: none;
+      box-shadow: none;
     }
 
   .base-breadcrumb__icon {
     flex-shrink: 0;
     color: var(--color-text-muted);
+    transition: color var(--transition-fast);
   }
 
-  .base-breadcrumb__link:hover .base-breadcrumb__icon {
+  .base-breadcrumb__link--interactive:hover .base-breadcrumb__icon {
     color: var(--color-primary);
   }
 
@@ -196,15 +232,45 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 200px;
+    font-weight: var(--font-weight-medium, 500);
   }
 
   /* Compact variant */
   .base-breadcrumb--compact .base-breadcrumb__link {
-    padding: 0.25rem 0.5rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8125rem;
   }
 
   .base-breadcrumb--compact .base-breadcrumb__label {
     max-width: 150px;
+  }
+
+  /* Status indicators */
+  .base-breadcrumb__link--success {
+    border-left: 3px solid var(--color-success);
+  }
+
+  .base-breadcrumb__link--warning {
+    border-left: 3px solid var(--color-warning);
+  }
+
+  .base-breadcrumb__link--error {
+    border-left: 3px solid var(--color-error);
+  }
+
+  /* Animation for interactive states */
+  @keyframes breadcrumb-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent);
+    }
+
+    50% {
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+  }
+
+  .base-breadcrumb__link--interactive:focus {
+    animation: breadcrumb-pulse 1.5s infinite;
   }
 
   /* Responsive */
@@ -214,7 +280,11 @@
     }
 
     .base-breadcrumb__link {
-      padding: 0.25rem 0.5rem;
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .base-breadcrumb--compact .base-breadcrumb__label {
+      max-width: 100px;
     }
   }
 
@@ -225,6 +295,61 @@
 
     .base-breadcrumb__icon {
       display: none;
+    }
+
+    .base-breadcrumb--compact .base-breadcrumb__label {
+      max-width: 60px;
+    }
+
+    .base-breadcrumb__link {
+      padding: var(--spacing-xs);
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .base-breadcrumb__link {
+      border: 1px solid var(--color-text-primary);
+    }
+
+    .base-breadcrumb__link--current {
+      border: 2px solid var(--color-text-primary);
+    }
+
+    .base-breadcrumb__link--interactive:hover {
+      border: 2px solid var(--color-primary);
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .base-breadcrumb__link {
+      transition: none;
+    }
+
+    .base-breadcrumb__link--interactive:hover {
+      transform: none;
+    }
+
+    .base-breadcrumb__link--interactive:focus {
+      animation: none;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .base-breadcrumb__link {
+      background: transparent;
+      border: 1px solid var(--color-text-primary);
+      color: var(--color-text-primary);
+    }
+
+    .base-breadcrumb__link--current {
+      background: var(--color-gray-100);
+    }
+
+    .base-breadcrumb__separator {
+      color: var(--color-text-primary);
     }
   }
 </style>

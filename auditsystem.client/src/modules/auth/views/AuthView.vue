@@ -51,11 +51,25 @@
 
         <!-- Дополнительная информация -->
         <footer class="auth-view__footer">
-          <div class="auth-view__version">
-            v{{ appVersion }}
-          </div>
-          <div class="auth-view__environment" v-if="isDevelopment">
-            {{ environment }}
+          <div class="auth-view__info-grid">
+            <div class="info-item">
+              <div class="info-icon version">
+                <CodeIcon />
+              </div>
+              <div class="info-content">
+                <div class="info-label">Версия</div>
+                <div class="info-value">v{{ appVersion }}</div>
+              </div>
+            </div>
+            <div v-if="isDevelopment" class="info-item">
+              <div class="info-icon environment">
+                <ServerIcon />
+              </div>
+              <div class="info-content">
+                <div class="info-label">Окружение</div>
+                <div class="info-value">{{ environment }}</div>
+              </div>
+            </div>
           </div>
         </footer>
       </div>
@@ -72,7 +86,7 @@
   import { useToast } from '@/framework/ui/composables/useToast';
   import AuthForm from '../components/AuthForm.vue';
   import ServerStatus from '../components/ServerStatus.vue';
-  import { RobotIcon, MoonIcon, SunIcon } from '@/assets/icons';
+  import { RobotIcon, MoonIcon, SunIcon, CodeIcon, ServerIcon } from '@/assets/icons';
   import { APP_CONFIG } from '@/core/config/app.config';
   import { logger } from '@/core/utils/logger';
 
@@ -185,6 +199,7 @@
       loggerContext.error('Login failed', { error: auth.error.value });
     }
   };
+
   /**
    * Ручная проверка сервера
    */
@@ -245,21 +260,20 @@
 </script>
 
 <style scoped>
-  /* Стили остаются без изменений */
   .auth-view {
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: var(--spacing-md, 1rem);
     position: relative;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-family-sans, 'Segoe UI', system-ui, -apple-system, sans-serif);
     overflow: hidden;
     box-sizing: border-box;
-    transition: background-color var(--transition-normal);
-    background-color: var(--color-background);
-    color: var(--color-text-primary);
+    transition: background-color var(--transition-normal, 0.3s ease);
+    background-color: var(--color-background, #f8fafc);
+    color: var(--color-text-primary, #1e293b);
   }
 
   .auth-view__background {
@@ -277,7 +291,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--gradient-primary);
+    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
     opacity: 0.03;
@@ -297,17 +311,17 @@
 
   .auth-view__particle {
     position: absolute;
-    border-radius: 50%;
+    border-radius: var(--radius-full, 9999px);
     animation: float linear infinite;
     pointer-events: none;
   }
 
   .theme-light .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    background: color-mix(in srgb, var(--color-primary, #0ea5e9) 10%, transparent);
   }
 
   .theme-dark .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary-light) 15%, transparent);
+    background: color-mix(in srgb, var(--color-primary-light, #7dd3fc) 15%, transparent);
   }
 
   .auth-view__container {
@@ -320,15 +334,15 @@
 
   .auth-view__card {
     backdrop-filter: blur(20px);
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: var(--shadow-xl);
-    border: 1px solid var(--color-border-card);
+    border-radius: var(--radius-xl, 0.75rem);
+    padding: var(--spacing-xl, 2rem);
+    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--color-border-card, #f1f5f9);
     width: 100%;
     position: relative;
     overflow: hidden;
-    transition: all var(--transition-normal);
-    background: var(--color-surface);
+    transition: all var(--transition-normal, 0.3s ease);
+    background: var(--color-surface, #ffffff);
   }
 
     .auth-view__card::before {
@@ -338,42 +352,42 @@
       left: 0;
       right: 0;
       height: 3px;
-      background: var(--gradient-primary);
+      background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
       background-size: 200% 100%;
       animation: shimmer 3s linear infinite;
     }
 
   .auth-view__header {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg, 1.5rem);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--spacing-md, 1rem);
   }
 
   .auth-view__logo {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--spacing-md, 1rem);
     flex: 1;
   }
 
   .auth-view__logo-icon {
-    width: 48px;
-    height: 48px;
+    width: 3rem;
+    height: 3rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--gradient-primary);
-    border-radius: 12px;
+    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
+    border-radius: var(--radius-lg, 0.5rem);
     flex-shrink: 0;
     color: white;
-    box-shadow: var(--shadow-primary);
+    box-shadow: var(--shadow-primary, 0 4px 12px rgba(14, 165, 233, 0.25));
   }
 
     .auth-view__logo-icon svg {
-      width: 24px;
-      height: 24px;
+      width: 1.5rem;
+      height: 1.5rem;
       color: currentColor;
     }
 
@@ -382,83 +396,140 @@
   }
 
   .auth-view__title {
-    font-size: 20px;
-    font-weight: 700;
-    margin: 0 0 2px 0;
-    background: var(--gradient-primary);
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-bold, 700);
+    margin: 0 0 var(--spacing-xs, 0.25rem) 0;
+    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    line-height: 1.2;
   }
 
   .auth-view__subtitle {
-    font-size: 13px;
+    font-size: 0.875rem;
     margin: 0;
     opacity: 0.8;
-    font-weight: 500;
-    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text-secondary, #475569);
+    line-height: 1.4;
   }
 
   .auth-view__theme-toggle {
-    padding: 8px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
+    padding: var(--spacing-sm, 0.5rem);
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 0.375rem);
     cursor: pointer;
-    transition: all var(--transition-normal);
-    width: 36px;
-    height: 36px;
+    transition: all var(--transition-normal, 0.3s ease);
+    width: 2.5rem;
+    height: 2.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: var(--color-text-primary);
-    box-shadow: var(--shadow-sm);
+    color: var(--color-text-primary, #1e293b);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
   }
 
     .auth-view__theme-toggle:hover {
-      background: var(--color-surface-hover);
-      border-color: var(--color-primary-light);
+      background: var(--color-surface-hover, #f1f5f9);
+      border-color: var(--color-primary-light, #7dd3fc);
       transform: scale(1.05);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    }
+
+    .auth-view__theme-toggle:focus-visible {
+      outline: 2px solid var(--color-primary, #0ea5e9);
+      outline-offset: 2px;
     }
 
   .auth-view__theme-icon svg {
-    width: 16px;
-    height: 16px;
+    width: 1.25rem;
+    height: 1.25rem;
     color: currentColor;
   }
 
   .auth-view__status {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg, 1.5rem);
   }
 
   .auth-view__form {
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-lg, 1.5rem);
   }
 
   .auth-view__footer {
+    padding-top: var(--spacing-lg, 1.5rem);
+    border-top: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .auth-view__info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md, 1rem);
+  }
+
+  @media (min-width: 480px) {
+    .auth-view__info-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .info-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-border);
+    gap: var(--spacing-sm, 0.5rem);
+    padding: var(--spacing-sm, 0.5rem);
+    border-radius: var(--radius-md, 0.375rem);
+    transition: background-color var(--transition-fast, 0.15s ease);
   }
 
-  .auth-view__version {
-    font-size: 11px;
-    opacity: 0.7;
-    font-weight: 500;
-    color: var(--color-text-muted);
+    .info-item:hover {
+      background: var(--color-surface-hover, #f1f5f9);
+    }
+
+  .info-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-md, 0.375rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
   }
 
-  .auth-view__environment {
-    font-size: 11px;
-    opacity: 0.7;
-    font-weight: 500;
+    .info-icon.version {
+      background: var(--color-info, #3b82f6);
+    }
+
+    .info-icon.environment {
+      background: var(--color-success, #10b981);
+    }
+
+    .info-icon svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+  .info-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs, 0.25rem);
+  }
+
+  .info-label {
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text-muted, #64748b);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .info-value {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, #1e293b);
   }
 
   @keyframes gradientShift {
@@ -502,6 +573,62 @@
 
     100% {
       background-position: 200% 0;
+    }
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 480px) {
+    .auth-view__card {
+      padding: var(--spacing-lg, 1.5rem);
+    }
+
+    .auth-view__header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: var(--spacing-md, 1rem);
+    }
+
+    .auth-view__logo {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .auth-view__theme-toggle {
+      align-self: center;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .auth-view__card {
+      padding: var(--spacing-md, 1rem);
+    }
+
+    .auth-view__title {
+      font-size: 1.125rem;
+    }
+
+    .auth-view__subtitle {
+      font-size: 0.8rem;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .auth-view__gradient {
+      animation: none;
+    }
+
+    .auth-view__particle {
+      animation: none;
+    }
+
+    .auth-view__card::before {
+      animation: none;
+    }
+
+    .auth-view__theme-toggle:hover {
+      transform: none;
     }
   }
 </style>

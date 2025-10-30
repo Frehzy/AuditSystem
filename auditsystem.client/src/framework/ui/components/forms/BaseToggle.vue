@@ -7,7 +7,10 @@
             @click="handleToggle"
             @keydown.space.prevent="handleToggle"
             @keydown.enter.prevent="handleToggle"
-            class="base-toggle__button">
+            class="base-toggle__button"
+            :class="{ 'focus-ring': hasFocus }"
+            @focus="hasFocus = true"
+            @blur="hasFocus = false">
       <span class="base-toggle__track">
         <span class="base-toggle__thumb" :style="computedThumbStyle">
           <BaseSpinner v-if="loading"
@@ -18,7 +21,10 @@
       </span>
     </button>
 
-    <div v-if="label || description" class="base-toggle__content" @click="handleToggle">
+    <div v-if="label || description"
+         class="base-toggle__content"
+         @click="handleToggle"
+         :class="{ 'base-toggle__content--disabled': disabled }">
       <div v-if="label" class="base-toggle__label">
         {{ label }}
       </div>
@@ -30,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import BaseSpinner from '../feedback/BaseSpinner.vue'
 
   interface Props {
@@ -40,7 +46,7 @@
     disabled?: boolean
     loading?: boolean
     size?: 'sm' | 'md' | 'lg'
-    variant?: 'primary' | 'success' | 'warning' | 'error'
+    variant?: 'primary' | 'success' | 'warning' | 'error' | 'info'
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -55,8 +61,9 @@
     'change': [value: boolean]
   }>()
 
+  const hasFocus = ref(false)
+
   const computedContainerClasses = computed(() => [
-    'base-toggle',
     `base-toggle--${props.size}`,
     `base-toggle--${props.variant}`,
     {
@@ -83,13 +90,14 @@
   .base-toggle {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-md);
+    gap: var(--spacing-md);
     cursor: pointer;
     width: fit-content;
+    transition: all var(--transition-fast);
   }
 
   .base-toggle--disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -105,6 +113,8 @@
     cursor: inherit;
     outline: none;
     flex-shrink: 0;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
   }
 
   .base-toggle--disabled .base-toggle__button {
@@ -122,8 +132,9 @@
     background: var(--color-border);
     border-radius: var(--radius-full);
     position: relative;
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-inner);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid transparent;
   }
 
   .base-toggle--checked .base-toggle__track {
@@ -142,8 +153,33 @@
     background: var(--color-error);
   }
 
-  .base-toggle__button:focus-visible .base-toggle__track {
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  .base-toggle--info.base-toggle--checked .base-toggle__track {
+    background: var(--color-info);
+  }
+
+  .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+  }
+
+  .base-toggle--checked .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    background: var(--color-primary-dark);
+  }
+
+  .base-toggle--success.base-toggle--checked .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    background: var(--color-success-dark);
+  }
+
+  .base-toggle--warning.base-toggle--checked .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    background: var(--color-warning-dark);
+  }
+
+  .base-toggle--error.base-toggle--checked .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    background: var(--color-error-dark);
+  }
+
+  .base-toggle--info.base-toggle--checked .base-toggle__button:hover:not(.base-toggle--disabled) .base-toggle__track {
+    background: var(--color-info-dark);
   }
 
   .base-toggle__thumb {
@@ -152,17 +188,18 @@
     left: 0.125rem;
     width: 1.25rem;
     height: 1.25rem;
-    background: white;
+    background: var(--color-background-card);
     border-radius: var(--radius-full);
-    transition: all 0.3s ease;
-    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .base-toggle--checked .base-toggle__thumb {
-    background: white;
+    background: var(--color-background-card);
+    box-shadow: var(--shadow-lg);
   }
 
   .base-toggle__spinner {
@@ -175,13 +212,19 @@
     cursor: inherit;
     user-select: none;
     min-width: 0;
+    transition: all var(--transition-fast);
+  }
+
+  .base-toggle__content--disabled {
+    cursor: not-allowed;
   }
 
   .base-toggle__label {
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
     line-height: 1.4;
-    margin-bottom: var(--space-xs);
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.9rem;
   }
 
   .base-toggle__description {
@@ -192,7 +235,7 @@
 
   /* Sizes */
   .base-toggle--sm {
-    gap: var(--space-sm);
+    gap: var(--spacing-sm);
   }
 
     .base-toggle--sm .base-toggle__track {
@@ -212,8 +255,12 @@
       height: 10px;
     }
 
+    .base-toggle--sm .base-toggle__label {
+      font-size: 0.8rem;
+    }
+
   .base-toggle--lg {
-    gap: var(--space-lg);
+    gap: var(--spacing-lg);
   }
 
     .base-toggle--lg .base-toggle__track {
@@ -232,4 +279,36 @@
       width: 14px;
       height: 14px;
     }
+
+    .base-toggle--lg .base-toggle__label {
+      font-size: 1rem;
+    }
+
+  /* Accessibility improvements */
+  @media (prefers-reduced-motion: reduce) {
+    .base-toggle,
+    .base-toggle__button,
+    .base-toggle__track,
+    .base-toggle__thumb,
+    .base-toggle__content {
+      transition: none;
+    }
+  }
+
+  @media (prefers-contrast: high) {
+    .base-toggle__track {
+      border: 2px solid var(--color-text-primary);
+    }
+
+    .base-toggle--checked .base-toggle__track {
+      border-color: var(--color-primary);
+    }
+  }
+
+  /* Theme support */
+  .theme-transition .base-toggle,
+  .theme-transition .base-toggle__track,
+  .theme-transition .base-toggle__thumb {
+    transition: color var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal) !important;
+  }
 </style>

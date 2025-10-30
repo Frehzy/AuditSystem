@@ -1,9 +1,12 @@
 <template>
-  <div class="military-unit-form">
+  <div class="military-unit-form theme-transition">
     <form @submit.prevent="handleSubmit" class="unit-form">
       <!-- Основная информация -->
       <div class="form-section">
-        <h3 class="section-title">Основная информация</h3>
+        <div class="step-header">
+          <h3 class="step-title">Основная информация</h3>
+          <p class="step-description">Задайте основные параметры войсковой части</p>
+        </div>
 
         <div class="form-grid">
           <div class="form-group">
@@ -11,7 +14,9 @@
             <BaseInput v-model="formData.name"
                        placeholder="Введите название войсковой части"
                        required
-                       class="form-control" />
+                       class="form-control"
+                       @blur="validateField('name')" />
+            <div class="form-hint">Обязательное поле</div>
           </div>
 
           <div class="form-group">
@@ -19,7 +24,9 @@
             <BaseInput v-model="formData.location"
                        placeholder="Введите местоположение"
                        required
-                       class="form-control" />
+                       class="form-control"
+                       @blur="validateField('location')" />
+            <div class="form-hint">Обязательное поле</div>
           </div>
 
           <div class="form-group">
@@ -36,16 +43,21 @@
           <BaseTextarea v-model="formData.description"
                         placeholder="Описание войсковой части..."
                         rows="3"
+                        :maxlength="500"
                         class="form-control" />
+          <div class="form-hint">{{ formData.description.length }}/500 символов</div>
         </div>
       </div>
 
       <!-- Подсети -->
       <div class="form-section">
         <div class="section-header">
-          <h3 class="section-title">Подсети</h3>
+          <div class="selection-title">
+            <NetworkIcon class="title-icon" />
+            <span>Подсети</span>
+          </div>
           <BaseButton @click="addSubnet"
-                      variant="text"
+                      variant="secondary"
                       size="sm">
             <PlusIcon class="button-icon" />
             Добавить подсеть
@@ -55,7 +67,7 @@
         <div class="subnets-list">
           <div v-for="(subnet, index) in formData.subnets"
                :key="index"
-               class="subnet-item">
+               class="subnet-item card">
             <div class="subnet-header">
               <h4 class="subnet-title">Подсеть {{ index + 1 }}</h4>
               <BaseButton @click="removeSubnet(index)"
@@ -74,7 +86,8 @@
                   <BaseInput v-model="subnet.name"
                              placeholder="Название подсети"
                              required
-                             class="form-control" />
+                             class="form-control"
+                             @blur="validateSubnet(index, 'name')" />
                 </div>
 
                 <div class="form-group">
@@ -82,7 +95,8 @@
                   <BaseInput v-model="subnet.network"
                              placeholder="192.168.1.0"
                              required
-                             class="form-control" />
+                             class="form-control"
+                             @blur="validateSubnet(index, 'network')" />
                 </div>
 
                 <div class="form-group">
@@ -90,7 +104,8 @@
                   <BaseInput v-model="subnet.mask"
                              placeholder="24"
                              required
-                             class="form-control" />
+                             class="form-control"
+                             @blur="validateSubnet(index, 'mask')" />
                 </div>
               </div>
 
@@ -116,9 +131,12 @@
       <!-- Хосты -->
       <div class="form-section">
         <div class="section-header">
-          <h3 class="section-title">Хосты</h3>
+          <div class="selection-title">
+            <ServerIcon class="title-icon" />
+            <span>Хосты</span>
+          </div>
           <BaseButton @click="addHost"
-                      variant="text"
+                      variant="secondary"
                       size="sm">
             <PlusIcon class="button-icon" />
             Добавить хост
@@ -128,7 +146,7 @@
         <div class="hosts-list">
           <div v-for="(host, index) in formData.hosts"
                :key="index"
-               class="host-item">
+               class="host-item card">
             <div class="host-header">
               <h4 class="host-title">Хост {{ index + 1 }}</h4>
               <BaseButton @click="removeHost(index)"
@@ -147,7 +165,8 @@
                   <BaseInput v-model="host.name"
                              placeholder="server-01"
                              required
-                             class="form-control" />
+                             class="form-control"
+                             @blur="validateHost(index, 'name')" />
                 </div>
 
                 <div class="form-group">
@@ -155,7 +174,8 @@
                   <BaseInput v-model="host.ipAddress"
                              placeholder="192.168.1.100"
                              required
-                             class="form-control" />
+                             class="form-control"
+                             @blur="validateHost(index, 'ipAddress')" />
                 </div>
 
                 <div class="form-group">
@@ -171,7 +191,9 @@
                 <label class="form-label">Описание</label>
                 <BaseInput v-model="host.description"
                            placeholder="Описание хоста..."
+                           :maxlength="200"
                            class="form-control" />
+                <div class="form-hint">{{ host.description.length }}/200 символов</div>
               </div>
 
               <!-- Учетные данные -->
@@ -191,7 +213,8 @@
                     <BaseInput v-model="host.credentials.username"
                                placeholder="root"
                                required
-                               class="form-control" />
+                               class="form-control"
+                               @blur="validateHostCredentials(index, 'username')" />
                   </div>
 
                   <div class="form-group">
@@ -232,6 +255,27 @@
         </div>
       </div>
 
+      <!-- Summary -->
+      <div class="form-summary">
+        <h4 class="summary-title">Сводка</h4>
+        <div class="summary-content">
+          <div class="summary-item">
+            <span class="summary-label">Подсети:</span>
+            <span class="summary-value">{{ formData.subnets.length }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Хосты:</span>
+            <span class="summary-value">{{ formData.hosts.length }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Статус:</span>
+            <BaseChip :color="getStatusColor(formData.status)" size="sm">
+              {{ getStatusText(formData.status) }}
+            </BaseChip>
+          </div>
+        </div>
+      </div>
+
       <!-- Действия формы -->
       <div class="form-actions">
         <BaseButton @click="$emit('cancel')"
@@ -258,6 +302,7 @@
   import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
   import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
   import BaseTextarea from '@/framework/ui/components/forms/BaseTextarea.vue';
+  import BaseChip from '@/framework/ui/components/data-display/BaseChip.vue';
   import {
     PlusIcon,
     DeleteIcon,
@@ -326,6 +371,13 @@
     { value: 'rsa', label: 'RSA ключ' }
   ];
 
+  // Computed properties
+  const canSubmit = computed(() => {
+    return formData.value.name.trim().length > 0 &&
+      formData.value.location.trim().length > 0;
+  });
+
+  // Methods
   const addSubnet = (): void => {
     formData.value.subnets.push({
       name: '',
@@ -357,6 +409,51 @@
 
   const removeHost = (index: number): void => {
     formData.value.hosts.splice(index, 1);
+  };
+
+  const validateField = (field: string): void => {
+    if (!formData.value[field as keyof typeof formData.value]) {
+      console.log(`Field ${field} is empty`);
+    }
+  };
+
+  const validateSubnet = (index: number, field: string): void => {
+    const subnet = formData.value.subnets[index];
+    if (!subnet[field as keyof typeof subnet]) {
+      console.log(`Subnet ${index} field ${field} is empty`);
+    }
+  };
+
+  const validateHost = (index: number, field: string): void => {
+    const host = formData.value.hosts[index];
+    if (!host[field as keyof typeof host]) {
+      console.log(`Host ${index} field ${field} is empty`);
+    }
+  };
+
+  const validateHostCredentials = (index: number, field: string): void => {
+    const host = formData.value.hosts[index];
+    if (!host.credentials[field as keyof typeof host.credentials]) {
+      console.log(`Host ${index} credentials field ${field} is empty`);
+    }
+  };
+
+  const getStatusText = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      active: 'Активна',
+      deployed: 'На выезде',
+      headquarters: 'Штаб'
+    };
+    return statusMap[status] || status;
+  };
+
+  const getStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      active: 'success',
+      deployed: 'warning',
+      headquarters: 'primary'
+    };
+    return colorMap[status] || 'default';
   };
 
   const handleSubmit = async (): Promise<void> => {
@@ -412,24 +509,24 @@
     }
 
     // Validate subnets
-    for (const subnet of formData.value.subnets) {
+    for (const [index, subnet] of formData.value.subnets.entries()) {
       if (!subnet.name.trim() || !subnet.network.trim() || !subnet.mask.trim()) {
         showToast({
           type: 'warning',
           title: 'Заполните данные подсети',
-          message: 'Все поля подсети обязательны для заполнения'
+          message: `Все поля подсети ${index + 1} обязательны для заполнения`
         });
         return false;
       }
     }
 
     // Validate hosts
-    for (const host of formData.value.hosts) {
+    for (const [index, host] of formData.value.hosts.entries()) {
       if (!host.name.trim() || !host.ipAddress.trim()) {
         showToast({
           type: 'warning',
           title: 'Заполните данные хоста',
-          message: 'Имя и IP адрес хоста обязательны для заполнения'
+          message: `Имя и IP адрес хоста ${index + 1} обязательны для заполнения`
         });
         return false;
       }
@@ -438,7 +535,7 @@
         showToast({
           type: 'warning',
           title: 'Заполните учетные данные',
-          message: 'Имя пользователя обязательно для заполнения'
+          message: `Имя пользователя для хоста ${index + 1} обязательно для заполнения`
         });
         return false;
       }
@@ -497,53 +594,70 @@
   .unit-form {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl, 2rem);
   }
 
   .form-section {
-    background: var(--color-surface-hover);
-    border-radius: 1rem;
-    padding: 1.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
     border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .step-header {
+    margin-bottom: var(--spacing-xl);
+    text-align: left;
+  }
+
+  .step-title {
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-sm) 0;
+  }
+
+  .step-description {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin: 0;
   }
 
   .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-lg);
   }
 
-  .section-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
+  .selection-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
   }
 
-  .subsection-title {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
-    color: var(--color-text-primary);
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
+  .title-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-primary);
   }
 
   .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: var(--spacing-lg);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .form-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
     font-size: 0.9rem;
   }
@@ -551,39 +665,52 @@
     .form-label.required::after {
       content: '*';
       color: var(--color-error);
-      margin-left: 0.25rem;
+      margin-left: var(--spacing-xs);
     }
+
+  .form-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: right;
+  }
 
   /* Subnets List */
   .subnets-list,
   .hosts-list {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: var(--spacing-lg);
   }
 
   .subnet-item,
   .host-item {
     background: var(--color-surface);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
     border: 1px solid var(--color-border);
+    transition: all var(--transition-fast);
   }
+
+    .subnet-item:hover,
+    .host-item:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-primary);
+    }
 
   .subnet-header,
   .host-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
     border-bottom: 1px solid var(--color-border);
   }
 
   .subnet-title,
   .host-title {
     font-size: 1.125rem;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     margin: 0;
     color: var(--color-text-primary);
   }
@@ -592,45 +719,96 @@
   .host-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--spacing-lg);
   }
 
   /* Credentials Section */
   .credentials-section {
     background: var(--color-surface-hover);
-    border-radius: 0.5rem;
-    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
     border: 1px solid var(--color-border);
+  }
+
+  .subsection-title {
+    font-size: 1rem;
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--color-text-primary);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* Form Summary */
+  .form-summary {
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--color-border);
+  }
+
+  .summary-title {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--color-text-primary);
+  }
+
+  .summary-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  .summary-label {
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text-primary);
+  }
+
+  .summary-value {
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary);
   }
 
   /* Empty State */
   .empty-state {
     text-align: center;
-    padding: 2rem;
+    padding: var(--spacing-2xl);
     color: var(--color-text-secondary);
     background: var(--color-surface);
-    border-radius: 0.75rem;
-    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-border);
   }
 
   .empty-icon {
     width: 3rem;
     height: 3rem;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md);
     opacity: 0.5;
+    color: var(--color-text-muted);
   }
 
   .empty-description {
-    margin: 0.5rem 0 0 0;
+    margin: var(--spacing-sm) 0 0 0;
     font-size: 0.9rem;
   }
 
   /* Form Actions */
   .form-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--spacing-md);
     justify-content: flex-end;
-    padding-top: 1.5rem;
+    padding-top: var(--spacing-lg);
     border-top: 1px solid var(--color-border);
   }
 
@@ -642,7 +820,7 @@
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
-    margin-right: 0.5rem;
+    margin-right: var(--spacing-sm);
   }
 
   /* Responsive */
@@ -654,7 +832,11 @@
     .section-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 1rem;
+      gap: var(--spacing-md);
+    }
+
+    .summary-content {
+      grid-template-columns: 1fr;
     }
   }
 
@@ -664,16 +846,16 @@
     }
 
     .unit-form {
-      gap: 1.5rem;
+      gap: var(--spacing-xl);
     }
 
     .form-section {
-      padding: 1.25rem;
+      padding: var(--spacing-lg);
     }
 
     .subnet-item,
     .host-item {
-      padding: 1.25rem;
+      padding: var(--spacing-md);
     }
 
     .form-actions {
@@ -683,6 +865,23 @@
     .cancel-btn,
     .submit-btn {
       width: 100%;
+    }
+
+    .credentials-section {
+      padding: var(--spacing-md);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .subnet-header,
+    .host-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+
+    .form-summary {
+      padding: var(--spacing-lg);
     }
   }
 </style>

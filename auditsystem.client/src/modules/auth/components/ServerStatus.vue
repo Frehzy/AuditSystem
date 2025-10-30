@@ -25,19 +25,22 @@
         <span class="server-status__text">{{ statusText }}</span>
       </div>
 
-      <button v-if="showRetry && (status === 'offline' || status === 'checking')"
-              @click.stop="handleRetry"
-              :disabled="status === 'checking'"
-              class="server-status__retry"
-              :title="status === 'checking' ? 'Проверка соединения...' : 'Проверить снова'"
-              :aria-label="status === 'checking' ? 'Проверка соединения' : 'Проверить соединение'">
-        <span v-if="status === 'checking'" class="server-status__spinner">
-          <SpinnerIcon />
-        </span>
-        <span v-else class="server-status__retry-icon">
-          <RefreshIcon />
-        </span>
-      </button>
+      <BaseButton v-if="showRetry && (status === 'offline' || status === 'checking')"
+                  @click.stop="handleRetry"
+                  :disabled="status === 'checking'"
+                  variant="secondary"
+                  size="sm"
+                  class="server-status__retry"
+                  :title="status === 'checking' ? 'Проверка соединения...' : 'Проверить снова'">
+        <template #icon>
+          <span v-if="status === 'checking'" class="server-status__spinner">
+            <SpinnerIcon />
+          </span>
+          <span v-else class="server-status__retry-icon">
+            <RefreshIcon />
+          </span>
+        </template>
+      </BaseButton>
     </div>
 
     <div v-if="lastCheck" class="server-status__timestamp">
@@ -48,6 +51,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
+  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
   import { GlobeIcon, SpinnerIcon, RefreshIcon } from '@/assets/icons';
   import StatusIcon from './StatusIcon.vue';
 
@@ -147,8 +151,8 @@
   .server-status {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: var(--radius-xl);
+    padding: var(--space-lg);
     transition: all var(--transition-normal);
     backdrop-filter: blur(10px);
     cursor: v-bind('clickable ? "pointer" : "default"');
@@ -159,21 +163,21 @@
 
     .server-status:hover {
       transform: v-bind('clickable ? "translateY(-2px)" : "none"');
-      box-shadow: v-bind('clickable ? "var(--shadow-lg)" : "var(--shadow-sm)"');
+      box-shadow: v-bind('clickable ? "var(--shadow-md)" : "var(--shadow-sm)"');
     }
 
   .server-status__content {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-md);
     min-height: 24px;
   }
 
   .server-status__info {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-md);
     flex: 1;
     min-width: 0;
   }
@@ -185,13 +189,13 @@
     align-items: center;
     justify-content: center;
     background: var(--gradient-primary);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     color: white;
     flex-shrink: 0;
     box-shadow: var(--shadow-primary);
   }
 
-    .server-status__icon svg {
+    .server-status__icon ::v-deep(svg) {
       width: 20px;
       height: 20px;
     }
@@ -203,18 +207,18 @@
   }
 
   .server-status__label {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold, 700);
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-xs);
   }
 
   .server-status__url {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--color-text-secondary);
-    font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+    font-family: var(--font-family-mono);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -222,19 +226,19 @@
   }
 
   .server-status__response-time {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium, 500);
   }
 
   .server-status__indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold, 700);
     flex-shrink: 0;
     max-width: 120px;
     transition: all var(--transition-normal);
@@ -249,7 +253,7 @@
     height: 16px;
   }
 
-    .server-status__status-icon svg {
+    .server-status__status-icon ::v-deep(svg) {
       width: 14px;
       height: 14px;
     }
@@ -270,40 +274,14 @@
   }
 
   .server-status__retry {
-    padding: 8px;
-    background: var(--color-info);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-    box-shadow: var(--shadow-sm);
   }
-
-    .server-status__retry:hover:not(:disabled) {
-      background: var(--color-info-dark);
-      transform: scale(1.05);
-      box-shadow: var(--shadow-md);
-    }
-
-    .server-status__retry:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
 
   .server-status__spinner {
     animation: spin 1s linear infinite;
   }
 
-    .server-status__spinner svg {
+    .server-status__spinner ::v-deep(svg) {
       width: 16px;
       height: 16px;
     }
@@ -314,69 +292,69 @@
     justify-content: center;
   }
 
-    .server-status__retry-icon svg {
+    .server-status__retry-icon ::v-deep(svg) {
       width: 16px;
       height: 16px;
     }
 
   .server-status__timestamp {
-    margin-top: 12px;
-    font-size: 11px;
+    margin-top: var(--space-md);
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
     text-align: center;
     border-top: 1px solid var(--color-border);
-    padding-top: 8px;
+    padding-top: var(--space-sm);
   }
 
-  /* Status variants */
+  /* Status variants - используем цвета из темы */
   .server-status--online {
-    border-color: var(--status-online-border);
-    background: var(--status-online-bg);
+    border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+    background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
   }
 
     .server-status--online .server-status__dot {
-      background: var(--status-online-dot);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-online-dot) 30%, transparent);
+      background: var(--color-success);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 30%, transparent);
       animation: pulse 2s infinite;
     }
 
     .server-status--online .server-status__indicator {
-      background: var(--status-online-indicator);
-      color: var(--status-online-text);
-      border-color: color-mix(in srgb, var(--status-online-border) 30%, transparent);
+      background: color-mix(in srgb, var(--color-success) 8%, transparent);
+      color: var(--color-success);
+      border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
     }
 
   .server-status--offline {
-    border-color: var(--status-offline-border);
-    background: var(--status-offline-bg);
+    border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+    background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface));
   }
 
     .server-status--offline .server-status__dot {
-      background: var(--status-offline-dot);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline-dot) 30%, transparent);
+      background: var(--color-error);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 30%, transparent);
     }
 
     .server-status--offline .server-status__indicator {
-      background: var(--status-offline-indicator);
-      color: var(--status-offline-text);
-      border-color: color-mix(in srgb, var(--status-offline-border) 30%, transparent);
+      background: color-mix(in srgb, var(--color-error) 8%, transparent);
+      color: var(--color-error);
+      border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
     }
 
   .server-status--checking {
-    border-color: var(--status-checking-border);
-    background: var(--status-checking-bg);
+    border-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
+    background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface));
   }
 
     .server-status--checking .server-status__dot {
-      background: var(--status-checking-dot);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-checking-dot) 30%, transparent);
+      background: var(--color-warning);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-warning) 30%, transparent);
       animation: pulse 1.5s infinite;
     }
 
     .server-status--checking .server-status__indicator {
-      background: var(--status-checking-indicator);
-      color: var(--status-checking-text);
-      border-color: color-mix(in srgb, var(--status-checking-border) 30%, transparent);
+      background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+      color: var(--color-warning);
+      border-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
     }
 
   @keyframes pulse {
@@ -404,14 +382,14 @@
   /* Адаптивность */
   @media (max-width: 768px) {
     .server-status {
-      padding: 16px;
-      border-radius: 12px;
+      padding: var(--space-md);
+      border-radius: var(--radius-lg);
     }
 
     .server-status__content {
       flex-direction: column;
       align-items: stretch;
-      gap: 12px;
+      gap: var(--space-md);
     }
 
     .server-status__info {
@@ -426,8 +404,6 @@
 
     .server-status__retry {
       align-self: center;
-      width: 36px;
-      height: 36px;
     }
   }
 
@@ -435,10 +411,10 @@
     .server-status__icon {
       width: 36px;
       height: 36px;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
     }
 
-      .server-status__icon svg {
+      .server-status__icon ::v-deep(svg) {
         width: 18px;
         height: 18px;
       }
@@ -448,17 +424,17 @@
     }
 
     .server-status__url {
-      font-size: 13px;
+      font-size: 0.8125rem;
     }
   }
 
   @media (max-width: 360px) {
     .server-status {
-      padding: 14px;
+      padding: var(--space-md) var(--space-sm);
     }
 
     .server-status__info {
-      gap: 12px;
+      gap: var(--space-sm);
     }
 
     .server-status__icon {
@@ -466,7 +442,7 @@
       height: 32px;
     }
 
-      .server-status__icon svg {
+      .server-status__icon ::v-deep(svg) {
         width: 16px;
         height: 16px;
       }

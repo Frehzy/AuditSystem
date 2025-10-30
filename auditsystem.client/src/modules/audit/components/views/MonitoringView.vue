@@ -12,6 +12,7 @@
           <h2 class="section-title">Быстрый запуск</h2>
           <BaseButton @click="showQuickScanConfig = true"
                       variant="primary"
+                      size="md"
                       class="configure-scan-btn">
             <SettingsIcon class="button-icon" />
             Настроить сканирование
@@ -41,7 +42,10 @@
         </div>
 
         <div v-if="!canStartScan" class="scan-requirements">
-          <BaseAlert type="warning">
+          <BaseAlert type="warning" class="requirements-alert">
+            <template #title>
+              Недостаточно данных
+            </template>
             Для запуска сканирования необходимо добавить войсковые части и настроить скрипты проверки
           </BaseAlert>
         </div>
@@ -51,69 +55,106 @@
       <div class="active-tasks-section">
         <div class="section-header">
           <h2 class="section-title">Активные задачи</h2>
-          <BaseButton @click="refreshTasks"
-                      variant="text"
-                      size="sm"
-                      :loading="isLoadingTasks">
-            <RefreshIcon class="button-icon" />
-            Обновить
-          </BaseButton>
-        </div>
-
-        <div class="tasks-grid">
-          <div v-for="task in activeTasks"
-               :key="task.id"
-               class="task-card"
-               :class="`task-card--${task.status}`">
-            <div class="task-card__header">
-              <h3 class="task-card__title">{{ task.name }}</h3>
-              <span class="task-card__status">{{ getStatusText(task.status) }}</span>
-            </div>
-
-            <div class="task-card__progress">
-              <div class="progress-bar">
-                <div class="progress-bar__fill"
-                     :style="{ width: `${task.progress}%` }"></div>
-              </div>
-              <span class="progress-text">{{ task.progress }}%</span>
-            </div>
-
-            <div class="task-card__details">
-              <div class="task-detail">
-                <ServerIcon class="detail-icon" />
-                <span>{{ getUnitsCount(task.unitIds) }} частей</span>
-              </div>
-              <div class="task-detail">
-                <ScriptIcon class="detail-icon" />
-                <span>{{ getScriptsCount(task.scriptIds) }} скриптов</span>
-              </div>
-              <div class="task-detail">
-                <ClockIcon class="detail-icon" />
-                <span>{{ formatDuration(task.createdAt) }}</span>
-              </div>
-            </div>
-
-            <div class="task-card__actions">
-              <BaseButton @click="viewTaskDetails(task)"
-                          variant="text"
-                          size="sm">
-                Детали
-              </BaseButton>
-              <BaseButton v-if="task.status === 'running'"
-                          @click="cancelTask(task)"
-                          variant="text"
-                          size="sm"
-                          color="error">
-                Отменить
-              </BaseButton>
-            </div>
+          <div class="section-actions">
+            <BaseButton @click="refreshTasks"
+                        variant="text"
+                        size="sm"
+                        :loading="isLoadingTasks"
+                        class="refresh-btn">
+              <RefreshIcon class="button-icon" />
+              Обновить
+            </BaseButton>
           </div>
         </div>
 
-        <div v-if="activeTasks.length === 0" class="empty-state">
-          <ScanIcon class="empty-state__icon" />
-          <p class="empty-state__text">Нет активных задач</p>
-          <p class="empty-state__description">Запустите сканирование для начала мониторинга</p>
+        <div class="tasks-container">
+          <div v-if="activeTasks.length > 0" class="tasks-grid">
+            <div v-for="task in activeTasks"
+                 :key="task.id"
+                 class="task-card"
+                 :class="`task-card--${task.status}`">
+              <div class="task-card__header">
+                <div class="task-info">
+                  <h3 class="task-card__title">{{ task.name }}</h3>
+                  <span class="task-card__status" :class="`status--${task.status}`">
+                    {{ getStatusText(task.status) }}
+                  </span>
+                </div>
+                <div class="task-actions">
+                  <BaseButton @click="viewTaskDetails(task)"
+                              variant="text"
+                              size="sm"
+                              class="action-btn">
+                    <InfoIcon class="button-icon" />
+                    Детали
+                  </BaseButton>
+                  <BaseButton v-if="task.status === 'running'"
+                              @click="cancelTask(task)"
+                              variant="text"
+                              size="sm"
+                              color="error"
+                              class="action-btn">
+                    <StopIcon class="button-icon" />
+                    Отменить
+                  </BaseButton>
+                </div>
+              </div>
+
+              <div class="task-card__progress">
+                <div class="progress-info">
+                  <span class="progress-label">Прогресс выполнения</span>
+                  <span class="progress-value">{{ task.progress }}%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-bar__fill"
+                       :style="{ width: `${task.progress}%` }"
+                       :class="`progress--${task.status}`"></div>
+                </div>
+              </div>
+
+              <div class="task-card__details">
+                <div class="detail-grid">
+                  <div class="task-detail">
+                    <ServerIcon class="detail-icon" />
+                    <div class="detail-content">
+                      <span class="detail-value">{{ getUnitsCount(task.unitIds) }}</span>
+                      <span class="detail-label">частей</span>
+                    </div>
+                  </div>
+                  <div class="task-detail">
+                    <ScriptIcon class="detail-icon" />
+                    <div class="detail-content">
+                      <span class="detail-value">{{ getScriptsCount(task.scriptIds) }}</span>
+                      <span class="detail-label">скриптов</span>
+                    </div>
+                  </div>
+                  <div class="task-detail">
+                    <ClockIcon class="detail-icon" />
+                    <div class="detail-content">
+                      <span class="detail-value">{{ formatDuration(task.createdAt) }}</span>
+                      <span class="detail-label">назад</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="empty-state">
+            <div class="empty-state__content">
+              <ScanIcon class="empty-state__icon" />
+              <div class="empty-state__text">
+                <h3 class="empty-state__title">Нет активных задач</h3>
+                <p class="empty-state__description">Запустите сканирование для начала мониторинга</p>
+              </div>
+              <BaseButton @click="showQuickScanConfig = true"
+                          variant="primary"
+                          size="md"
+                          class="empty-state__action">
+                Начать сканирование
+              </BaseButton>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -121,72 +162,90 @@
       <div class="scan-history-section">
         <div class="section-header">
           <h2 class="section-title">История сканирований</h2>
-          <BaseSelect v-model="historyFilter"
-                      :options="historyFilterOptions"
-                      size="sm" />
+          <div class="section-actions">
+            <BaseSelect v-model="historyFilter"
+                        :options="historyFilterOptions"
+                        size="sm"
+                        class="history-filter" />
+          </div>
         </div>
 
-        <div class="history-table">
-          <div class="table-header">
-            <div class="table-cell">Задача</div>
-            <div class="table-cell">Статус</div>
-            <div class="table-cell">Прогресс</div>
-            <div class="table-cell">Время</div>
-            <div class="table-cell">Действия</div>
-          </div>
-
-          <div v-for="task in filteredHistory"
-               :key="task.id"
-               class="table-row">
-            <div class="table-cell">
-              <div class="task-name">
-                <strong>{{ task.name }}</strong>
-                <span v-if="task.description" class="task-description">
-                  {{ task.description }}
-                </span>
-              </div>
+        <div class="history-container">
+          <div v-if="filteredHistory.length > 0" class="history-table">
+            <div class="table-header">
+              <div class="table-cell">Задача</div>
+              <div class="table-cell">Статус</div>
+              <div class="table-cell">Прогресс</div>
+              <div class="table-cell">Время запуска</div>
+              <div class="table-cell">Действия</div>
             </div>
 
-            <div class="table-cell">
-              <span class="status-badge" :class="`status--${task.status}`">
-                {{ getStatusText(task.status) }}
-              </span>
-            </div>
-
-            <div class="table-cell">
-              <div class="progress-cell">
-                <div class="progress-bar--small">
-                  <div class="progress-bar__fill"
-                       :style="{ width: `${task.progress}%` }"></div>
+            <div v-for="task in filteredHistory"
+                 :key="task.id"
+                 class="table-row">
+              <div class="table-cell">
+                <div class="task-info">
+                  <strong class="task-name">{{ task.name }}</strong>
+                  <span v-if="task.description" class="task-description">
+                    {{ task.description }}
+                  </span>
                 </div>
-                <span>{{ task.progress }}%</span>
               </div>
-            </div>
 
-            <div class="table-cell">
-              <span class="task-time">{{ formatTaskTime(task.createdAt) }}</span>
-            </div>
+              <div class="table-cell">
+                <BaseChip :color="getStatusColor(task.status)" size="sm">
+                  {{ getStatusText(task.status) }}
+                </BaseChip>
+              </div>
 
-            <div class="table-cell">
-              <div class="actions">
-                <BaseButton @click="viewTaskReport(task)"
-                            variant="text"
-                            size="sm">
-                  Отчет
-                </BaseButton>
-                <BaseButton @click="rerunTask(task)"
-                            variant="text"
-                            size="sm">
-                  Повторить
-                </BaseButton>
+              <div class="table-cell">
+                <div class="progress-cell">
+                  <div class="progress-bar--compact">
+                    <div class="progress-bar__fill"
+                         :style="{ width: `${task.progress}%` }"
+                         :class="`progress--${task.status}`"></div>
+                  </div>
+                  <span class="progress-text">{{ task.progress }}%</span>
+                </div>
+              </div>
+
+              <div class="table-cell">
+                <div class="time-info">
+                  <span class="task-time">{{ formatTaskTime(task.createdAt) }}</span>
+                  <span class="task-duration">{{ formatDuration(task.createdAt) }}</span>
+                </div>
+              </div>
+
+              <div class="table-cell">
+                <div class="actions">
+                  <BaseButton @click="viewTaskReport(task)"
+                              variant="text"
+                              size="sm"
+                              class="action-btn">
+                    <ReportIcon class="button-icon" />
+                    Отчет
+                  </BaseButton>
+                  <BaseButton @click="rerunTask(task)"
+                              variant="text"
+                              size="sm"
+                              class="action-btn">
+                    <RefreshIcon class="button-icon" />
+                    Повторить
+                  </BaseButton>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div v-if="filteredHistory.length === 0" class="empty-state">
-          <HistoryIcon class="empty-state__icon" />
-          <p class="empty-state__text">История сканирований пуста</p>
+          <div v-else class="empty-state">
+            <div class="empty-state__content">
+              <HistoryIcon class="empty-state__icon" />
+              <div class="empty-state__text">
+                <h3 class="empty-state__title">История сканирований пуста</h3>
+                <p class="empty-state__description">Завершенные задачи появятся здесь</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -195,7 +254,7 @@
     <BaseModal v-if="showQuickScanConfig"
                :modelValue="showQuickScanConfig"
                title="Настройка сканирования"
-               size="large"
+               size="xl"
                @update:modelValue="showQuickScanConfig = $event"
                @close="showQuickScanConfig = false">
       <QuickScanConfig :units="units"
@@ -213,6 +272,7 @@
   import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
   import BaseAlert from '@/framework/ui/components/feedback/BaseAlert.vue';
   import BaseModal from '@/framework/ui/components/overlay/BaseModal.vue';
+  import BaseChip from '@/framework/ui/components/data-display/BaseChip.vue';
   import QuickScanConfig from '../common/QuickScanConfig.vue';
   import {
     ScanIcon,
@@ -222,7 +282,10 @@
     ServerIcon,
     ScriptIcon,
     ClockIcon,
-    HistoryIcon
+    HistoryIcon,
+    InfoIcon,
+    StopIcon,
+    ReportIcon
   } from '@/assets/icons';
   import { useMonitoring } from '../../composables/useMonitoring';
   import { useMilitaryUnits } from '../../composables/useMilitaryUnits';
@@ -294,11 +357,15 @@
     }
 
     await startScan({
-      name: 'Быстрое сканирование',
+      name: 'Быстрое сканирование ' + new Date().toLocaleDateString('ru-RU'),
+      description: 'Автоматически созданное быстрое сканирование',
       unitIds: militaryUnits.units.value.map(u => u.id),
       hostIds: [],
       scriptIds: scriptsManager.checkScripts.value.slice(0, 3).map(s => s.id),
-      autoFix: false
+      autoFix: false,
+      parallelExecution: true,
+      generateReport: true,
+      notifyOnComplete: true
     });
   };
 
@@ -313,11 +380,15 @@
     }
 
     await startScan({
-      name: 'Полное сканирование',
+      name: 'Полное сканирование ' + new Date().toLocaleDateString('ru-RU'),
+      description: 'Автоматически созданное полное сканирование всех систем',
       unitIds: militaryUnits.units.value.map(u => u.id),
       hostIds: [],
       scriptIds: scriptsManager.checkScripts.value.map(s => s.id),
-      autoFix: true
+      autoFix: true,
+      parallelExecution: true,
+      generateReport: true,
+      notifyOnComplete: true
     });
   };
 
@@ -326,8 +397,18 @@
     try {
       emit('start-scan', command);
       showQuickScanConfig.value = false;
+      showToast({
+        type: 'success',
+        title: 'Сканирование запущено',
+        message: 'Задача успешно создана и добавлена в очередь'
+      });
     } catch (error) {
       console.error('Failed to start scan:', error);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось запустить сканирование'
+      });
     } finally {
       isStartingScan.value = false;
     }
@@ -340,34 +421,55 @@
 
   const cancelTask = (task: ScanTask): void => {
     emit('cancel-scan', task.id);
+    showToast({
+      type: 'info',
+      title: 'Задача отменена',
+      message: `Задача "${task.name}" была отменена`
+    });
   };
 
   const refreshTasks = async (): Promise<void> => {
     isLoadingTasks.value = true;
     try {
       await monitoring.loadScanHistory();
+      showToast({
+        type: 'success',
+        title: 'Данные обновлены',
+        message: 'Список задач успешно обновлен'
+      });
+    } catch (error) {
+      console.error('Failed to refresh tasks:', error);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось обновить список задач'
+      });
     } finally {
       isLoadingTasks.value = false;
     }
   };
 
   const viewTaskDetails = (task: ScanTask): void => {
-    // Navigate to task details
     console.log('View task details:', task);
+    // Navigate to task details
   };
 
   const viewTaskReport = (task: ScanTask): void => {
-    // Navigate to report
     console.log('View task report:', task);
+    // Navigate to report
   };
 
   const rerunTask = (task: ScanTask): void => {
     const command: StartScanCommand = {
       name: `Повтор: ${task.name}`,
+      description: task.description,
       unitIds: task.unitIds,
       hostIds: task.hostIds,
       scriptIds: task.scriptIds,
-      autoFix: task.autoFix
+      autoFix: task.autoFix,
+      parallelExecution: true,
+      generateReport: true,
+      notifyOnComplete: true
     };
     emit('start-scan', command);
   };
@@ -391,6 +493,17 @@
     return statusMap[status] || status;
   };
 
+  const getStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      pending: 'warning',
+      running: 'primary',
+      completed: 'success',
+      failed: 'error',
+      cancelled: 'default'
+    };
+    return colorMap[status] || 'default';
+  };
+
   const formatDuration = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
@@ -398,8 +511,10 @@
     const minutes = Math.floor(diff / 60000);
 
     if (minutes < 1) return 'Только что';
-    if (minutes < 60) return `${minutes} мин назад`;
-    return `${Math.floor(minutes / 60)} ч назад`;
+    if (minutes < 60) return `${minutes} мин`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} ч`;
+    return `${Math.floor(hours / 24)} д`;
   };
 
   const formatTaskTime = (dateString: string): string => {
@@ -423,257 +538,366 @@
   .monitoring-view {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--space-2xl, 2rem);
+    min-height: 100%;
   }
 
   .monitoring-view__header {
     text-align: center;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-xl, 1.5rem);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
   }
 
   .monitoring-view__title {
     font-size: 2.25rem;
-    font-weight: 800;
-    margin: 0 0 0.75rem 0;
-    background: var(--gradient-primary);
+    font-weight: var(--font-weight-bold, 700);
+    margin: 0 0 var(--space-sm, 0.75rem) 0;
+    background: var(--gradient-primary, linear-gradient(135deg, var(--color-primary, #0ea5e9) 0%, var(--color-primary-dark, #0284c7) 100%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -0.025em;
+    line-height: 1.1;
   }
 
   .monitoring-view__subtitle {
     font-size: 1.25rem;
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary, #475569);
     margin: 0;
-    font-weight: 400;
+    font-weight: var(--font-weight-normal, 400);
+    line-height: 1.4;
+  }
+
+  .monitoring-view__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xl, 2rem);
+    flex: 1;
   }
 
   /* Sections */
   .quick-scan-section,
   .active-tasks-section,
   .scan-history-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
-    padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-xl, 0.75rem);
+    padding: var(--space-2xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    transition: all var(--transition-fast, 0.15s);
   }
+
+    .quick-scan-section:hover,
+    .active-tasks-section:hover,
+    .scan-history-section:hover {
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    }
 
   .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.75rem;
+    margin-bottom: var(--space-xl, 1.5rem);
   }
 
   .section-title {
     font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: var(--font-weight-semibold, 600);
     margin: 0;
-    color: var(--color-text-primary);
+    color: var(--color-text-primary, #1e293b);
+    line-height: 1.2;
+  }
+
+  .section-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md, 1rem);
   }
 
   .button-icon {
     width: 1.125rem;
     height: 1.125rem;
-    margin-right: 0.5rem;
+    margin-right: var(--space-sm, 0.75rem);
   }
 
-  /* Quick Scan */
+  /* Quick Scan Section */
   .quick-scan-actions {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg, 1.25rem);
+    margin-bottom: var(--space-lg, 1.25rem);
   }
 
   .quick-scan-btn,
   .comprehensive-scan-btn {
-    flex: 1;
-    transition: all 0.3s ease;
+    transition: all var(--transition-fast, 0.15s);
   }
 
     .quick-scan-btn:hover,
     .comprehensive-scan-btn:hover {
       transform: translateY(-2px);
+      box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
     }
 
   .scan-requirements {
-    margin-top: 1rem;
+    margin-top: var(--space-lg, 1.25rem);
   }
 
-  /* Active Tasks */
+  .requirements-alert {
+    border-radius: var(--radius-lg, 0.5rem);
+  }
+
+  /* Active Tasks Section */
+  .tasks-container {
+    min-height: 200px;
+  }
+
   .tasks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: var(--space-lg, 1.25rem);
   }
 
   .task-card {
-    background: var(--color-surface-hover);
-    border: 1px solid var(--color-border);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-lg, 0.5rem);
+    padding: var(--space-lg, 1.25rem);
+    transition: all var(--transition-fast, 0.15s);
+    position: relative;
+    overflow: hidden;
   }
 
     .task-card:hover {
-      border-color: var(--color-primary);
+      border-color: var(--color-primary, #0ea5e9);
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
     }
 
   .task-card--running {
-    border-left: 4px solid var(--color-primary);
+    border-left: 4px solid var(--color-primary, #0ea5e9);
   }
 
   .task-card--completed {
-    border-left: 4px solid var(--color-success);
+    border-left: 4px solid var(--color-success, #10b981);
   }
 
   .task-card--failed {
-    border-left: 4px solid var(--color-error);
+    border-left: 4px solid var(--color-error, #ef4444);
   }
 
   .task-card--cancelled {
-    border-left: 4px solid var(--color-warning);
+    border-left: 4px solid var(--color-warning, #f59e0b);
   }
 
   .task-card__header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-md, 1rem);
+    gap: var(--space-md, 1rem);
+  }
+
+  .task-info {
+    flex: 1;
+    min-width: 0;
   }
 
   .task-card__title {
     font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
-    color: var(--color-text-primary);
-    flex: 1;
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--space-xs, 0.5rem) 0;
+    color: var(--color-text-primary, #1e293b);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .task-card__status {
     font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
+    font-weight: var(--font-weight-semibold, 600);
+    padding: var(--space-xs, 0.5rem) var(--space-sm, 0.75rem);
+    border-radius: var(--radius-full, 9999px);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: inline-block;
   }
 
   .status--pending {
-    background: var(--color-warning-light);
-    color: var(--color-warning);
+    background: var(--color-warning-light, #fef3c7);
+    color: var(--color-warning, #f59e0b);
   }
 
   .status--running {
-    background: var(--color-primary-light);
-    color: var(--color-primary);
+    background: var(--color-primary-light, #dbeafe);
+    color: var(--color-primary, #0ea5e9);
   }
 
   .status--completed {
-    background: var(--color-success-light);
-    color: var(--color-success);
+    background: var(--color-success-light, #d1fae5);
+    color: var(--color-success, #10b981);
   }
 
   .status--failed {
-    background: var(--color-error-light);
-    color: var(--color-error);
+    background: var(--color-error-light, #fee2e2);
+    color: var(--color-error, #ef4444);
   }
 
   .status--cancelled {
-    background: var(--color-warning-light);
-    color: var(--color-warning);
+    background: var(--color-warning-light, #fef3c7);
+    color: var(--color-warning, #f59e0b);
+  }
+
+  .task-actions {
+    display: flex;
+    gap: var(--space-xs, 0.5rem);
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    padding: var(--space-xs, 0.5rem);
   }
 
   .task-card__progress {
+    margin-bottom: var(--space-lg, 1.25rem);
+  }
+
+  .progress-info {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-sm, 0.75rem);
+  }
+
+  .progress-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #475569);
+    font-weight: var(--font-weight-medium, 500);
+  }
+
+  .progress-value {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, #1e293b);
   }
 
   .progress-bar {
-    flex: 1;
     height: 0.5rem;
-    background: var(--color-border);
-    border-radius: 1rem;
+    background: var(--color-border, #e2e8f0);
+    border-radius: var(--radius-full, 9999px);
     overflow: hidden;
+    position: relative;
   }
 
   .progress-bar__fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
-    border-radius: 1rem;
-    transition: width 0.3s ease;
+    border-radius: var(--radius-full, 9999px);
+    transition: width var(--transition-normal, 0.3s) ease;
   }
 
-  .progress-text {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    min-width: 2.5rem;
+  .progress--pending {
+    background: var(--color-warning, #f59e0b);
+  }
+
+  .progress--running {
+    background: linear-gradient(90deg, var(--color-primary, #0ea5e9), var(--color-primary-light, #7dd3fc));
+  }
+
+  .progress--completed {
+    background: var(--color-success, #10b981);
+  }
+
+  .progress--failed {
+    background: var(--color-error, #ef4444);
+  }
+
+  .progress--cancelled {
+    background: var(--color-warning, #f59e0b);
   }
 
   .task-card__details {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
+    margin-top: var(--space-lg, 1.25rem);
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-md, 1rem);
   }
 
   .task-detail {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: var(--color-text-secondary);
+    gap: var(--space-sm, 0.75rem);
+    padding: var(--space-sm, 0.75rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-radius: var(--radius-md, 0.375rem);
+    border: 1px solid var(--color-border, #e2e8f0);
   }
 
   .detail-icon {
-    width: 1rem;
-    height: 1rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-primary, #0ea5e9);
+    flex-shrink: 0;
   }
 
-  .task-card__actions {
+  .detail-content {
     display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
   }
 
-  /* History Table */
+  .detail-value {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--color-text-primary, #1e293b);
+    line-height: 1;
+  }
+
+  .detail-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
+    font-weight: var(--font-weight-medium, 500);
+    text-transform: lowercase;
+  }
+
+  /* History Section */
+  .history-container {
+    min-height: 200px;
+  }
+
   .history-table {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1rem;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-lg, 0.5rem);
     overflow: hidden;
   }
 
   .table-header {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1.5fr 1.2fr;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--color-surface-hover);
-    border-bottom: 1px solid var(--color-border);
-    font-weight: 700;
-    color: var(--color-text-primary);
+    gap: var(--space-md, 1rem);
+    padding: var(--space-lg, 1.25rem) var(--space-xl, 1.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, #1e293b);
     font-size: 0.9rem;
   }
 
   .table-row {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1.5fr 1.2fr;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--color-border);
-    transition: background-color 0.2s ease;
+    gap: var(--space-md, 1rem);
+    padding: var(--space-lg, 1.25rem) var(--space-xl, 1.5rem);
+    border-bottom: 1px solid var(--color-border-light, #f1f5f9);
+    transition: background-color var(--transition-fast, 0.15s);
   }
 
     .table-row:hover {
-      background: var(--color-surface-hover);
+      background: var(--color-surface-hover, #f8fafc);
     }
 
     .table-row:last-child {
@@ -683,81 +907,122 @@
   .table-cell {
     display: flex;
     align-items: center;
-    color: var(--color-text-primary);
+    color: var(--color-text-primary, #1e293b);
+    min-width: 0;
+  }
+
+  .task-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
+    min-width: 0;
   }
 
   .task-name {
-    display: flex;
-    flex-direction: column;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, #1e293b);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .task-description {
     font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin-top: 0.25rem;
-  }
-
-  .status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--color-text-muted, #64748b);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .progress-cell {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-md, 1rem);
   }
 
-  .progress-bar--small {
+  .progress-bar--compact {
     width: 60px;
     height: 0.375rem;
-    background: var(--color-border);
-    border-radius: 1rem;
+    background: var(--color-border, #e2e8f0);
+    border-radius: var(--radius-full, 9999px);
     overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .progress-text {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, #1e293b);
+    min-width: 2.5rem;
+  }
+
+  .time-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
   }
 
   .task-time {
     font-size: 0.875rem;
-    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .task-duration {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
   }
 
   .actions {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-xs, 0.5rem);
   }
 
   /* Empty States */
   .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3xl, 3rem) var(--space-2xl, 2rem);
+    color: var(--color-text-secondary, #475569);
+  }
+
+  .empty-state__content {
     text-align: center;
-    padding: 3rem 2rem;
-    color: var(--color-text-secondary);
+    max-width: 400px;
   }
 
   .empty-state__icon {
     width: 4rem;
     height: 4rem;
-    margin-bottom: 1.5rem;
-    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg, 1.25rem);
+    color: var(--color-text-muted, #64748b);
     opacity: 0.5;
   }
 
   .empty-state__text {
+    margin-bottom: var(--space-lg, 1.25rem);
+  }
+
+  .empty-state__title {
     font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem 0;
-    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold, 600);
+    margin: 0 0 var(--space-sm, 0.75rem) 0;
+    color: var(--color-text-primary, #1e293b);
   }
 
   .empty-state__description {
-    margin: 0 0 1.5rem 0;
     font-size: 1rem;
+    margin: 0;
+    color: var(--color-text-secondary, #475569);
+    line-height: 1.4;
   }
 
-  /* Responsive */
+  .empty-state__action {
+    margin-top: var(--space-lg, 1.25rem);
+  }
+
+  /* Responsive Design */
   @media (max-width: 1200px) {
     .monitoring-view__title {
       font-size: 2rem;
@@ -780,23 +1045,23 @@
     .quick-scan-section,
     .active-tasks-section,
     .scan-history-section {
-      padding: 1.5rem;
+      padding: var(--space-xl, 1.5rem);
     }
 
     .section-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 1rem;
+      gap: var(--space-md, 1rem);
     }
 
     .quick-scan-actions {
-      flex-direction: column;
+      grid-template-columns: 1fr;
     }
 
     .table-header,
     .table-row {
       grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
+      gap: var(--space-sm, 0.75rem);
     }
 
     .table-cell:nth-child(3),
@@ -804,20 +1069,21 @@
     .table-cell:nth-child(5) {
       display: none;
     }
+
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     .monitoring-view {
-      gap: 1.5rem;
+      gap: var(--space-xl, 1.5rem);
     }
 
-    .task-card__details {
-      flex-direction: column;
-      gap: 0.5rem;
+    .monitoring-view__header {
+      padding-bottom: var(--space-lg, 1.25rem);
     }
-  }
 
-  @media (max-width: 800px) {
     .monitoring-view__title {
       font-size: 1.5rem;
     }
@@ -829,12 +1095,36 @@
     .quick-scan-section,
     .active-tasks-section,
     .scan-history-section {
-      padding: 1.25rem;
-      border-radius: 1rem;
+      padding: var(--space-lg, 1.25rem);
+      border-radius: var(--radius-lg, 0.5rem);
     }
 
     .section-title {
       font-size: 1.25rem;
+    }
+
+    .task-card {
+      padding: var(--space-md, 1rem);
+    }
+
+    .task-card__header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-sm, 0.75rem);
+    }
+
+    .task-actions {
+      justify-content: flex-end;
+    }
+
+    .table-header,
+    .table-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-sm, 0.75rem);
+    }
+
+    .table-cell:nth-child(2) {
+      display: none;
     }
   }
 </style>

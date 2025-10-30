@@ -4,7 +4,7 @@
              subtitle="Выберите цели и параметры для сканирования"
              icon="ScanIcon"
              size="xl"
-             :wrapper-class="['quick-scan-config-modal', `step-${currentStep + 1}`]"
+             :wrapper-class="`quick-scan-config-modal step-${currentStep + 1}`"
              @close="$emit('cancel')">
 
     <!-- Progress Steps -->
@@ -1066,13 +1066,13 @@
     /* Custom styles for the modal container */
   }
 
-    .quick-scan-config-modal :deep(.base-modal__container) {
+    .quick-scan-config-modal ::v-deep(.base-modal__container) {
       display: flex;
       flex-direction: column;
       max-height: 85vh;
     }
 
-    .quick-scan-config-modal :deep(.base-modal__content) {
+    .quick-scan-config-modal ::v-deep(.base-modal__content) {
       padding: 0;
       display: flex;
       flex-direction: column;
@@ -1149,7 +1149,7 @@
     color: white;
   }
 
-  .step-check :deep(svg) {
+  .step-check ::v-deep(svg) {
     width: 1rem;
     height: 1rem;
   }

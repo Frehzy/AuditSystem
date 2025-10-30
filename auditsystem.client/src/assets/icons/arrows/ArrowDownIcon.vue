@@ -1,17 +1,78 @@
 <!-- src/assets/icons/arrows/ArrowDownIcon.vue -->
-<!-- Иконка стрелки вниз -->
 <template>
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 5v14m7-7l-7 7-7-7" :stroke="color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <svg width="20"
+       height="20"
+       viewBox="0 0 24 24"
+       fill="none"
+       xmlns="http://www.w3.org/2000/svg"
+       :class="iconClasses">
+    <path d="M12 5v14m7-7l-7 7-7-7"
+          :stroke="computedColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round" />
   </svg>
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
+
   interface Props {
     color?: string;
+    size?: number;
   }
 
-  withDefaults(defineProps<Props>(), {
-    color: 'currentColor'
-  });
+  const props = withDefaults(defineProps<Props>(), {
+    color: '',
+    size: 20
+  })
+
+  const computedColor = computed(() => {
+    if (props.color) return props.color
+    return 'var(--color-text-primary)'
+  })
+
+  const iconClasses = computed(() => ({
+    'arrow-down-icon': true,
+    'theme-transition': true
+  }))
 </script>
+
+<style scoped>
+  .arrow-down-icon {
+    transition: color var(--transition-normal);
+  }
+
+    .arrow-down-icon svg {
+      color: var(--color-text-primary);
+    }
+
+    .arrow-down-icon:hover {
+      color: var(--color-primary);
+    }
+
+  .arrow-down-icon {
+    transform-origin: center;
+    transition: all var(--transition-fast);
+  }
+
+    .arrow-down-icon:hover {
+      transform: scale(1.05) translateY(1px);
+    }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arrow-down-icon {
+      transition: none;
+    }
+
+      .arrow-down-icon:hover {
+        transform: none;
+      }
+  }
+
+  @media (prefers-contrast: high) {
+    .arrow-down-icon svg {
+      stroke-width: 2.5;
+    }
+  }
+</style>

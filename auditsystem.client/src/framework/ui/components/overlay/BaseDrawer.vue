@@ -8,13 +8,17 @@
           <header v-if="showHeader" class="base-drawer__header">
             <div class="base-drawer__title">
               <h2>{{ title }}</h2>
+              <p v-if="subtitle" class="base-drawer__subtitle">{{ subtitle }}</p>
             </div>
-            <button v-if="closable"
-                    @click="closeDrawer"
-                    class="base-drawer__close"
-                    aria-label="Закрыть панель">
-              <CloseIcon :size="20" />
-            </button>
+            <div class="base-drawer__header-actions">
+              <slot name="header-actions"></slot>
+              <button v-if="closable"
+                      @click="closeDrawer"
+                      class="base-drawer__close"
+                      aria-label="Закрыть панель">
+                <CloseIcon :size="20" />
+              </button>
+            </div>
           </header>
 
           <!-- Content -->
@@ -51,9 +55,10 @@
   interface Props {
     modelValue: boolean
     title?: string
+    subtitle?: string
     message?: string
     position?: 'left' | 'right' | 'top' | 'bottom'
-    size?: 'sm' | 'md' | 'lg' | 'xl'
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
     closable?: boolean
     closeOnBackdrop?: boolean
     closeOnEscape?: boolean
@@ -62,10 +67,12 @@
     confirmText?: string
     cancelText?: string
     persistent?: boolean
+    wrapperClass?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {
     title: '',
+    subtitle: '',
     message: '',
     position: 'right',
     size: 'md',
@@ -77,6 +84,7 @@
     confirmText: 'Подтвердить',
     cancelText: 'Отмена',
     persistent: false,
+    wrapperClass: '',
   })
 
   const emit = defineEmits<{
@@ -93,6 +101,7 @@
     `base-drawer--${props.size}`,
     {
       'base-drawer--persistent': props.persistent,
+      [props.wrapperClass]: !!props.wrapperClass,
     },
   ])
 
@@ -105,18 +114,24 @@
     if (props.position === 'top' || props.position === 'bottom') {
       return '100%'
     }
+    if (props.size === 'full') {
+      return '100vw'
+    }
     const widths = {
       sm: '320px',
       md: '400px',
       lg: '480px',
       xl: '560px',
     }
-    return widths[props.size]
+    return widths[props.size as keyof typeof widths] || widths.md
   }
 
   const getDrawerHeight = (): string => {
     if (props.position === 'left' || props.position === 'right') {
       return '100%'
+    }
+    if (props.size === 'full') {
+      return '100vh'
     }
     const heights = {
       sm: '300px',
@@ -124,7 +139,7 @@
       lg: '500px',
       xl: '600px',
     }
-    return heights[props.size]
+    return heights[props.size as keyof typeof heights] || heights.md
   }
 
   const closeDrawer = () => {
@@ -175,7 +190,9 @@
 
   // Lifecycle hooks
   onMounted(() => {
-    onEnter()
+    if (props.modelValue) {
+      onEnter()
+    }
   })
 
   onUnmounted(() => {
@@ -190,18 +207,23 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: var(--z-modal);
+    z-index: var(--z-modal, 1000);
     background: color-mix(in srgb, var(--color-background) 30%, transparent);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .base-drawer__content {
-    position: absolute;
+    position: relative;
     background: var(--color-surface);
     box-shadow: var(--shadow-xl);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    height: 100%;
+    width: 100%;
   }
 
   /* Position variants */
@@ -210,7 +232,7 @@
     left: 0;
     bottom: 0;
     width: var(--drawer-width);
-    animation: drawer-slide-in-left 0.3s ease-out;
+    animation: drawer-slide-in-left var(--transition-normal) ease-out;
   }
 
   .base-drawer--right .base-drawer__content {
@@ -218,7 +240,7 @@
     right: 0;
     bottom: 0;
     width: var(--drawer-width);
-    animation: drawer-slide-in-right 0.3s ease-out;
+    animation: drawer-slide-in-right var(--transition-normal) ease-out;
   }
 
   .base-drawer--top .base-drawer__content {
@@ -226,7 +248,7 @@
     left: 0;
     right: 0;
     height: var(--drawer-height);
-    animation: drawer-slide-in-top 0.3s ease-out;
+    animation: drawer-slide-in-top var(--transition-normal) ease-out;
   }
 
   .base-drawer--bottom .base-drawer__content {
@@ -234,69 +256,116 @@
     left: 0;
     right: 0;
     height: var(--drawer-height);
-    animation: drawer-slide-in-bottom 0.3s ease-out;
+    animation: drawer-slide-in-bottom var(--transition-normal) ease-out;
   }
 
+  .base-drawer--full .base-drawer__content {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    animation: drawer-fade-in var(--transition-normal) ease-out;
+  }
+
+  /* Header */
   .base-drawer__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    padding: var(--space-lg);
+    padding: var(--space-xl, 1.5rem);
     border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
     flex-shrink: 0;
+    gap: var(--space-md, 1rem);
   }
 
-  .base-drawer__title h2 {
+  .base-drawer__title {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.5rem);
+  }
+
+    .base-drawer__title h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: var(--font-weight-bold, 700);
+      color: var(--color-text-primary);
+      line-height: 1.3;
+    }
+
+  .base-drawer__subtitle {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-primary);
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+  }
+
+  .base-drawer__header-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm, 0.75rem);
+    flex-shrink: 0;
   }
 
   .base-drawer__close {
     background: none;
     border: none;
     cursor: pointer;
-    padding: var(--space-xs);
-    border-radius: var(--radius-sm);
+    padding: var(--space-xs, 0.5rem);
+    border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     color: var(--color-text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--color-surface-hover);
   }
 
     .base-drawer__close:hover {
-      background: var(--color-surface-hover);
+      background: var(--color-primary-light);
       color: var(--color-primary);
+      transform: scale(1.05);
     }
 
+    .base-drawer__close:active {
+      transform: scale(0.95);
+    }
+
+  /* Body */
   .base-drawer__body {
     flex: 1;
-    padding: var(--space-lg);
+    padding: var(--space-xl, 1.5rem);
     overflow-y: auto;
     color: var(--color-text-secondary);
-    line-height: 1.5;
+    line-height: 1.6;
+    background: var(--color-background);
   }
 
   .base-drawer__message {
     font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
   }
 
+  /* Footer */
   .base-drawer__footer {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-md);
-    padding: var(--space-lg);
+    gap: var(--space-md, 1rem);
+    padding: var(--space-xl, 1.5rem);
     border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
     flex-shrink: 0;
   }
 
   /* Animations */
   .drawer-enter-active,
   .drawer-leave-active {
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-normal) ease;
   }
 
   .drawer-enter-from,
@@ -306,7 +375,7 @@
 
   .drawer-enter-active .base-drawer__content,
   .drawer-leave-active .base-drawer__content {
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform var(--transition-normal) ease, opacity var(--transition-normal) ease;
   }
 
   .drawer-leave-to .base-drawer__content {
@@ -329,43 +398,68 @@
     transform: translateY(100%);
   }
 
+  .base-drawer--full .drawer-leave-to .base-drawer__content {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
   @keyframes drawer-slide-in-left {
     from {
       transform: translateX(-100%);
+      opacity: 0;
     }
 
     to {
       transform: translateX(0);
+      opacity: 1;
     }
   }
 
   @keyframes drawer-slide-in-right {
     from {
       transform: translateX(100%);
+      opacity: 0;
     }
 
     to {
       transform: translateX(0);
+      opacity: 1;
     }
   }
 
   @keyframes drawer-slide-in-top {
     from {
       transform: translateY(-100%);
+      opacity: 0;
     }
 
     to {
       transform: translateY(0);
+      opacity: 1;
     }
   }
 
   @keyframes drawer-slide-in-bottom {
     from {
       transform: translateY(100%);
+      opacity: 0;
     }
 
     to {
       transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes drawer-fade-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
@@ -384,16 +478,84 @@
     .base-drawer__header,
     .base-drawer__body,
     .base-drawer__footer {
-      padding: var(--space-md);
+      padding: var(--space-lg, 1.25rem);
+    }
+
+    .base-drawer__title h2 {
+      font-size: 1.25rem;
+    }
+
+    .base-drawer__subtitle {
+      font-size: 0.875rem;
     }
 
     .base-drawer__footer {
       flex-direction: column-reverse;
-      gap: var(--space-sm);
+      gap: var(--space-sm, 0.75rem);
     }
 
       .base-drawer__footer :deep(.base-button) {
         width: 100%;
       }
   }
+
+  @media (max-width: 480px) {
+    .base-drawer--left .base-drawer__content,
+    .base-drawer--right .base-drawer__content {
+      width: 90vw;
+    }
+
+    .base-drawer--top .base-drawer__content,
+    .base-drawer--bottom .base-drawer__content {
+      height: 80vh;
+    }
+
+    .base-drawer__header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-md, 1rem);
+    }
+
+    .base-drawer__header-actions {
+      align-self: flex-end;
+    }
+  }
+
+  /* Scrollbar styling */
+  .base-drawer__body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .base-drawer__body::-webkit-scrollbar-track {
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
+  }
+
+  .base-drawer__body::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+    .base-drawer__body::-webkit-scrollbar-thumb:hover {
+      background: var(--color-text-muted);
+    }
+
+  /* Focus styles */
+  .base-drawer__close:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* Persistent state */
+  .base-drawer--persistent .base-drawer__close {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+    .base-drawer--persistent .base-drawer__close:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text-muted);
+      transform: none;
+    }
 </style>

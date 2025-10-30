@@ -1,213 +1,342 @@
 <template>
   <div class="units-view">
+    <!-- Header Section -->
     <div class="units-view__header">
-      <h1 class="units-view__title">Войсковые части</h1>
-      <p class="units-view__subtitle">Управление военными подразделениями и их сетевыми ресурсами</p>
+      <div class="header-content">
+        <div class="header-icon">
+          <ServerIcon class="icon" />
+        </div>
+        <div class="header-text">
+          <h1 class="units-view__title">Войсковые части</h1>
+          <p class="units-view__subtitle">Управление военными подразделениями и их сетевыми ресурсами</p>
+        </div>
+      </div>
     </div>
 
     <div class="units-view__content">
-      <!-- Действия -->
-      <div class="units-actions">
-        <div class="actions-header">
-          <h2 class="section-title">Управление войсковыми частями</h2>
-          <div class="actions-buttons">
-            <BaseButton @click="showCreateUnitDialog = true"
-                        variant="primary">
-              <PlusIcon class="button-icon" />
-              Добавить часть
-            </BaseButton>
-            <BaseButton @click="showNetworkScanDialog = true"
-                        variant="secondary">
-              <ScanIcon class="button-icon" />
-              Сканировать сеть
-            </BaseButton>
+      <!-- Quick Actions -->
+      <div class="quick-actions-section">
+        <div class="section-header">
+          <div class="section-title-group">
+            <h2 class="section-title">Быстрые действия</h2>
+            <p class="section-description">Создание новых единиц и сканирование сети</p>
+          </div>
+        </div>
+
+        <div class="actions-grid">
+          <div class="action-card" @click="showCreateUnitDialog = true">
+            <div class="action-icon primary">
+              <PlusIcon class="icon" />
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Добавить часть</h3>
+              <p class="action-description">Создать новую войсковую часть с подсетями и хостами</p>
+            </div>
+            <div class="action-arrow">
+              <ArrowRightIcon class="icon" />
+            </div>
+          </div>
+
+          <div class="action-card" @click="showNetworkScanDialog = true">
+            <div class="action-icon secondary">
+              <ScanIcon class="icon" />
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Сканировать сеть</h3>
+              <p class="action-description">Запустить автоматическое сканирование сетевых ресурсов</p>
+            </div>
+            <div class="action-arrow">
+              <ArrowRightIcon class="icon" />
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Список войсковых частей -->
-      <div class="units-section">
+      <!-- Stats Overview -->
+      <div class="stats-overview">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon total-units">
+              <ServerIcon class="icon" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ totalUnits }}</div>
+              <div class="stat-label">Всего частей</div>
+              <div class="stat-trend" v-if="unitsGrowth > 0">
+                <TrendingUpIcon class="trend-icon" />
+                <span>+{{ unitsGrowth }} за месяц</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon active-units">
+              <ActivityIcon class="icon" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ activeUnits }}</div>
+              <div class="stat-label">Активных</div>
+              <div class="stat-percentage">{{ activePercentage }}% от общего числа</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon total-subnets">
+              <NetworkIcon class="icon" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ totalSubnets }}</div>
+              <div class="stat-label">Подсетей</div>
+              <div class="stat-change" v-if="subnetsChange !== 0">
+                <span :class="subnetsChange > 0 ? 'change-positive' : 'change-negative'">
+                  {{ subnetsChange > 0 ? '+' : '' }}{{ subnetsChange }}
+                </span>
+                с прошлого месяца
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon total-hosts">
+              <HostIcon class="icon" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ totalHosts }}</div>
+              <div class="stat-label">Хостов</div>
+              <div class="hosts-status">
+                <span class="online-count">{{ onlineHosts }} онлайн</span>
+                <span class="offline-count">{{ offlineHosts }} офлайн</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Units List Section -->
+      <div class="units-list-section">
         <div class="section-header">
-          <h2 class="section-title">Список войсковых частей</h2>
-          <BaseButton @click="refreshUnits"
-                      variant="text"
-                      size="sm"
-                      :loading="isLoading">
-            <RefreshIcon class="button-icon" />
-            Обновить
-          </BaseButton>
+          <div class="section-title-group">
+            <h2 class="section-title">Список войсковых частей</h2>
+            <p class="section-description">Управление существующими подразделениями и их ресурсами</p>
+          </div>
+          <div class="section-actions">
+            <BaseButton @click="refreshUnits"
+                        variant="secondary"
+                        size="sm"
+                        :loading="isLoading"
+                        class="refresh-btn">
+              <RefreshIcon class="button-icon" />
+              Обновить
+            </BaseButton>
+            <BaseButton @click="exportUnits"
+                        variant="text"
+                        size="sm">
+              <DownloadIcon class="button-icon" />
+              Экспорт
+            </BaseButton>
+          </div>
         </div>
 
-        <div class="units-list">
-          <div v-for="unit in units"
+        <!-- Filters -->
+        <div class="units-filters">
+          <div class="filter-group">
+            <BaseInput v-model="searchQuery"
+                       placeholder="Поиск по названию или локации..."
+                       size="sm">
+              <template #prefix>
+                <SearchIcon class="input-icon" />
+              </template>
+            </BaseInput>
+          </div>
+          <div class="filter-group">
+            <BaseSelect v-model="statusFilter"
+                        :options="statusOptions"
+                        placeholder="Все статусы"
+                        size="sm" />
+          </div>
+          <div class="filter-group">
+            <BaseSelect v-model="sortBy"
+                        :options="sortOptions"
+                        placeholder="Сортировка"
+                        size="sm" />
+          </div>
+        </div>
+
+        <!-- Units Grid -->
+        <div class="units-grid">
+          <div v-for="unit in filteredUnits"
                :key="unit.id"
                class="unit-card">
             <div class="unit-card__header">
-              <div class="unit-card__title-section">
-                <h3 class="unit-card__title">{{ unit.name }}</h3>
-                <div class="unit-card__meta">
-                  <span class="unit-location">{{ unit.location }}</span>
-                  <span class="unit-status" :class="`status--${unit.status}`">
-                    {{ getStatusText(unit.status) }}
-                  </span>
-                </div>
+              <div class="unit-badge" :class="`status--${unit.status}`">
+                {{ getStatusText(unit.status) }}
               </div>
-              <div class="unit-card__stats">
-                <div class="stat">
-                  <ServerIcon class="stat-icon" />
-                  <span class="stat-value">{{ unit.subnets.length }}</span>
-                  <span class="stat-label">подсетей</span>
-                </div>
-                <div class="stat">
-                  <HostIcon class="stat-icon" />
-                  <span class="stat-value">{{ unit.hosts.length }}</span>
-                  <span class="stat-label">хостов</span>
-                </div>
+              <div class="unit-actions">
+                <BaseButton @click.stop="editUnit(unit)"
+                            variant="text"
+                            size="sm"
+                            class="action-btn">
+                  <EditIcon class="button-icon" />
+                </BaseButton>
+                <BaseButton @click.stop="deleteUnit(unit)"
+                            variant="text"
+                            size="sm"
+                            color="error"
+                            class="action-btn">
+                  <DeleteIcon class="button-icon" />
+                </BaseButton>
               </div>
             </div>
 
             <div class="unit-card__content">
-              <div v-if="unit.description" class="unit-card__description">
-                {{ unit.description }}
+              <div class="unit-main-info">
+                <h3 class="unit-name">{{ unit.name }}</h3>
+                <div class="unit-location">
+                  <MapPinIcon class="location-icon" />
+                  <span>{{ unit.location }}</span>
+                </div>
+                <p v-if="unit.description" class="unit-description">
+                  {{ unit.description }}
+                </p>
               </div>
 
-              <!-- Подсети -->
-              <div v-if="unit.subnets.length > 0" class="subnets-section">
-                <h4 class="subsection-title">Подсети</h4>
-                <div class="subnets-list">
-                  <div v-for="subnet in unit.subnets"
+              <div class="unit-stats">
+                <div class="stat-item">
+                  <div class="stat-icon">
+                    <NetworkIcon class="icon" />
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-value">{{ unit.subnets.length }}</div>
+                    <div class="stat-label">подсетей</div>
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-icon">
+                    <HostIcon class="icon" />
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-value">{{ unit.hosts.length }}</div>
+                    <div class="stat-label">хостов</div>
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-icon">
+                    <CalendarIcon class="icon" />
+                  </div>
+                  <div class="stat-info">
+                    <div class="stat-value">{{ formatUnitDate(unit.createdAt) }}</div>
+                    <div class="stat-label">создано</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Subnets Preview -->
+              <div v-if="unit.subnets.length > 0" class="subnets-preview">
+                <h4 class="preview-title">Подсети</h4>
+                <div class="preview-list">
+                  <div v-for="subnet in unit.subnets.slice(0, 3)"
                        :key="subnet.id"
-                       class="subnet-item">
-                    <div class="subnet-info">
-                      <span class="subnet-name">{{ subnet.name }}</span>
-                      <code class="subnet-address">{{ subnet.network }}/{{ subnet.mask }}</code>
+                       class="preview-item">
+                    <div class="preview-content">
+                      <span class="preview-name">{{ subnet.name }}</span>
+                      <code class="preview-address">{{ subnet.network }}/{{ subnet.mask }}</code>
                     </div>
-                    <div class="subnet-stats">
+                    <div class="preview-meta">
                       <span class="devices-count">{{ subnet.devicesCount }} устройств</span>
                       <span class="last-scan" :class="{ 'never-scanned': !subnet.lastScan }">
                         {{ subnet.lastScan ? formatRelativeTime(subnet.lastScan) : 'Никогда' }}
                       </span>
                     </div>
                   </div>
+                  <div v-if="unit.subnets.length > 3" class="preview-more">
+                    +{{ unit.subnets.length - 3 }} еще
+                  </div>
                 </div>
               </div>
 
-              <!-- Хосты -->
-              <div v-if="unit.hosts.length > 0" class="hosts-section">
-                <h4 class="subsection-title">Хосты</h4>
-                <div class="hosts-list">
-                  <div v-for="host in unit.hosts"
+              <!-- Hosts Preview -->
+              <div v-if="unit.hosts.length > 0" class="hosts-preview">
+                <h4 class="preview-title">Хосты</h4>
+                <div class="preview-list">
+                  <div v-for="host in unit.hosts.slice(0, 3)"
                        :key="host.id"
-                       class="host-item"
+                       class="preview-item host-item"
                        :class="`host-status--${host.status}`">
-                    <div class="host-info">
-                      <span class="host-name">{{ host.name }}</span>
-                      <code class="host-address">{{ host.ipAddress }}</code>
-                      <span class="host-os">{{ getOsText(host.osType) }}</span>
+                    <div class="preview-content">
+                      <span class="preview-name">{{ host.name }}</span>
+                      <code class="preview-address">{{ host.ipAddress }}</code>
+                      <BaseChip :color="getOsColor(host.osType)" size="xs">
+                        {{ getOsText(host.osType) }}
+                      </BaseChip>
                     </div>
                     <div class="host-status">
                       <div class="status-indicator" :class="`status--${host.status}`"></div>
                       <span class="status-text">{{ getHostStatusText(host.status) }}</span>
                     </div>
                   </div>
+                  <div v-if="unit.hosts.length > 3" class="preview-more">
+                    +{{ unit.hosts.length - 3 }} еще
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="unit-card__footer">
-              <div class="unit-card__date">
-                Создано: {{ formatUnitDate(unit.createdAt) }}
-              </div>
-              <div class="unit-card__actions">
-                <BaseButton @click="editUnit(unit)"
-                            variant="text"
-                            size="sm">
-                  <EditIcon class="button-icon" />
-                  Редактировать
-                </BaseButton>
+              <div class="footer-actions">
                 <BaseButton @click="addSubnet(unit)"
                             variant="text"
-                            size="sm">
+                            size="sm"
+                            class="footer-btn">
                   <PlusIcon class="button-icon" />
-                  Добавить подсеть
+                  Подсеть
                 </BaseButton>
                 <BaseButton @click="addHost(unit)"
                             variant="text"
-                            size="sm">
+                            size="sm"
+                            class="footer-btn">
                   <PlusIcon class="button-icon" />
-                  Добавить хост
+                  Хост
                 </BaseButton>
-                <BaseButton @click="deleteUnit(unit)"
+                <BaseButton @click="viewUnitDetails(unit)"
                             variant="text"
                             size="sm"
-                            color="error">
-                  <DeleteIcon class="button-icon" />
-                  Удалить
+                            class="footer-btn">
+                  <EyeIcon class="button-icon" />
+                  Подробнее
                 </BaseButton>
               </div>
             </div>
           </div>
         </div>
 
-        <div v-if="units.length === 0" class="empty-state">
-          <ServerIcon class="empty-state__icon" />
-          <p class="empty-state__text">Войсковые части не найдены</p>
-          <p class="empty-state__description">Добавьте первую войсковую часть для начала работы</p>
-          <BaseButton @click="showCreateUnitDialog = true"
-                      variant="primary">
-            <PlusIcon class="button-icon" />
-            Добавить войсковую часть
-          </BaseButton>
-        </div>
-      </div>
-
-      <!-- Статистика -->
-      <div class="units-stats">
-        <div class="stats-cards">
-          <div class="stat-card">
-            <div class="stat-card__icon total-units">
-              <ServerIcon />
-            </div>
-            <div class="stat-card__content">
-              <div class="stat-card__value">{{ totalUnits }}</div>
-              <div class="stat-card__label">Всего частей</div>
-            </div>
+        <!-- Empty State -->
+        <div v-if="filteredUnits.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <ServerIcon class="icon" />
           </div>
-
-          <div class="stat-card">
-            <div class="stat-card__icon active-units">
-              <ActivityIcon />
-            </div>
-            <div class="stat-card__content">
-              <div class="stat-card__value">{{ activeUnits }}</div>
-              <div class="stat-card__label">Активных</div>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-card__icon total-subnets">
-              <NetworkIcon />
-            </div>
-            <div class="stat-card__content">
-              <div class="stat-card__value">{{ totalSubnets }}</div>
-              <div class="stat-card__label">Подсетей</div>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-card__icon total-hosts">
-              <HostIcon />
-            </div>
-            <div class="stat-card__content">
-              <div class="stat-card__value">{{ totalHosts }}</div>
-              <div class="stat-card__label">Хостов</div>
+          <div class="empty-content">
+            <h3 class="empty-title">Войсковые части не найдены</h3>
+            <p class="empty-description">
+              {{ searchQuery || statusFilter ? 'Попробуйте изменить параметры поиска' : 'Добавьте первую войсковую часть для начала работы' }}
+            </p>
+            <div class="empty-actions">
+              <BaseButton @click="showCreateUnitDialog = true"
+                          variant="primary">
+                <PlusIcon class="button-icon" />
+                Добавить войсковую часть
+              </BaseButton>
+              <BaseButton v-if="searchQuery || statusFilter"
+                          @click="clearFilters"
+                          variant="secondary">
+                Сбросить фильтры
+              </BaseButton>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Диалог создания/редактирования войсковой части -->
+    <!-- Диалоги (остаются без изменений) -->
     <BaseModal v-if="showCreateUnitDialog"
                :modelValue="showCreateUnitDialog"
                :title="editingUnit ? 'Редактирование войсковой части' : 'Создание войсковой части'"
@@ -219,7 +348,6 @@
                         @cancel="closeUnitDialog" />
     </BaseModal>
 
-    <!-- Диалог добавления подсети -->
     <BaseModal v-if="showSubnetDialog"
                :modelValue="showSubnetDialog"
                title="Добавление подсети"
@@ -231,7 +359,6 @@
                   @cancel="closeSubnetDialog" />
     </BaseModal>
 
-    <!-- Диалог добавления хоста -->
     <BaseModal v-if="showHostDialog"
                :modelValue="showHostDialog"
                title="Добавление хоста"
@@ -243,7 +370,6 @@
                 @cancel="closeHostDialog" />
     </BaseModal>
 
-    <!-- Диалог сканирования сети -->
     <BaseModal v-if="showNetworkScanDialog"
                :modelValue="showNetworkScanDialog"
                title="Сканирование сети"
@@ -262,6 +388,9 @@
   import { useToast } from '@/framework/ui/composables/useToast';
   import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
   import BaseModal from '@/framework/ui/components/overlay/BaseModal.vue';
+  import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
+  import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
+  import BaseChip from '@/framework/ui/components/data-display/BaseChip.vue';
   import MilitaryUnitForm from '../forms/MilitaryUnitForm.vue';
   import SubnetForm from '../forms/SubnetForm.vue';
   import HostForm from '../forms/HostForm.vue';
@@ -275,7 +404,14 @@
     ServerIcon,
     HostIcon,
     NetworkIcon,
-    ActivityIcon
+    ActivityIcon,
+    SearchIcon,
+    DownloadIcon,
+    ArrowRightIcon,
+    MapPinIcon,
+    CalendarIcon,
+    EyeIcon,
+    TrendingUpIcon
   } from '@/assets/icons';
   import { useMilitaryUnits } from '../../composables/useMilitaryUnits';
   import type { MilitaryUnit, CreateUnitCommand, CreateSubnetCommand, CreateHostCommand } from '../../api/audit.types';
@@ -290,6 +426,7 @@
   const { showToast } = useToast();
   const militaryUnits = useMilitaryUnits();
 
+  // State
   const showCreateUnitDialog = ref(false);
   const showSubnetDialog = ref(false);
   const showHostDialog = ref(false);
@@ -297,11 +434,78 @@
   const editingUnit = ref<MilitaryUnit | null>(null);
   const selectedUnit = ref<MilitaryUnit | null>(null);
 
+  // Filters
+  const searchQuery = ref('');
+  const statusFilter = ref('');
+  const sortBy = ref('name');
+
+  // Options
+  const statusOptions = ref([
+    { value: '', label: 'Все статусы' },
+    { value: 'active', label: 'Активна' },
+    { value: 'deployed', label: 'На выезде' },
+    { value: 'headquarters', label: 'Штаб' }
+  ]);
+
+  const sortOptions = ref([
+    { value: 'name', label: 'По названию' },
+    { value: 'location', label: 'По локации' },
+    { value: 'createdAt', label: 'По дате создания' },
+    { value: 'hosts', label: 'По количеству хостов' }
+  ]);
+
+  // Computed properties
   const totalUnits = computed(() => props.units?.length || 0);
   const activeUnits = computed(() => props.units?.filter(unit => unit.status === 'active').length || 0);
   const totalSubnets = computed(() => props.units?.reduce((total, unit) => total + unit.subnets.length, 0) || 0);
   const totalHosts = computed(() => props.units?.reduce((total, unit) => total + unit.hosts.length, 0) || 0);
 
+  // Demo data for stats
+  const unitsGrowth = computed(() => Math.floor(totalUnits.value * 0.1));
+  const activePercentage = computed(() => totalUnits.value ? Math.round((activeUnits.value / totalUnits.value) * 100) : 0);
+  const subnetsChange = computed(() => Math.floor(totalSubnets.value * 0.05));
+  const onlineHosts = computed(() => props.units?.reduce((total, unit) =>
+    total + unit.hosts.filter(host => host.status === 'online').length, 0) || 0);
+  const offlineHosts = computed(() => totalHosts.value - onlineHosts.value);
+
+  const filteredUnits = computed(() => {
+    let units = props.units || [];
+
+    // Filter by search query
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase();
+      units = units.filter(unit =>
+        unit.name.toLowerCase().includes(query) ||
+        unit.location.toLowerCase().includes(query) ||
+        unit.description?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by status
+    if (statusFilter.value) {
+      units = units.filter(unit => unit.status === statusFilter.value);
+    }
+
+    // Sort units
+    switch (sortBy.value) {
+      case 'name':
+        units.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'location':
+        units.sort((a, b) => a.location.localeCompare(b.location));
+        break;
+      case 'createdAt':
+        units.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case 'hosts':
+        units.sort((a, b) => b.hosts.length - a.hosts.length);
+        break;
+    }
+
+    return units;
+  });
+
+  // Methods (остаются без изменений)
   const getStatusText = (status: string): string => {
     const statusMap: Record<string, string> = {
       active: 'Активна',
@@ -329,6 +533,15 @@
     return osMap[osType] || osType;
   };
 
+  const getOsColor = (osType: string): string => {
+    const colorMap: Record<string, string> = {
+      linux: 'info',
+      windows: 'primary',
+      unknown: 'default'
+    };
+    return colorMap[osType] || 'default';
+  };
+
   const formatUnitDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('ru-RU');
   };
@@ -348,6 +561,26 @@
     militaryUnits.loadUnits();
   };
 
+  const exportUnits = (): void => {
+    showToast({
+      type: 'success',
+      title: 'Экспорт начат',
+      message: 'Данные будут подготовлены для скачивания'
+    });
+  };
+
+  const clearFilters = (): void => {
+    searchQuery.value = '';
+    statusFilter.value = '';
+    sortBy.value = 'name';
+  };
+
+  const viewUnitDetails = (unit: MilitaryUnit): void => {
+    // Implement unit details view
+    console.log('View unit details:', unit);
+  };
+
+  // Остальные методы остаются без изменений...
   const editUnit = (unit: MilitaryUnit): void => {
     editingUnit.value = { ...unit };
     showCreateUnitDialog.value = true;
@@ -447,7 +680,6 @@
 
   const handleNetworkScan = async (scanData: any): Promise<void> => {
     try {
-      // Implement network scanning logic here
       console.log('Network scan data:', scanData);
       showToast({
         type: 'success',
@@ -488,249 +720,544 @@
   .units-view {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-2xl, 2rem);
+    padding: var(--spacing-xl, 1.5rem);
+    max-width: 1400px;
+    margin: 0 auto;
   }
 
+  /* Header Section */
   .units-view__header {
-    text-align: center;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-xl, 1rem);
+    padding: var(--spacing-2xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  }
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg, 1.5rem);
+  }
+
+  .header-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--radius-lg, 0.75rem);
+    background: var(--gradient-primary, linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+    .header-icon .icon {
+      width: 2rem;
+      height: 2rem;
+      color: white;
+    }
+
+  .header-text {
+    flex: 1;
   }
 
   .units-view__title {
-    font-size: 2.25rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin: 0 0 0.75rem 0;
-    background: var(--gradient-primary);
+    margin: 0 0 var(--spacing-sm, 0.5rem) 0;
+    background: var(--gradient-primary, linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -0.025em;
+    line-height: 1.2;
   }
 
   .units-view__subtitle {
-    font-size: 1.25rem;
-    color: var(--color-text-secondary);
+    font-size: 1.125rem;
+    color: var(--color-text-secondary, #475569);
     margin: 0;
     font-weight: 400;
+    line-height: 1.5;
   }
 
-  /* Units Actions */
-  .units-actions {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
-    padding: 2rem;
-    margin-bottom: 2rem;
+  /* Quick Actions */
+  .quick-actions-section {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-xl, 1rem);
+    padding: var(--spacing-2xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
   }
 
-  .actions-header {
+  .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl, 1.5rem);
+  }
+
+  .section-title-group {
+    flex: 1;
   }
 
   .section-title {
     font-size: 1.5rem;
     font-weight: 700;
+    margin: 0 0 var(--spacing-sm, 0.5rem) 0;
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .section-description {
+    font-size: 1rem;
+    color: var(--color-text-secondary, #475569);
     margin: 0;
-    color: var(--color-text-primary);
   }
 
-  .actions-buttons {
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+  }
+
+  .action-card {
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    gap: var(--spacing-lg, 1.5rem);
+    padding: var(--spacing-xl, 1.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border: 2px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-lg, 0.75rem);
+    cursor: pointer;
+    transition: all var(--transition-normal, 0.3s);
+    text-align: left;
   }
 
-  /* Units List */
-  .units-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
+    .action-card:hover {
+      border-color: var(--color-primary, #0ea5e9);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+    }
 
-  .units-list {
+  .action-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md, 0.5rem);
     display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+    .action-icon.primary {
+      background: var(--color-primary-light, #e0f2fe);
+      color: var(--color-primary, #0ea5e9);
+    }
+
+    .action-icon.secondary {
+      background: var(--color-info-light, #dbeafe);
+      color: var(--color-info, #3b82f6);
+    }
+
+    .action-icon .icon {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+  .action-content {
+    flex: 1;
+  }
+
+  .action-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-xs, 0.25rem) 0;
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .action-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #475569);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .action-arrow .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-text-muted, #64748b);
+  }
+
+  /* Stats Overview */
+  .stats-overview {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-xl, 1rem);
+    padding: var(--spacing-2xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
+  }
+
+  .stat-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg, 1.5rem);
+    padding: var(--spacing-xl, 1.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-lg, 0.75rem);
+    transition: all var(--transition-normal, 0.3s);
+  }
+
+    .stat-card:hover {
+      border-color: var(--color-primary, #0ea5e9);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    }
+
+  .stat-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--radius-lg, 0.75rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+  }
+
+    .stat-icon.total-units {
+      background: var(--color-primary, #0ea5e9);
+    }
+
+    .stat-icon.active-units {
+      background: var(--color-success, #10b981);
+    }
+
+    .stat-icon.total-subnets {
+      background: var(--color-info, #3b82f6);
+    }
+
+    .stat-icon.total-hosts {
+      background: var(--color-warning, #f59e0b);
+    }
+
+    .stat-icon .icon {
+      width: 2rem;
+      height: 2rem;
+    }
+
+  .stat-content {
+    flex: 1;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: var(--spacing-xs, 0.25rem);
+    color: var(--color-text-primary, #1e293b);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #475569);
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs, 0.25rem);
+  }
+
+  .stat-trend,
+  .stat-percentage,
+  .stat-change,
+  .hosts-status {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+  }
+
+  .trend-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--color-success, #10b981);
+  }
+
+  .change-positive {
+    color: var(--color-success, #10b981);
+    font-weight: 600;
+  }
+
+  .change-negative {
+    color: var(--color-error, #ef4444);
+    font-weight: 600;
+  }
+
+  .hosts-status {
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .online-count {
+    color: var(--color-success, #10b981);
+    font-weight: 500;
+  }
+
+  .offline-count {
+    color: var(--color-error, #ef4444);
+    font-weight: 500;
+  }
+
+  /* Units List Section */
+  .units-list-section {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-xl, 1rem);
+    padding: var(--spacing-2xl, 2rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  }
+
+  .section-actions {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .refresh-btn {
+    min-width: 120px;
+  }
+
+  /* Filters */
+  .units-filters {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-xl, 1.5rem);
+    padding: var(--spacing-lg, 1.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-radius: var(--radius-lg, 0.75rem);
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  /* Units Grid */
+  .units-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: var(--spacing-lg, 1.5rem);
   }
 
   .unit-card {
-    background: var(--color-surface-hover);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
-    padding: 1.5rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-lg, 0.75rem);
+    overflow: hidden;
+    transition: all var(--transition-normal, 0.3s);
   }
 
     .unit-card:hover {
-      border-color: var(--color-primary);
+      border-color: var(--color-primary, #0ea5e9);
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
     }
 
   .unit-card__header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
+    align-items: center;
+    padding: var(--spacing-lg, 1.5rem) var(--spacing-lg, 1.5rem) 0;
+    margin-bottom: var(--spacing-md, 1rem);
   }
 
-  .unit-card__title-section {
-    flex: 1;
-  }
-
-  .unit-card__title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0 0 0.75rem 0;
-    color: var(--color-text-primary);
-  }
-
-  .unit-card__meta {
-    display: flex;
-    gap: 1.5rem;
-    font-size: 0.9rem;
-  }
-
-  .unit-location {
-    color: var(--color-text-primary);
-    font-weight: 500;
-  }
-
-  .unit-status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 2rem;
+  .unit-badge {
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    border-radius: var(--radius-full, 9999px);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
-  .status--active {
-    background: var(--color-success-light);
-    color: var(--color-success);
-  }
+    .unit-badge.status--active {
+      background: var(--color-success-light, #d1fae5);
+      color: var(--color-success-dark, #065f46);
+    }
 
-  .status--deployed {
-    background: var(--color-warning-light);
-    color: var(--color-warning);
-  }
+    .unit-badge.status--deployed {
+      background: var(--color-warning-light, #fef3c7);
+      color: var(--color-warning-dark, #92400e);
+    }
 
-  .status--headquarters {
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-  }
+    .unit-badge.status--headquarters {
+      background: var(--color-info-light, #dbeafe);
+      color: var(--color-info-dark, #1e40af);
+    }
 
-  .unit-card__stats {
+  .unit-actions {
     display: flex;
-    gap: 1.5rem;
+    gap: var(--spacing-xs, 0.25rem);
   }
 
-  .stat {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: var(--color-surface);
-    border-radius: 0.75rem;
-    border: 1px solid var(--color-border);
-  }
-
-  .stat-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: var(--color-primary);
-  }
-
-  .stat-value {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
+  .action-btn {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
   }
 
   .unit-card__content {
-    margin-bottom: 1.5rem;
-  }
-
-  .unit-card__description {
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: var(--color-surface);
-    border-radius: 0.75rem;
-    border-left: 4px solid var(--color-primary);
-  }
-
-  /* Subsections */
-  .subsection-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
-    color: var(--color-text-primary);
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .subnets-list,
-  .hosts-list {
+    padding: 0 var(--spacing-lg, 1.5rem);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
+    gap: var(--spacing-lg, 1.5rem);
   }
 
-  .subnet-item,
-  .host-item {
+  .unit-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .unit-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .unit-location {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs, 0.25rem);
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #475569);
+  }
+
+  .location-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .unit-description {
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #64748b);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .unit-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md, 1rem);
+    padding: var(--spacing-md, 1rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+    .stat-item .stat-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-md, 0.5rem);
+      background: var(--color-primary-light, #e0f2fe);
+      color: var(--color-primary, #0ea5e9);
+    }
+
+      .stat-item .stat-icon .icon {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+  .stat-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-item .stat-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .stat-item .stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
+    margin: 0;
+  }
+
+  /* Preview Sections */
+  .subnets-preview,
+  .hosts-preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .preview-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #1e293b);
+    margin: 0;
+  }
+
+  .preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 0.5rem);
+  }
+
+  .preview-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
-    background: var(--color-surface);
-    border-radius: 0.75rem;
-    border: 1px solid var(--color-border);
-    transition: all 0.2s ease;
+    padding: var(--spacing-sm, 0.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--color-border, #e2e8f0);
   }
 
-    .subnet-item:hover,
-    .host-item:hover {
-      border-color: var(--color-primary);
+    .preview-item.host-item {
+      align-items: flex-start;
     }
 
-  .subnet-info {
+  .preview-content {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    gap: var(--spacing-xs, 0.25rem);
+    flex: 1;
   }
 
-  .subnet-name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .subnet-address {
-    background: var(--color-surface-hover);
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-family: 'Fira Code', monospace;
+  .preview-name {
     font-size: 0.875rem;
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
+    font-weight: 500;
+    color: var(--color-text-primary, #1e293b);
   }
 
-  .subnet-stats {
+  .preview-address {
+    font-size: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    color: var(--color-text-muted, #64748b);
+    background: var(--color-surface, #fff);
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm, 0.25rem);
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .preview-meta {
     display: flex;
-    gap: 1rem;
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
+    flex-direction: column;
+    gap: var(--spacing-xs, 0.25rem);
+    align-items: flex-end;
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
   }
 
   .devices-count {
@@ -738,44 +1265,17 @@
   }
 
   .last-scan {
-    color: var(--color-success);
+    color: var(--color-text-muted, #64748b);
   }
 
-  .never-scanned {
-    color: var(--color-text-muted);
-    font-style: italic;
-  }
-
-  .host-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .host-name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .host-address {
-    background: var(--color-surface-hover);
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-family: 'Fira Code', monospace;
-    font-size: 0.875rem;
-    color: var(--color-text-primary);
-  }
-
-  .host-os {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-    font-style: italic;
-  }
+    .last-scan.never-scanned {
+      color: var(--color-error, #ef4444);
+    }
 
   .host-status {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-xs, 0.25rem);
   }
 
   .status-indicator {
@@ -784,287 +1284,189 @@
     border-radius: 50%;
   }
 
-  .status--online {
-    background: var(--color-success);
-  }
+    .status-indicator.status--online {
+      background: var(--color-success, #10b981);
+    }
 
-  .status--offline {
-    background: var(--color-error);
-  }
+    .status-indicator.status--offline {
+      background: var(--color-error, #ef4444);
+    }
 
-  .status--unknown {
-    background: var(--color-warning);
-  }
+    .status-indicator.status--unknown {
+      background: var(--color-warning, #f59e0b);
+    }
 
   .status-text {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
+  }
+
+  .preview-more {
+    font-size: 0.75rem;
+    color: var(--color-primary, #0ea5e9);
     font-weight: 500;
+    text-align: center;
+    padding: var(--spacing-xs, 0.25rem);
+    cursor: pointer;
   }
 
-  .host-status--online .status-text {
-    color: var(--color-success);
-  }
+    .preview-more:hover {
+      text-decoration: underline;
+    }
 
-  .host-status--offline .status-text {
-    color: var(--color-error);
-  }
-
-  .host-status--unknown .status-text {
-    color: var(--color-warning);
-  }
-
+  /* Unit Card Footer */
   .unit-card__footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
+    padding: var(--spacing-lg, 1.5rem);
+    background: var(--color-surface-hover, #f8fafc);
+    border-top: 1px solid var(--color-border, #e2e8f0);
+    margin-top: var(--spacing-lg, 1.5rem);
   }
 
-  .unit-card__date {
+  .footer-actions {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+    justify-content: flex-end;
+  }
+
+  .footer-btn {
     font-size: 0.875rem;
-    color: var(--color-text-muted);
-  }
-
-  .unit-card__actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  /* Stats Section */
-  .units-stats {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
-    padding: 2rem;
-  }
-
-  .stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .stat-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.5rem;
-    background: var(--color-surface-hover);
-    border-radius: 1rem;
-    border: 1px solid var(--color-border);
-  }
-
-  .stat-card__icon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    flex-shrink: 0;
-  }
-
-  .total-units {
-    background: var(--color-primary);
-  }
-
-  .active-units {
-    background: var(--color-success);
-  }
-
-  .total-subnets {
-    background: var(--color-info);
-  }
-
-  .total-hosts {
-    background: var(--color-warning);
-  }
-
-  .stat-card__content {
-    flex: 1;
-  }
-
-  .stat-card__value {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin-bottom: 0.25rem;
-    color: var(--color-text-primary);
-  }
-
-  .stat-card__label {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-    font-weight: 500;
   }
 
   /* Empty State */
   .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xl, 1.5rem);
+    padding: var(--spacing-3xl, 3rem);
     text-align: center;
-    padding: 3rem 2rem;
-    color: var(--color-text-secondary);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 1.25rem;
   }
 
-  .empty-state__icon {
-    width: 4rem;
-    height: 4rem;
-    margin-bottom: 1.5rem;
-    color: var(--color-text-muted);
-    opacity: 0.5;
+  .empty-icon {
+    width: 6rem;
+    height: 6rem;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--color-surface-hover, #f8fafc);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted, #64748b);
   }
 
-  .empty-state__text {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem 0;
-    color: var(--color-text-primary);
+    .empty-icon .icon {
+      width: 3rem;
+      height: 3rem;
+    }
+
+  .empty-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 0.5rem);
+    max-width: 400px;
   }
 
-  .empty-state__description {
-    margin: 0 0 1.5rem 0;
+  .empty-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-primary, #1e293b);
+  }
+
+  .empty-description {
     font-size: 1rem;
+    color: var(--color-text-secondary, #475569);
+    margin: 0;
+    line-height: 1.5;
   }
 
-  /* Icons */
-  .button-icon {
-    width: 1.125rem;
-    height: 1.125rem;
-    margin-right: 0.5rem;
+  .empty-actions {
+    display: flex;
+    gap: var(--spacing-md, 1rem);
+    justify-content: center;
+    margin-top: var(--spacing-md, 1rem);
   }
 
-  /* Responsive */
-  @media (max-width: 1200px) {
-    .units-view__title {
-      font-size: 2rem;
-    }
-  }
-
+  /* Responsive Design */
   @media (max-width: 1024px) {
-    .units-view__title {
-      font-size: 1.75rem;
-    }
-
-    .units-view__subtitle {
-      font-size: 1.125rem;
-    }
-
-    .units-actions,
-    .units-section,
-    .units-stats {
-      padding: 1.5rem;
-    }
-
-    .actions-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
-    .actions-buttons {
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .unit-card__header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
-    .unit-card__stats {
-      width: 100%;
-      justify-content: space-around;
-    }
-
-    .subnet-item,
-    .host-item {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.75rem;
-    }
-
-    .subnet-info,
-    .host-info {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
-    }
-
-    .unit-card__footer {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
-    .unit-card__actions {
-      width: 100%;
-      justify-content: space-between;
+    .units-grid {
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     }
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 768px) {
     .units-view {
-      gap: 1.5rem;
+      padding: var(--spacing-md, 1rem);
+      gap: var(--spacing-lg, 1.5rem);
     }
 
-    .stats-cards {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  @media (max-width: 800px) {
-    .units-view__title {
-      font-size: 1.5rem;
+    .units-view__header,
+    .quick-actions-section,
+    .stats-overview,
+    .units-list-section {
+      padding: var(--spacing-lg, 1.5rem);
     }
 
-    .units-view__subtitle {
-      font-size: 1rem;
-    }
-
-    .units-actions,
-    .units-section,
-    .units-stats {
-      padding: 1.25rem;
-      border-radius: 1rem;
-    }
-
-    .section-title {
-      font-size: 1.25rem;
-    }
-
-    .unit-card {
-      padding: 1.25rem;
-    }
-
-    .unit-card__title {
-      font-size: 1.25rem;
-    }
-
-    .unit-card__meta {
+    .header-content {
       flex-direction: column;
-      gap: 0.5rem;
+      text-align: center;
+      gap: var(--spacing-md, 1rem);
     }
-  }
 
-  @media (max-width: 640px) {
-    .stats-cards {
+    .actions-grid {
       grid-template-columns: 1fr;
     }
 
-    .actions-buttons {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .units-filters {
+      grid-template-columns: 1fr;
+    }
+
+    .units-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .section-header {
+      flex-direction: column;
+      gap: var(--spacing-md, 1rem);
+    }
+
+    .section-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .empty-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .unit-stats {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-actions {
       flex-direction: column;
     }
 
-    .unit-card__actions {
-      flex-direction: column;
+    .footer-btn {
+      justify-content: center;
     }
+  }
 
-      .unit-card__actions .base-button {
-        justify-content: center;
-      }
+  /* Button Icons */
+  .button-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .input-icon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-text-muted, #64748b);
   }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="audit-layout">
+  <div class="audit-layout theme-transition">
     <AuditSidebar :is-collapsed="isSidebarCollapsed"
                   :active-view="currentView"
                   @toggle-theme="toggleTheme"
@@ -92,7 +92,7 @@
     min-height: 100vh;
     background: var(--color-background);
     color: var(--color-text-primary);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-family-sans);
     line-height: 1.6;
   }
 
@@ -101,7 +101,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left var(--transition-normal);
     margin-left: 280px;
     background: var(--color-background);
   }
@@ -112,7 +112,7 @@
 
   .main-content {
     flex: 1;
-    padding: 2rem;
+    padding: var(--spacing-2xl);
     overflow: auto;
     background: var(--color-background);
     max-width: 1400px;
@@ -123,7 +123,7 @@
   /* Responsive */
   @media (max-width: 1200px) {
     .main-content {
-      padding: 1.75rem;
+      padding: var(--spacing-xl);
     }
   }
 
@@ -133,7 +133,7 @@
     }
 
     .main-content {
-      padding: 1.5rem;
+      padding: var(--spacing-lg);
     }
   }
 
@@ -143,13 +143,46 @@
     }
 
     .main-content {
-      padding: 1.25rem;
+      padding: var(--spacing-lg);
     }
   }
 
   @media (max-width: 800px) {
     .main-content {
-      padding: 1rem;
+      padding: var(--spacing-md);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .main-content {
+      padding: var(--spacing-sm);
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .audit-layout {
+      border: 1px solid var(--color-text-primary);
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .layout-content {
+      transition: none;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .audit-layout {
+      background: white;
+      color: black;
+    }
+
+    .main-content {
+      background: white;
+      padding: 0;
     }
   }
 </style>

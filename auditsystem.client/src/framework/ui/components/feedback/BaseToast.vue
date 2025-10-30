@@ -32,7 +32,7 @@
           </button>
         </div>
 
-        <!-- Прогресс-бар теперь ВИДИМЫЙ и анимированный -->
+        <!-- Прогресс-бар с улучшенной видимостью -->
         <div v-if="toast.duration && toast.duration > 0" class="base-toast__progress">
           <div class="base-toast__progress-bar"
                :style="getProgressBarStyle(toast)"
@@ -58,9 +58,9 @@
 
   const toasts = ref<Notification[]>([]);
   const toastTimers = new Map<string, number>();
-  const pausedToasts = new Map<string, number>(); // Map<toastId, remainingTime>
+  const pausedToasts = new Map<string, number>();
   const progressIntervals = new Map<string, number>();
-  const progressStates = ref<Map<string, number>>(new Map()); // Map<toastId, progressPercentage>
+  const progressStates = ref<Map<string, number>>(new Map());
 
   // Подписка на изменения уведомлений
   const unsubscribe = notificationService.subscribe((notifications: Notification[]) => {
@@ -133,11 +133,10 @@
   };
 
   const startProgressAnimation = (id: string, duration: number) => {
-    // Очищаем существующий интервал
     clearProgressInterval(id);
 
     const startTime = Date.now();
-    progressStates.value.set(id, 100); // Начинаем с 100%
+    progressStates.value.set(id, 100);
 
     const interval = window.setInterval(() => {
       if (!pausedToasts.has(id)) {
@@ -150,7 +149,7 @@
           clearProgressInterval(id);
         }
       }
-    }, 50); // Обновляем каждые 50ms для плавной анимации
+    }, 50);
 
     progressIntervals.set(id, interval);
   };
@@ -196,7 +195,6 @@
   const getProgressBarStyle = (toast: Notification) => {
     if (!toast.duration || toast.duration <= 0) return { width: '0%' };
 
-    // Используем сохраненное состояние прогресса
     const progress = progressStates.value.get(toast.id) || 100;
 
     return {
@@ -213,7 +211,6 @@
   onUnmounted(() => {
     unsubscribe();
 
-    // Очищаем все таймеры и интервалы
     toastTimers.forEach(timer => clearTimeout(timer));
     toastTimers.clear();
 
@@ -228,32 +225,38 @@
 <style scoped>
   .base-toast-container {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: var(--spacing-xl, 20px);
+    right: var(--spacing-xl, 20px);
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--spacing-sm, 12px);
     max-width: 400px;
     width: calc(100vw - 40px);
   }
 
   .base-toast {
     background: var(--color-surface);
-    border-radius: 12px;
+    border-radius: var(--radius-xl, 12px);
     box-shadow: var(--shadow-xl);
     overflow: hidden;
-    animation: toast-in 0.3s ease;
+    animation: toast-in var(--transition-normal, 0.3s) ease;
     position: relative;
     border: 1px solid var(--color-border);
     backdrop-filter: blur(10px);
+    transition: transform var(--transition-fast, 0.15s), box-shadow var(--transition-fast, 0.15s);
   }
+
+    .base-toast:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-xl), 0 8px 25px -5px rgba(0, 0, 0, 0.15);
+    }
 
   .base-toast__content {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 16px;
+    gap: var(--spacing-sm, 12px);
+    padding: var(--spacing-lg, 16px);
     position: relative;
     z-index: 2;
   }
@@ -275,9 +278,9 @@
   }
 
   .base-toast__title {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold, 600);
     font-size: 14px;
-    margin-bottom: 4px;
+    margin-bottom: var(--spacing-xs, 4px);
     line-height: 1.3;
     color: var(--color-text-primary);
   }
@@ -293,11 +296,11 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 4px;
-    margin: -4px;
-    border-radius: 4px;
+    padding: var(--spacing-xs, 4px);
+    margin: calc(-1 * var(--spacing-xs, 4px));
+    border-radius: var(--radius-sm, 4px);
     opacity: 0.7;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast, 0.15s) ease;
     flex-shrink: 0;
     line-height: 1;
     color: var(--color-text-muted);
@@ -310,8 +313,13 @@
 
     .base-toast__close:hover {
       opacity: 1;
-      background: rgba(14, 165, 233, 0.08);
+      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
       color: var(--color-primary);
+    }
+
+    .base-toast__close:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
     }
 
     .base-toast__close svg {
@@ -319,27 +327,27 @@
       height: 14px;
     }
 
-  /* СТИЛИ ДЛЯ ПРОГРЕСС-БАРА - ТЕПЕРЬ ВИДИМЫЕ */
+  /* СТИЛИ ДЛЯ ПРОГРЕСС-БАРА С УЛУЧШЕННОЙ ВИДИМОСТЬЮ */
   .base-toast__progress {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 4px; /* Увеличили высоту для лучшей видимости */
-    background: rgba(0, 0, 0, 0.1); /* Фон для контраста */
+    height: 4px;
+    background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
     z-index: 3;
     overflow: hidden;
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 var(--radius-xl, 12px) var(--radius-xl, 12px);
   }
 
   .base-toast__progress-bar {
     height: 100%;
     background: currentColor;
-    opacity: 0.9; /* Увеличили прозрачность */
+    opacity: 0.9;
     transition: width 0.05s linear;
     transform-origin: left center;
-    border-radius: 0 2px 2px 0;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2); /* Тень для лучшей видимости */
+    border-radius: 0 var(--radius-sm, 2px) var(--radius-sm, 2px) 0;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
   }
 
   .base-toast__progress-bar--paused {
@@ -348,10 +356,11 @@
     opacity: 0.7;
   }
 
-  /* Type variants - УВЕЛИЧИВАЕМ КОНТРАСТ ДЛЯ ПРОГРЕСС-БАРА */
+  /* Type variants с использованием цветов из theme.css */
   .base-toast--success {
     border-left: 4px solid var(--color-success);
     color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
   }
 
     .base-toast--success .base-toast__progress-bar {
@@ -359,9 +368,14 @@
       opacity: 0.9;
     }
 
+    .base-toast--success .base-toast__icon {
+      color: var(--color-success);
+    }
+
   .base-toast--error {
     border-left: 4px solid var(--color-error);
     color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 4%, var(--color-surface));
   }
 
     .base-toast--error .base-toast__progress-bar {
@@ -369,9 +383,14 @@
       opacity: 0.9;
     }
 
+    .base-toast--error .base-toast__icon {
+      color: var(--color-error);
+    }
+
   .base-toast--warning {
     border-left: 4px solid var(--color-warning);
     color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 4%, var(--color-surface));
   }
 
     .base-toast--warning .base-toast__progress-bar {
@@ -379,14 +398,23 @@
       opacity: 0.9;
     }
 
+    .base-toast--warning .base-toast__icon {
+      color: var(--color-warning);
+    }
+
   .base-toast--info {
     border-left: 4px solid var(--color-info);
     color: var(--color-info);
+    background: color-mix(in srgb, var(--color-info) 4%, var(--color-surface));
   }
 
     .base-toast--info .base-toast__progress-bar {
       background: var(--color-info);
       opacity: 0.9;
+    }
+
+    .base-toast--info .base-toast__icon {
+      color: var(--color-info);
     }
 
   /* Animations */
@@ -418,7 +446,7 @@
 
   .toast-list-enter-active,
   .toast-list-leave-active {
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal, 0.3s) ease;
   }
 
   .toast-list-enter-from {
@@ -432,35 +460,36 @@
   }
 
   .toast-list-move {
-    transition: transform 0.3s ease;
+    transition: transform var(--transition-normal, 0.3s) ease;
   }
 
   /* Адаптивность */
   @media (max-width: 640px) {
     .base-toast-container {
-      top: 10px;
-      right: 10px;
-      left: 10px;
+      top: var(--spacing-sm, 10px);
+      right: var(--spacing-sm, 10px);
+      left: var(--spacing-sm, 10px);
       width: auto;
+      max-width: none;
     }
 
     .base-toast__content {
-      padding: 14px;
+      padding: var(--spacing-md, 14px);
     }
 
     .base-toast__progress {
-      height: 3px; /* Немного меньше на мобильных */
+      height: 3px;
     }
   }
 
   @media (max-width: 480px) {
     .base-toast-container {
-      gap: 8px;
+      gap: var(--spacing-xs, 8px);
     }
 
     .base-toast__content {
-      gap: 10px;
-      padding: 12px;
+      gap: var(--spacing-sm, 10px);
+      padding: var(--spacing-md, 12px);
     }
 
     .base-toast__message {
@@ -470,10 +499,44 @@
 
   /* Улучшенная видимость прогресс-бара в разных темах */
   .theme-light .base-toast__progress {
-    background: rgba(0, 0, 0, 0.08);
+    background: color-mix(in srgb, var(--color-gray-900) 8%, transparent);
   }
 
   .theme-dark .base-toast__progress {
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--color-gray-100) 10%, transparent);
+  }
+
+  /* Accessibility improvements */
+  @media (prefers-reduced-motion: reduce) {
+    .base-toast {
+      animation: none;
+      transition: none;
+    }
+
+    .base-toast__progress-bar {
+      transition: none;
+    }
+
+    .toast-list-enter-active,
+    .toast-list-leave-active,
+    .toast-list-move {
+      transition: none;
+    }
+  }
+
+  @media (prefers-contrast: high) {
+    .base-toast {
+      border-width: 2px;
+    }
+
+    .base-toast__progress-bar {
+      opacity: 1;
+    }
+  }
+
+  /* Focus styles for better accessibility */
+  .base-toast:focus-within {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 </style>

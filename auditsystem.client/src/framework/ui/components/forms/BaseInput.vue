@@ -34,6 +34,7 @@
                 type="button"
                 class="base-input__suffix base-input__password-toggle"
                 @click="togglePasswordVisibility"
+                :disabled="disabled"
                 :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'">
           <EyeIcon v-if="showPassword" />
           <EyeOffIcon v-else />
@@ -44,6 +45,7 @@
                 type="button"
                 class="base-input__suffix base-input__clear"
                 @click="clearInput"
+                :disabled="disabled"
                 aria-label="Очистить поле">
           ×
         </button>
@@ -80,7 +82,7 @@
   interface Props {
     id?: string
     type?: 'text' | 'password' | 'email' | 'number' | 'tel' | 'url'
-    modelValue: string | number // Изменено: принимаем и string и number
+    modelValue: string | number
     label?: string
     placeholder?: string
     required?: boolean
@@ -216,13 +218,13 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-md, 1rem);
   }
 
   .base-input__label {
     display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
+    margin-bottom: var(--space-sm, 0.75rem);
+    font-weight: var(--font-weight-semibold, 600);
     color: var(--color-text-primary);
     font-size: 0.875rem;
     line-height: 1.25;
@@ -230,7 +232,7 @@
 
   .base-input__required {
     color: var(--color-error);
-    margin-left: 0.25rem;
+    margin-left: var(--space-xs, 0.5rem);
   }
 
   .base-input__field-wrapper {
@@ -240,15 +242,15 @@
     width: 100%;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    transition: all 0.3s ease;
+    border-radius: var(--radius-md, 0.5rem);
+    transition: all var(--transition-fast, 0.15s);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
   }
 
     .base-input__field-wrapper:focus-within {
       border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1), var(--shadow-md);
+      box-shadow: var(--shadow-focus);
       transform: translateY(-1px);
     }
 
@@ -259,11 +261,11 @@
 
     .base-input--error .base-input__field-wrapper:focus-within {
       border-color: var(--color-error);
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent);
     }
 
   .base-input--disabled .base-input__field-wrapper {
-    background-color: rgba(128, 128, 128, 0.1);
+    background-color: var(--color-surface-hover);
     opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
@@ -271,7 +273,7 @@
 
   .base-input__input {
     flex: 1;
-    padding: 0.75rem;
+    padding: var(--space-md, 1rem);
     border: none;
     outline: none;
     background: transparent;
@@ -279,7 +281,8 @@
     color: var(--color-text-primary);
     min-height: 2.75rem;
     width: 100%;
-    transition: color 0.2s ease;
+    transition: color var(--transition-fast, 0.15s);
+    font-family: var(--font-family-sans, inherit);
   }
 
     .base-input__input::placeholder {
@@ -292,23 +295,23 @@
   }
 
   .base-input__input--with-prefix {
-    padding-left: 0.5rem;
+    padding-left: var(--space-sm, 0.75rem);
   }
 
   .base-input__input--with-suffix {
-    padding-right: 0.5rem;
+    padding-right: var(--space-sm, 0.75rem);
   }
 
   /* Префикс */
   .base-input__prefix {
     display: flex;
     align-items: center;
-    padding: 0 0.75rem;
+    padding: 0 var(--space-md, 1rem);
     color: var(--color-text-muted);
     border-right: 1px solid var(--color-border);
-    background: transparent !important;
+    background: transparent;
     flex-shrink: 0;
-    transition: color 0.2s ease;
+    transition: color var(--transition-fast, 0.15s);
   }
 
   .base-input__field-wrapper:focus-within .base-input__prefix {
@@ -325,11 +328,11 @@
   .base-input__suffix {
     display: flex;
     align-items: center;
-    padding: 0 0.5rem;
+    padding: 0 var(--space-sm, 0.75rem);
     color: var(--color-text-muted);
     border-left: 1px solid var(--color-border);
-    background: transparent !important;
-    transition: color 0.2s ease;
+    background: transparent;
+    transition: color var(--transition-fast, 0.15s);
   }
 
   .base-input__password-toggle,
@@ -337,9 +340,9 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 0.25rem;
-    transition: all 0.2s ease;
+    padding: var(--space-xs, 0.5rem);
+    border-radius: var(--radius-sm, 0.375rem);
+    transition: all var(--transition-fast, 0.15s);
     color: inherit;
     font-size: 1rem;
     display: flex;
@@ -349,40 +352,41 @@
     height: 1.5rem;
   }
 
-    .base-input__password-toggle:hover,
-    .base-input__clear:hover {
-      background-color: rgba(14, 165, 233, 0.1);
+    .base-input__password-toggle:hover:not(:disabled),
+    .base-input__clear:hover:not(:disabled) {
+      background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
       color: var(--color-primary);
+    }
+
+    .base-input__password-toggle:disabled,
+    .base-input__clear:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
     }
 
   .base-input__clear {
     font-size: 1.125rem;
     line-height: 1;
-  }
-
-  .base-input--disabled .base-input__password-toggle,
-  .base-input--disabled .base-input__clear {
-    cursor: not-allowed;
-    opacity: 0.5;
+    font-weight: var(--font-weight-semibold, 600);
   }
 
   /* Вспомогательный текст и ошибки */
   .base-input__help {
-    margin-top: 0.25rem;
+    margin-top: var(--space-sm, 0.75rem);
     color: var(--color-text-muted);
     font-size: 0.75rem;
     line-height: 1.25;
   }
 
   .base-input__error {
-    margin-top: 0.25rem;
+    margin-top: var(--space-sm, 0.75rem);
     color: var(--color-error);
     font-size: 0.75rem;
     line-height: 1.25;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium, 500);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--space-xs, 0.5rem);
   }
 
     .base-input__error::before {
@@ -391,7 +395,7 @@
     }
 
   .base-input__counter {
-    margin-top: 0.25rem;
+    margin-top: var(--space-sm, 0.75rem);
     text-align: right;
     color: var(--color-text-muted);
     font-size: 0.75rem;
@@ -399,26 +403,80 @@
 
   /* Размеры */
   .base-input--sm .base-input__input {
-    padding: 0.5rem 0.75rem;
+    padding: var(--space-sm, 0.75rem);
     min-height: 2.25rem;
     font-size: 0.8125rem;
   }
 
   .base-input--sm .base-input__prefix,
   .base-input--sm .base-input__suffix {
-    padding: 0 0.5rem;
+    padding: 0 var(--space-sm, 0.75rem);
   }
 
   .base-input--lg .base-input__input {
-    padding: 0.875rem 1rem;
+    padding: var(--space-lg, 1.25rem);
     min-height: 3rem;
     font-size: 1rem;
   }
 
   /* Адаптивность */
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     .base-input__input {
       font-size: 1rem; /* Предотвращает зум на iOS */
+    }
+
+    .base-input--sm .base-input__input {
+      padding: var(--space-sm, 0.75rem) var(--space-md, 1rem);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .base-input {
+      margin-bottom: var(--space-lg, 1.25rem);
+    }
+
+    .base-input__field-wrapper {
+      border-radius: var(--radius-lg, 0.75rem);
+    }
+  }
+
+  /* Анимации для улучшения UX */
+  .base-input__field-wrapper {
+    animation: slide-in var(--transition-fast, 0.15s) ease-out;
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Улучшения для доступности */
+  @media (prefers-reduced-motion: reduce) {
+    .base-input__field-wrapper {
+      animation: none;
+      transition: none;
+    }
+
+    .base-input__input {
+      transition: none;
+    }
+  }
+
+  /* Улучшения для высокой контрастности */
+  @media (prefers-contrast: high) {
+    .base-input__field-wrapper {
+      border-width: 2px;
+    }
+
+    .base-input--error .base-input__field-wrapper {
+      border-width: 2px;
     }
   }
 </style>

@@ -1,44 +1,45 @@
 <!-- src/framework/ui/components/navigation/BaseStepper.vue -->
 <template>
   <div class="base-stepper" :class="stepperClasses">
-    <!-- Steps -->
-    <div class="base-stepper__steps">
-      <div v-for="(step, index) in steps"
-           :key="step.id"
-           class="base-stepper__step"
-           :class="getStepClass(step)">
+    <!-- Progress Steps Header -->
+    <div class="base-stepper__header">
+      <div class="base-stepper__progress">
+        <div class="progress-steps">
+          <div v-for="(step, index) in steps"
+               :key="step.id"
+               class="progress-step"
+               :class="{
+                 'progress-step--completed': step.status === 'completed',
+                 'progress-step--current': step.status === 'current',
+                 'progress-step--error': step.status === 'error',
+                 'progress-step--disabled': step.disabled,
+                 'progress-step--clickable': !linear && !step.disabled
+               }"
+               @click="!linear && !step.disabled ? goToStep(step.id) : null">
 
-        <!-- Step connector -->
-        <div v-if="index > 0" class="base-stepper__connector" />
+            <!-- Step connector -->
+            <div v-if="index > 0" class="progress-step__connector" />
 
-        <!-- Step content -->
-        <div class="base-stepper__step-content">
-          <!-- Step indicator -->
-          <div class="base-stepper__indicator">
-            <!-- Completed step -->
-            <div v-if="step.status === 'completed'" class="base-stepper__indicator-completed">
-              <CheckIcon :size="16" />
+            <div class="step-indicator">
+              <!-- Completed step -->
+              <span v-if="step.status === 'completed'" class="step-check">
+                <CheckIcon size="16" />
+              </span>
+
+              <!-- Error step -->
+              <span v-else-if="step.status === 'error'" class="step-error">
+                <AlertCircleIcon size="16" />
+              </span>
+
+              <!-- Current or pending step -->
+              <span v-else class="step-number">
+                {{ index + 1 }}
+              </span>
             </div>
 
-            <!-- Current step -->
-            <div v-else-if="step.status === 'current'" class="base-stepper__indicator-current">
-              {{ index + 1 }}
-            </div>
-
-            <!-- Pending step -->
-            <div v-else class="base-stepper__indicator-pending">
-              {{ index + 1 }}
-            </div>
-          </div>
-
-          <!-- Step label -->
-          <div class="base-stepper__label">
-            <div class="base-stepper__title">
+            <span class="step-label">
               {{ step.title }}
-            </div>
-            <div v-if="step.description" class="base-stepper__description">
-              {{ step.description }}
-            </div>
+            </span>
           </div>
         </div>
       </div>
@@ -46,31 +47,57 @@
 
     <!-- Step content -->
     <div class="base-stepper__content">
-      <slot :name="currentStep?.id" :step="currentStep" :index="currentIndex">
-        <div v-if="currentStep?.component" class="base-stepper__component">
-          <component :is="currentStep.component" v-bind="currentStep.props" />
-        </div>
-      </slot>
+      <div class="step-content__header">
+        <h3 class="step-title">{{ currentStep?.title }}</h3>
+        <p v-if="currentStep?.description" class="step-description">
+          {{ currentStep.description }}
+        </p>
+      </div>
+
+      <div class="step-content__body">
+        <slot :name="currentStep?.id" :step="currentStep" :index="currentIndex">
+          <div v-if="currentStep?.component" class="step-component">
+            <component :is="currentStep.component" v-bind="currentStep.props" />
+          </div>
+        </slot>
+      </div>
     </div>
 
     <!-- Navigation -->
     <div v-if="showNavigation" class="base-stepper__navigation">
-      <BaseButton :disabled="!hasPrev"
-                  @click="goToPrev"
-                  variant="secondary">
-        Назад
-      </BaseButton>
+      <div class="navigation-left">
+        <BaseButton v-if="currentIndex > 0"
+                    @click="goToPrev"
+                    variant="secondary"
+                    size="lg"
+                    class="nav-btn">
+          <ArrowLeftIcon class="button-icon" />
+          Назад
+        </BaseButton>
+      </div>
 
-      <div class="base-stepper__navigation-right">
+      <div class="navigation-center">
+        <span class="step-info">Шаг {{ currentIndex + 1 }} из {{ steps.length }}</span>
+      </div>
+
+      <div class="navigation-right">
         <BaseButton v-if="hasNext"
                     @click="goToNext"
-                    :loading="nextLoading">
+                    :loading="nextLoading"
+                    variant="primary"
+                    size="lg"
+                    class="nav-btn">
           Продолжить
+          <ArrowRightIcon class="button-icon" />
         </BaseButton>
 
         <BaseButton v-else
                     @click="handleComplete"
-                    :loading="completeLoading">
+                    :loading="completeLoading"
+                    variant="primary"
+                    size="lg"
+                    class="nav-btn complete-btn">
+          <CheckIcon class="button-icon" />
           {{ completeText }}
         </BaseButton>
       </div>
@@ -80,7 +107,7 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-  import { CheckIcon } from '@/assets/icons'
+  import { CheckIcon, ArrowLeftIcon, ArrowRightIcon, AlertCircleIcon } from '@/assets/icons'
   import BaseButton from '../buttons/BaseButton.vue'
   import type { Component } from 'vue';
 
@@ -134,15 +161,6 @@
       'base-stepper--linear': props.linear,
     },
   ])
-
-  const getStepClass = (step: Step) => [
-    'base-stepper__step',
-    `base-stepper__step--${step.status || 'pending'}`,
-    {
-      'base-stepper__step--disabled': step.disabled,
-      'base-stepper__step--clickable': !props.linear && !step.disabled,
-    },
-  ]
 
   const goToStep = async (stepId: string) => {
     const stepIndex = props.steps.findIndex(step => step.id === stepId)
@@ -232,190 +250,178 @@
   .base-stepper {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xl);
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+    overflow: hidden;
   }
 
-  .base-stepper--horizontal {
-    flex-direction: column;
+  /* Header with Progress Steps */
+  .base-stepper__header {
+    background: var(--color-surface-hover);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-xl);
   }
 
-  .base-stepper--vertical {
-    flex-direction: row;
+  .base-stepper__progress {
+    width: 100%;
   }
 
-  /* Steps */
-  .base-stepper__steps {
+  .progress-steps {
     display: flex;
-    position: relative;
-  }
-
-  .base-stepper--horizontal .base-stepper__steps {
-    flex-direction: row;
     justify-content: space-between;
-  }
-
-  .base-stepper--vertical .base-stepper__steps {
-    flex-direction: column;
-    flex-shrink: 0;
-    width: 300px;
-    margin-right: var(--space-xl);
-  }
-
-  /* Step */
-  .base-stepper__step {
-    display: flex;
-    flex: 1;
     position: relative;
   }
 
-  .base-stepper--horizontal .base-stepper__step {
+    .progress-steps::before {
+      content: '';
+      position: absolute;
+      top: 1rem;
+      left: 2rem;
+      right: 2rem;
+      height: 2px;
+      background: var(--color-border);
+      z-index: 1;
+    }
+
+  .progress-step {
+    display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
+    position: relative;
+    z-index: 2;
+    transition: all var(--transition-fast);
   }
 
-  .base-stepper--vertical .base-stepper__step {
-    flex-direction: row;
-    align-items: flex-start;
-    text-align: left;
-    min-height: 80px;
-  }
-
-  .base-stepper__step--clickable {
+  .progress-step--clickable {
     cursor: pointer;
   }
 
-    .base-stepper__step--clickable:hover .base-stepper__title {
+    .progress-step--clickable:hover .step-label {
       color: var(--color-primary);
     }
 
-  .base-stepper__step--disabled {
+  .progress-step--disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  /* Connector */
-  .base-stepper__connector {
+  .progress-step__connector {
     position: absolute;
-    background: var(--color-border);
-  }
-
-  .base-stepper--horizontal .base-stepper__connector {
-    top: 16px;
+    top: 1rem;
     left: -50%;
     right: 50%;
     height: 2px;
-  }
-
-  .base-stepper--vertical .base-stepper__connector {
-    top: -50%;
-    bottom: 50%;
-    left: 16px;
-    width: 2px;
-  }
-
-  .base-stepper__step--completed .base-stepper__connector {
-    background: var(--color-primary);
-  }
-
-  /* Step content */
-  .base-stepper__step-content {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-md);
+    background: var(--color-border);
     z-index: 1;
   }
 
-  .base-stepper--horizontal .base-stepper__step-content {
-    flex-direction: column;
-    align-items: center;
+  .progress-step--completed .progress-step__connector {
+    background: var(--color-success);
   }
 
-  .base-stepper--vertical .base-stepper__step-content {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  /* Indicator */
-  .base-stepper__indicator {
+  .step-indicator {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-full);
-    border: 2px solid var(--color-border);
     background: var(--color-surface);
-    font-weight: var(--font-weight-semibold);
-    font-size: 0.875rem;
-    flex-shrink: 0;
-    transition: all var(--transition-normal);
+    border: 2px solid var(--color-border);
+    transition: all var(--transition-fast);
+    margin-bottom: var(--space-sm);
+    position: relative;
+    z-index: 2;
   }
 
-  .base-stepper__step--completed .base-stepper__indicator {
-    background: var(--color-primary);
+  .progress-step--current .step-indicator {
     border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: white;
+    transform: scale(1.1);
+  }
+
+  .progress-step--completed .step-indicator {
+    border-color: var(--color-success);
+    background: var(--color-success);
     color: white;
   }
 
-  .base-stepper__step--current .base-stepper__indicator {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .base-stepper__step--error .base-stepper__indicator {
+  .progress-step--error .step-indicator {
     border-color: var(--color-error);
-    color: var(--color-error);
+    background: var(--color-error);
+    color: white;
   }
 
-  .base-stepper__indicator-completed,
-  .base-stepper__indicator-current,
-  .base-stepper__indicator-pending {
+  .step-check,
+  .step-error,
+  .step-number {
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  /* Label */
-  .base-stepper__label {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .base-stepper--horizontal .base-stepper__label {
-    margin-top: var(--space-sm);
-  }
-
-  .base-stepper__title {
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text-primary);
-    line-height: 1.4;
+    font-size: 0.875rem;
+  }
+
+  .step-label {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-align: center;
+    max-width: 120px;
     transition: color var(--transition-fast);
   }
 
-  .base-stepper__step--completed .base-stepper__title,
-  .base-stepper__step--current .base-stepper__title {
+  .progress-step--current .step-label {
     color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
   }
 
-  .base-stepper__step--error .base-stepper__title {
+  .progress-step--completed .step-label {
+    color: var(--color-success);
+  }
+
+  .progress-step--error .step-label {
     color: var(--color-error);
   }
 
-  .base-stepper__description {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-    line-height: 1.4;
-    margin-top: var(--space-xs);
+  /* Content Area */
+  .base-stepper__content {
+    flex: 1;
+    padding: var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
   }
 
-  /* Content */
-  .base-stepper__content {
+  .step-content__header {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+  }
+
+  .step-title {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--space-sm) 0;
+  }
+
+  .step-description {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .step-content__body {
     flex: 1;
     min-height: 200px;
   }
 
-  .base-stepper__component {
+  .step-component {
     height: 100%;
   }
 
@@ -424,49 +430,192 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: var(--space-lg);
+    padding: var(--space-xl);
     border-top: 1px solid var(--color-border);
+    background: var(--color-surface-hover);
   }
 
-  .base-stepper__navigation-right {
+  .navigation-left,
+  .navigation-right {
     display: flex;
     gap: var(--space-md);
   }
+
+  .navigation-center {
+    display: flex;
+    align-items: center;
+  }
+
+  .step-info {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .nav-btn {
+    min-width: 120px;
+  }
+
+  .complete-btn {
+    min-width: 140px;
+  }
+
+  .button-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  /* Orientation Variants */
+  .base-stepper--vertical {
+    flex-direction: row;
+    min-height: 500px;
+  }
+
+    .base-stepper--vertical .base-stepper__header {
+      width: 300px;
+      border-bottom: none;
+      border-right: 1px solid var(--color-border);
+      padding: var(--space-xl);
+    }
+
+    .base-stepper--vertical .base-stepper__content {
+      flex: 1;
+    }
+
+    .base-stepper--vertical .progress-steps {
+      flex-direction: column;
+      height: 100%;
+      justify-content: flex-start;
+      gap: var(--space-xl);
+    }
+
+      .base-stepper--vertical .progress-steps::before {
+        top: 2rem;
+        bottom: 2rem;
+        left: 1rem;
+        right: auto;
+        width: 2px;
+        height: auto;
+      }
+
+    .base-stepper--vertical .progress-step {
+      flex-direction: row;
+      text-align: left;
+      gap: var(--space-md);
+    }
+
+    .base-stepper--vertical .step-indicator {
+      margin-bottom: 0;
+    }
+
+    .base-stepper--vertical .step-label {
+      text-align: left;
+      max-width: none;
+    }
+
+    .base-stepper--vertical .progress-step__connector {
+      top: -50%;
+      bottom: 50%;
+      left: 1rem;
+      right: auto;
+      width: 2px;
+      height: auto;
+    }
 
   /* Responsive */
   @media (max-width: 768px) {
     .base-stepper--vertical {
       flex-direction: column;
+      min-height: auto;
     }
 
-      .base-stepper--vertical .base-stepper__steps {
+      .base-stepper--vertical .base-stepper__header {
         width: 100%;
-        margin-right: 0;
-        margin-bottom: var(--space-xl);
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
       }
+
+      .base-stepper--vertical .progress-steps {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: var(--space-md);
+      }
+
+      .base-stepper--vertical .progress-step {
+        flex-direction: column;
+        text-align: center;
+        min-width: 100px;
+      }
+
+    .base-stepper__content {
+      padding: var(--space-xl);
+    }
 
     .base-stepper__navigation {
       flex-direction: column;
       gap: var(--space-md);
     }
 
-    .base-stepper__navigation-right {
+    .navigation-left,
+    .navigation-center,
+    .navigation-right {
       width: 100%;
       justify-content: space-between;
+    }
+
+    .navigation-center {
+      order: -1;
+      justify-content: center;
+    }
+
+    .nav-btn {
+      min-width: auto;
+      flex: 1;
     }
   }
 
   @media (max-width: 480px) {
-    .base-stepper--horizontal .base-stepper__step-content {
-      gap: var(--space-sm);
+    .base-stepper__header {
+      padding: var(--space-lg);
     }
 
-    .base-stepper__title {
-      font-size: 0.875rem;
+    .base-stepper__content {
+      padding: var(--space-lg);
     }
 
-    .base-stepper__description {
-      font-size: 0.8125rem;
+    .step-title {
+      font-size: 1.25rem;
     }
+
+    .step-description {
+      font-size: 0.9rem;
+    }
+
+    .progress-steps::before {
+      left: 1.5rem;
+      right: 1.5rem;
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      max-width: 80px;
+    }
+  }
+
+  /* Animation */
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .step-content__body {
+    animation: slide-in 0.3s ease-out;
   }
 </style>

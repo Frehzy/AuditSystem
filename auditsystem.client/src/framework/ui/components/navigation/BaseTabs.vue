@@ -44,7 +44,7 @@
       </button>
 
       <!-- Active tab indicator -->
-      <div class="base-tabs__indicator" :style="indicatorStyle" />
+      <div v-if="showIndicator" class="base-tabs__indicator" :style="indicatorStyle" />
     </div>
 
     <!-- Tab panels -->
@@ -56,7 +56,10 @@
            :aria-labelledby="`tab-${tab.id}`"
            :hidden="activeTab !== tab.id"
            class="base-tabs__panel"
-           :class="{ 'base-tabs__panel--active': activeTab === tab.id }">
+           :class="{
+             'base-tabs__panel--active': activeTab === tab.id,
+             'theme-transition': enableThemeTransitions
+           }">
 
         <slot :name="tab.id" :tab="tab">
           <component v-if="tab.component" :is="tab.component" v-bind="tab.props" />
@@ -88,10 +91,11 @@
   interface Props {
     modelValue: string
     tabs: Tab[]
-    variant?: 'default' | 'pills' | 'underline'
+    variant?: 'default' | 'pills' | 'underline' | 'cards'
     align?: 'start' | 'center' | 'end'
     fullWidth?: boolean
     ariaLabel?: string
+    enableThemeTransitions?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -99,6 +103,7 @@
     align: 'start',
     fullWidth: false,
     ariaLabel: 'Вкладки',
+    enableThemeTransitions: true
   })
 
   const emit = defineEmits<{
@@ -111,19 +116,23 @@
   const indicatorStyle = ref({})
 
   const tabsClasses = computed(() => [
-    'base-tabs',
     `base-tabs--${props.variant}`,
     `base-tabs--align-${props.align}`,
     {
       'base-tabs--full-width': props.fullWidth,
+      'theme-transition': props.enableThemeTransitions
     },
   ])
 
+  const showIndicator = computed(() => {
+    return ['default', 'underline'].includes(props.variant)
+  })
+
   const getTabClass = (tab: Tab) => [
-    'base-tabs__tab',
     {
       'base-tabs__tab--active': activeTab.value === tab.id,
       'base-tabs__tab--disabled': tab.disabled,
+      'focus-ring': activeTab.value === tab.id,
     },
   ]
 
@@ -158,6 +167,11 @@
       case 'End':
         newIndex = props.tabs.length - 1
         break
+      case 'Enter':
+      case ' ':
+        event.preventDefault()
+        setActiveTab(activeTab.value)
+        break
       default:
         return
     }
@@ -172,11 +186,12 @@
   const updateIndicator = () => {
     nextTick(() => {
       const activeTabElement = document.querySelector('.base-tabs__tab--active') as HTMLElement
-      if (activeTabElement) {
+      if (activeTabElement && showIndicator.value) {
         const { offsetLeft, offsetWidth } = activeTabElement
         indicatorStyle.value = {
           transform: `translateX(${offsetLeft}px)`,
           width: `${offsetWidth}px`,
+          opacity: '1'
         }
       }
     })
@@ -198,14 +213,18 @@
   .base-tabs {
     display: flex;
     flex-direction: column;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
   }
 
   .base-tabs__header {
     position: relative;
     display: flex;
-    gap: var(--space-xs);
+    gap: var(--spacing-xs);
     border-bottom: 1px solid var(--color-border);
-    padding: 0 var(--space-md);
+    padding: 0 var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 
   .base-tabs--align-start .base-tabs__header {
@@ -233,39 +252,47 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-md) var(--space-lg);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
     background: none;
     border: none;
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium, 500);
     white-space: nowrap;
     border-radius: var(--radius-md) var(--radius-md) 0 0;
+    font-family: var(--font-family-sans);
   }
 
-    .base-tabs__tab:hover {
+    .base-tabs__tab:hover:not(.base-tabs__tab--disabled) {
       color: var(--color-text-primary);
       background: var(--color-surface-hover);
     }
 
   .base-tabs__tab--active {
     color: var(--color-primary);
+    font-weight: var(--font-weight-semibold, 600);
   }
+
+    .base-tabs__tab--active:hover {
+      color: var(--color-primary-dark);
+    }
 
   .base-tabs__tab--disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    color: var(--color-text-muted);
   }
 
     .base-tabs__tab--disabled:hover {
-      color: var(--color-text-secondary);
       background: none;
+      color: var(--color-text-muted);
     }
 
   .base-tabs__tab-icon {
     flex-shrink: 0;
+    color: currentColor;
   }
 
   .base-tabs__tab-label {
@@ -290,7 +317,7 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     opacity: 0;
-    margin-left: var(--space-xs);
+    margin-left: var(--spacing-xs);
   }
 
   .base-tabs__tab:hover .base-tabs__tab-close {
@@ -308,27 +335,38 @@
     height: 2px;
     background: var(--color-primary);
     transition: all var(--transition-normal);
-    border-radius: 1px 1px 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    opacity: 0;
   }
 
   /* Variants */
   .base-tabs--pills .base-tabs__header {
     border-bottom: none;
-    gap: var(--space-xs);
-    padding: var(--space-sm);
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
     background: var(--color-background-card);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
   }
 
   .base-tabs--pills .base-tabs__tab {
     border-radius: var(--radius-md);
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid transparent;
   }
 
   .base-tabs--pills .base-tabs__tab--active {
-    background: var(--color-primary);
+    background: var(--gradient-primary);
     color: white;
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
   }
+
+    .base-tabs--pills .base-tabs__tab--active:hover {
+      background: var(--gradient-primary-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-primary);
+    }
 
   .base-tabs--pills .base-tabs__indicator {
     display: none;
@@ -337,27 +375,64 @@
   .base-tabs--underline .base-tabs__header {
     border-bottom: 1px solid var(--color-border);
     padding: 0;
+    background: transparent;
   }
 
   .base-tabs--underline .base-tabs__tab {
     border-radius: 0;
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 2px solid transparent;
+    background: transparent;
   }
 
   .base-tabs--underline .base-tabs__tab--active {
     border-bottom-color: var(--color-primary);
-    background: none;
+    background: transparent;
+    color: var(--color-primary);
   }
 
   .base-tabs--underline .base-tabs__indicator {
     display: none;
   }
 
+  .base-tabs--cards .base-tabs__header {
+    background: var(--color-background);
+    border: none;
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .base-tabs--cards .base-tabs__tab {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .base-tabs--cards .base-tabs__tab--active {
+    background: var(--color-surface);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+  }
+
+  .base-tabs--cards .base-tabs__tab:hover:not(.base-tabs__tab--disabled) {
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .base-tabs--cards .base-tabs__indicator {
+    display: none;
+  }
+
   /* Content */
   .base-tabs__content {
     flex: 1;
-    padding: var(--space-lg) 0;
+    padding: var(--spacing-xl);
+    background: var(--color-surface);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   }
 
   .base-tabs__panel {
@@ -381,19 +456,27 @@
     }
   }
 
+  /* Accessibility improvements */
+  .base-tabs__tab:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
     .base-tabs__header {
       flex-wrap: wrap;
-      gap: var(--space-xs);
-      padding: var(--space-sm);
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
     }
 
     .base-tabs__tab {
       flex: 1;
-      min-width: 0;
+      min-width: 120px;
       justify-content: center;
-      padding: var(--space-sm) var(--space-md);
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.875rem;
     }
 
     .base-tabs__tab-label {
@@ -402,6 +485,93 @@
 
     .base-tabs__tab-close {
       opacity: 1;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .base-tabs__content {
+      padding: var(--spacing-lg);
+    }
+
+    .base-tabs--cards .base-tabs__header {
+      padding: var(--spacing-sm);
+    }
+
+    .base-tabs--cards .base-tabs__tab {
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .base-tabs__header {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+
+    .base-tabs__tab {
+      border-radius: var(--radius-md);
+      justify-content: flex-start;
+    }
+
+    .base-tabs--default .base-tabs__tab {
+      border-radius: var(--radius-md);
+    }
+
+    .base-tabs--underline .base-tabs__tab {
+      border-bottom: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+
+    .base-tabs--underline .base-tabs__tab--active {
+      border-bottom: 2px solid var(--color-primary);
+    }
+
+    .base-tabs__indicator {
+      display: none;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .base-tabs__tab,
+    .base-tabs__indicator,
+    .base-tabs__tab-close {
+      transition: none;
+    }
+
+    .base-tabs__panel--active {
+      animation: none;
+    }
+
+    .base-tabs--pills .base-tabs__tab--active:hover {
+      transform: none;
+    }
+
+    .base-tabs--cards .base-tabs__tab:hover {
+      transform: none;
+    }
+  }
+
+  /* High contrast support */
+  @media (prefers-contrast: high) {
+    .base-tabs__header {
+      border-width: 2px;
+    }
+
+    .base-tabs__tab {
+      border: 1px solid transparent;
+    }
+
+    .base-tabs__tab--active {
+      border-color: var(--color-text-primary);
+    }
+
+    .base-tabs--pills .base-tabs__tab--active {
+      border-color: var(--color-text-primary);
+    }
+
+    .base-tabs--cards .base-tabs__tab {
+      border-width: 2px;
     }
   }
 </style>
