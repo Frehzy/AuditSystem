@@ -148,7 +148,7 @@
   const isSidebarCollapsed = ref(false);
 
   // Computed
-  const theme = computed(() => appStore.theme);
+  const theme = computed(() => appStore.currentTheme);
 
   const activeView = computed(() => {
     const routeName = route.name as string;

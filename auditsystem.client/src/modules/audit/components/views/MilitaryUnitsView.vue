@@ -63,7 +63,7 @@
               <div class="stat-value">{{ totalUnits }}</div>
               <div class="stat-label">Всего частей</div>
               <div class="stat-trend" v-if="unitsGrowth > 0">
-                <TrendingUpIcon class="trend-icon" />
+                <TrendUpIcon class="trend-icon" />
                 <span>+{{ unitsGrowth }} за месяц</span>
               </div>
             </div>
@@ -411,7 +411,7 @@
     MapPinIcon,
     CalendarIcon,
     EyeIcon,
-    TrendingUpIcon
+    TrendUpIcon
   } from '@/assets/icons';
   import { useMilitaryUnits } from '../../composables/useMilitaryUnits';
   import type { MilitaryUnit, CreateUnitCommand, CreateSubnetCommand, CreateHostCommand } from '../../api/audit.types';

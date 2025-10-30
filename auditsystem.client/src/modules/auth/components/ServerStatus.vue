@@ -14,15 +14,13 @@
           <div v-if="responseTime" class="server-status__response-time">
             {{ responseTime }}ms
           </div>
+          <div class="server-status__indicator">
+            <div class="server-status__status-icon">
+              <StatusIcon :status="status" size="sm" />
+            </div>
+            <span class="server-status__text">{{ statusText }}</span>
+          </div>
         </div>
-      </div>
-
-      <div class="server-status__indicator">
-        <div class="server-status__status-icon">
-          <StatusIcon :status="status" />
-        </div>
-        <div class="server-status__dot"></div>
-        <span class="server-status__text">{{ statusText }}</span>
       </div>
 
       <BaseButton v-if="showRetry && (status === 'offline' || status === 'checking')"
@@ -44,7 +42,7 @@
     </div>
 
     <div v-if="lastCheck" class="server-status__timestamp">
-      Последняя проверка: {{ formatRelativeTime(lastCheck) }}
+      Проверено: {{ formatRelativeTime(lastCheck) }}
     </div>
   </div>
 </template>
@@ -100,8 +98,8 @@
    */
   const truncatedUrl = computed(() => {
     const url = props.serverUrl;
-    if (url.length <= 30) return url;
-    return url.substring(0, 15) + '...' + url.substring(url.length - 12);
+    if (url.length <= 25) return url;
+    return url.substring(0, 12) + '...' + url.substring(url.length - 10);
   });
 
   /**
@@ -151,10 +149,9 @@
   .server-status {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-xl);
-    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
     transition: all var(--transition-normal);
-    backdrop-filter: blur(10px);
     cursor: v-bind('clickable ? "pointer" : "default"');
     position: relative;
     overflow: hidden;
@@ -162,42 +159,42 @@
   }
 
     .server-status:hover {
-      transform: v-bind('clickable ? "translateY(-2px)" : "none"');
+      transform: v-bind('clickable ? "translateY(-1px)" : "none"');
       box-shadow: v-bind('clickable ? "var(--shadow-md)" : "var(--shadow-sm)"');
     }
 
   .server-status__content {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: var(--space-md);
-    min-height: 24px;
+    gap: var(--spacing-sm);
+    min-height: auto;
   }
 
   .server-status__info {
     display: flex;
-    align-items: center;
-    gap: var(--space-md);
+    align-items: flex-start;
+    gap: var(--spacing-sm);
     flex: 1;
     min-width: 0;
   }
 
   .server-status__icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--gradient-primary);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     color: white;
     flex-shrink: 0;
-    box-shadow: var(--shadow-primary);
+    box-shadow: var(--shadow-sm);
   }
 
     .server-status__icon ::v-deep(svg) {
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
     }
 
   .server-status__details {
@@ -207,40 +204,40 @@
   }
 
   .server-status__label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: var(--font-weight-bold, 700);
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: var(--space-xs);
+    margin-bottom: 2px;
   }
 
   .server-status__url {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: var(--color-text-secondary);
     font-family: var(--font-family-mono);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }
 
   .server-status__response-time {
-    font-size: 0.6875rem;
+    font-size: 0.7rem;
     color: var(--color-text-muted);
     font-weight: var(--font-weight-medium, 500);
+    margin-bottom: 4px;
   }
 
   .server-status__indicator {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-md);
+    gap: 6px;
+    padding: 2px 8px;
     border-radius: var(--radius-full);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: var(--font-weight-bold, 700);
-    flex-shrink: 0;
-    max-width: 120px;
+    width: fit-content;
     transition: all var(--transition-normal);
     border: 1px solid transparent;
   }
@@ -249,32 +246,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
   }
 
     .server-status__status-icon ::v-deep(svg) {
-      width: 14px;
-      height: 14px;
+      width: 10px;
+      height: 10px;
     }
-
-  .server-status__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    transition: all var(--transition-normal);
-    flex-shrink: 0;
-    box-shadow: 0 0 0 2px transparent;
-  }
 
   .server-status__text {
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .server-status__retry {
     flex-shrink: 0;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    min-height: 24px;
   }
 
   .server-status__spinner {
@@ -282,8 +271,8 @@
   }
 
     .server-status__spinner ::v-deep(svg) {
-      width: 16px;
-      height: 16px;
+      width: 12px;
+      height: 12px;
     }
 
   .server-status__retry-icon {
@@ -293,17 +282,17 @@
   }
 
     .server-status__retry-icon ::v-deep(svg) {
-      width: 16px;
-      height: 16px;
+      width: 12px;
+      height: 12px;
     }
 
   .server-status__timestamp {
-    margin-top: var(--space-md);
-    font-size: 0.6875rem;
+    margin-top: var(--spacing-sm);
+    font-size: 0.65rem;
     color: var(--color-text-muted);
     text-align: center;
     border-top: 1px solid var(--color-border);
-    padding-top: var(--space-sm);
+    padding-top: var(--spacing-xs);
   }
 
   /* Status variants - используем цвета из темы */
@@ -311,12 +300,6 @@
     border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
     background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
   }
-
-    .server-status--online .server-status__dot {
-      background: var(--color-success);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 30%, transparent);
-      animation: pulse 2s infinite;
-    }
 
     .server-status--online .server-status__indicator {
       background: color-mix(in srgb, var(--color-success) 8%, transparent);
@@ -329,11 +312,6 @@
     background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface));
   }
 
-    .server-status--offline .server-status__dot {
-      background: var(--color-error);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 30%, transparent);
-    }
-
     .server-status--offline .server-status__indicator {
       background: color-mix(in srgb, var(--color-error) 8%, transparent);
       color: var(--color-error);
@@ -345,29 +323,11 @@
     background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface));
   }
 
-    .server-status--checking .server-status__dot {
-      background: var(--color-warning);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-warning) 30%, transparent);
-      animation: pulse 1.5s infinite;
-    }
-
     .server-status--checking .server-status__indicator {
       background: color-mix(in srgb, var(--color-warning) 8%, transparent);
       color: var(--color-warning);
       border-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
     }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 0.7;
-      transform: scale(1.1);
-    }
-  }
 
   @keyframes spin {
     from {
@@ -382,24 +342,18 @@
   /* Адаптивность */
   @media (max-width: 768px) {
     .server-status {
-      padding: var(--space-md);
-      border-radius: var(--radius-lg);
+      padding: var(--spacing-sm);
+      border-radius: var(--radius-md);
     }
 
     .server-status__content {
       flex-direction: column;
       align-items: stretch;
-      gap: var(--space-md);
+      gap: var(--spacing-sm);
     }
 
     .server-status__info {
       justify-content: flex-start;
-    }
-
-    .server-status__indicator {
-      align-self: stretch;
-      justify-content: center;
-      max-width: none;
     }
 
     .server-status__retry {
@@ -409,14 +363,14 @@
 
   @media (max-width: 480px) {
     .server-status__icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
     }
 
       .server-status__icon ::v-deep(svg) {
-        width: 18px;
-        height: 18px;
+        width: 14px;
+        height: 14px;
       }
 
     .server-status__details {
@@ -424,27 +378,27 @@
     }
 
     .server-status__url {
-      font-size: 0.8125rem;
+      font-size: 0.75rem;
     }
   }
 
   @media (max-width: 360px) {
     .server-status {
-      padding: var(--space-md) var(--space-sm);
+      padding: var(--spacing-sm) var(--spacing-xs);
     }
 
     .server-status__info {
-      gap: var(--space-sm);
+      gap: var(--spacing-xs);
     }
 
     .server-status__icon {
-      width: 32px;
-      height: 32px;
+      width: 24px;
+      height: 24px;
     }
 
       .server-status__icon ::v-deep(svg) {
-        width: 16px;
-        height: 16px;
+        width: 12px;
+        height: 12px;
       }
   }
 </style>

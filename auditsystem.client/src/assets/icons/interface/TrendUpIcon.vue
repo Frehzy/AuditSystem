@@ -1,4 +1,4 @@
-<!-- TrendingUpIcon.vue -->
+<!-- TrendUpIcon.vue -->
 <template>
   <svg width="20"
        height="20"
@@ -38,45 +38,45 @@
   })
 
   const iconClasses = computed(() => ({
-    'trending-up-icon': true,
+    'trend-up-icon': true,
     'theme-transition': true
   }))
 </script>
 
 <style scoped>
-  .trending-up-icon {
+  .trend-up-icon {
     transition: color var(--transition-normal);
   }
 
-    .trending-up-icon svg {
+    .trend-up-icon svg {
       color: var(--color-text-primary);
     }
 
-    .trending-up-icon:hover {
+    .trend-up-icon:hover {
       color: var(--color-success);
     }
 
-  .trending-up-icon {
+  .trend-up-icon {
     transform-origin: center;
     transition: all var(--transition-fast);
   }
 
-    .trending-up-icon:hover {
+    .trend-up-icon:hover {
       transform: scale(1.05);
     }
 
   @media (prefers-reduced-motion: reduce) {
-    .trending-up-icon {
+    .trend-up-icon {
       transition: none;
     }
 
-      .trending-up-icon:hover {
+      .trend-up-icon:hover {
         transform: none;
       }
   }
 
   @media (prefers-contrast: high) {
-    .trending-up-icon svg {
+    .trend-up-icon svg {
       stroke-width: 2.5;
     }
   }

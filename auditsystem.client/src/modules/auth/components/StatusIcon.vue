@@ -1,6 +1,6 @@
 <!-- src/modules/auth/components/StatusIcon.vue -->
 <template>
-  <div class="status-icon" :class="`status--${props.status}`">
+  <div class="status-icon" :class="[`status--${props.status}`, sizeClasses]">
     <component :is="iconComponent" class="status-svg" />
     <div v-if="props.withPulse" class="status-pulse" :class="`pulse--${props.status}`"></div>
   </div>
@@ -64,18 +64,18 @@
 
   /* Size variants */
   .size-sm {
-    width: 1rem;
-    height: 1rem;
+    width: 0.875rem;
+    height: 0.875rem;
   }
 
   .size-md {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .size-lg {
-    width: 2rem;
-    height: 2rem;
+    width: 1.75rem;
+    height: 1.75rem;
   }
 
   /* Status variants with theme colors */
@@ -154,30 +154,6 @@
     }
   }
 
-  /* Hover effects */
-  .status-icon:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .status--online:hover {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 20%, transparent);
-  }
-
-  .status--offline:hover {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent);
-  }
-
-  .status--checking:hover {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warning) 20%, transparent);
-  }
-
-  /* Focus states for accessibility */
-  .status-icon:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .status--checking .status-svg {
@@ -187,10 +163,6 @@
     .status-pulse {
       animation: none;
       display: none;
-    }
-
-    .status-icon:hover {
-      transform: none;
     }
   }
 

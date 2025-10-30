@@ -197,17 +197,25 @@ router.afterEach((to, from) => {
   }
 });
 
+// В router/index.ts, в блоке router.onError:
 router.onError((error) => {
   const loggerContext = logger.create('Router');
-  const appStore = useAppStore();
 
-  loggerContext.error('Router error', {
+  // Логируем детальную информацию об ошибке
+  loggerContext.error('Router navigation error', {
     error: error.message,
     stack: error.stack,
+    path: window.location.pathname,
+    isChunkError: error.message.includes('Loading chunk') || error.message.includes('dynamically imported module')
   });
 
-  // Добавляем ошибку в store для отображения пользователю
-  appStore.addError('Ошибка загрузки страницы', 'error', 'router');
+  // Для ошибок загрузки chunks - предлагаем перезагрузку
+  if (error.message.includes('Loading chunk') || error.message.includes('dynamically imported module')) {
+    // Можно показать диалог с предложением перезагрузить страницу
+    if (confirm('Произошла ошибка при загрузке страницы. Хотите перезагрузить страницу?')) {
+      window.location.reload();
+    }
+  }
 });
 
 export default router;

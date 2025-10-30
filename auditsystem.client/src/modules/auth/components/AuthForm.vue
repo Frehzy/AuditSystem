@@ -1,144 +1,123 @@
 <!-- src/modules/auth/components/AuthForm.vue -->
 <template>
   <form @submit.prevent="handleSubmit" class="auth-form" novalidate>
-    <!-- Progress Steps (для будущего расширения) -->
-    <div class="auth-progress" v-if="showProgress">
-      <div class="progress-steps">
-        <div class="progress-step progress-step--completed">
-          <div class="step-indicator">
-            <span class="step-check">
-              <CheckIcon size="16" />
+    <!-- Form Fields -->
+    <div class="auth-form__fields">
+      <div class="form-group">
+        <BaseInput v-model="formData.username"
+                   type="text"
+                   label="Имя пользователя"
+                   placeholder="Введите имя пользователя"
+                   :error="validationErrors.username"
+                   :disabled="isLoading || !serverAvailable"
+                   :required="true"
+                   autocomplete="username"
+                   :clearable="false"
+                   @blur="validateField('username')"
+                   @focus="clearFieldError('username')"
+                   class="auth-form__input">
+          <template #prefix>
+            <span class="auth-form__input-icon">
+              <UserIcon />
             </span>
-          </div>
-          <span class="step-label">Аутентификация</span>
+          </template>
+        </BaseInput>
+      </div>
+
+      <div class="form-group">
+        <BaseInput v-model="formData.password"
+                   type="password"
+                   label="Пароль"
+                   placeholder="Введите пароль"
+                   :error="validationErrors.password"
+                   :disabled="isLoading || !serverAvailable"
+                   :required="true"
+                   autocomplete="current-password"
+                   :show-password-toggle="true"
+                   :clearable="false"
+                   @blur="validateField('password')"
+                   @focus="clearFieldError('password')"
+                   class="auth-form__input">
+          <template #prefix>
+            <span class="auth-form__input-icon">
+              <LockIcon />
+            </span>
+          </template>
+        </BaseInput>
+      </div>
+    </div>
+
+    <!-- Server Status -->
+    <div v-if="!serverAvailable" class="server-status-card">
+      <div class="server-status__icon status--offline">
+        <ServerIcon />
+      </div>
+      <div class="server-status__content">
+        <div class="server-status__title">Сервер недоступен</div>
+        <div class="server-status__description">
+          Пожалуйста, проверьте подключение к сети
         </div>
       </div>
     </div>
 
-    <div class="auth-form__content">
-      <!-- Form Fields -->
-      <div class="auth-form__fields">
-        <div class="form-group">
-          <BaseInput v-model="formData.username"
-                     type="text"
-                     label="Имя пользователя"
-                     placeholder="Введите имя пользователя"
-                     :error="validationErrors.username"
-                     :disabled="isLoading || !serverAvailable"
-                     :required="true"
-                     autocomplete="username"
-                     :clearable="false"
-                     @blur="validateField('username')"
-                     @focus="clearFieldError('username')"
-                     class="auth-form__input">
-            <template #prefix>
-              <span class="auth-form__input-icon">
-                <UserIcon />
-              </span>
-            </template>
-          </BaseInput>
+    <!-- Submit Button -->
+    <BaseButton type="submit"
+                :is-loading="isLoading"
+                :disabled="!isFormValid || isLoading || !serverAvailable"
+                variant="primary"
+                size="lg"
+                :full-width="true"
+                class="auth-form__submit">
+      <span class="auth-form__submit-text">
+        {{ serverAvailable ? 'Войти в систему' : 'Сервер недоступен' }}
+      </span>
+      <template #loader>
+        <div class="auth-form__submit-loading">
+          <LoadingSpinner class="loading-spinner" />
+          <span>Выполняется вход...</span>
         </div>
+      </template>
+    </BaseButton>
 
-        <div class="form-group">
-          <BaseInput v-model="formData.password"
-                     type="password"
-                     label="Пароль"
-                     placeholder="Введите пароль"
-                     :error="validationErrors.password"
-                     :disabled="isLoading || !serverAvailable"
-                     :required="true"
-                     autocomplete="current-password"
-                     :show-password-toggle="true"
-                     :clearable="false"
-                     @blur="validateField('password')"
-                     @focus="clearFieldError('password')"
-                     class="auth-form__input">
-            <template #prefix>
-              <span class="auth-form__input-icon">
-                <LockIcon />
-              </span>
-            </template>
-          </BaseInput>
-        </div>
+    <!-- General Error -->
+    <div v-if="generalError" class="auth-form__error" role="alert">
+      <div class="auth-form__error-icon">
+        <AlertIcon />
       </div>
-
-      <!-- Server Status -->
-      <div v-if="!serverAvailable" class="server-status-card">
-        <div class="server-status__icon status--offline">
-          <ServerIcon />
-        </div>
-        <div class="server-status__content">
-          <div class="server-status__title">Сервер недоступен</div>
-          <div class="server-status__description">
-            Пожалуйста, проверьте подключение к сети и повторите попытку
-          </div>
-        </div>
+      <div class="auth-form__error-content">
+        <div class="auth-form__error-title">Ошибка авторизации</div>
+        <div class="auth-form__error-text">{{ generalError }}</div>
       </div>
-
-      <!-- Submit Button -->
-      <BaseButton type="submit"
-                  :is-loading="isLoading"
-                  :disabled="!isFormValid || isLoading || !serverAvailable"
-                  variant="primary"
-                  size="lg"
-                  :full-width="true"
-                  class="auth-form__submit">
-        <span class="auth-form__submit-text">
-          {{ serverAvailable ? 'Войти в систему' : 'Сервер недоступен' }}
-        </span>
-        <template #loader>
-          <div class="auth-form__submit-loading">
-            <LoadingSpinner class="loading-spinner" />
-            <span>Выполняется вход...</span>
-          </div>
-        </template>
+      <BaseButton @click="clearGeneralError"
+                  variant="text"
+                  size="sm"
+                  class="error-close-btn">
+        <CloseIcon size="16" />
       </BaseButton>
+    </div>
 
-      <!-- General Error -->
-      <div v-if="generalError" class="auth-form__error" role="alert">
-        <div class="auth-form__error-icon">
-          <AlertIcon />
+    <!-- Help Links -->
+    <div v-if="showHelpLinks && serverAvailable" class="auth-form__help">
+      <a href="#" class="auth-form__help-link" @click.prevent="handleForgotPassword">
+        <HelpCircleIcon class="help-link-icon" />
+        <span>Забыли пароль?</span>
+      </a>
+    </div>
+
+    <!-- Connection Status -->
+    <div v-if="!serverAvailable" class="connection-status">
+      <div class="connection-status__content">
+        <div class="connection-status__text">
+          Ожидание подключения к серверу...
         </div>
-        <div class="auth-form__error-content">
-          <div class="auth-form__error-title">Ошибка авторизации</div>
-          <div class="auth-form__error-text">{{ generalError }}</div>
-        </div>
-        <BaseButton @click="clearGeneralError"
-                    variant="text"
+        <BaseButton @click="retryConnection"
+                    variant="secondary"
                     size="sm"
-                    class="error-close-btn">
-          <CloseIcon size="16" />
+                    :loading="isLoading"
+                    class="retry-btn">
+          <RefreshIcon class="retry-icon" />
+          Повторить
         </BaseButton>
-      </div>
-
-      <!-- Help Links -->
-      <div v-if="showHelpLinks && serverAvailable" class="auth-form__help">
-        <a href="#" class="auth-form__help-link" @click.prevent="handleForgotPassword">
-          <HelpCircleIcon class="help-link-icon" />
-          <span>Забыли пароль?</span>
-        </a>
-        <div class="help-divider">•</div>
-        <a href="#" class="auth-form__help-link" @click.prevent="handleSupport">
-          <LifebuoyIcon class="help-link-icon" />
-          <span>Техническая поддержка</span>
-        </a>
-      </div>
-
-      <!-- Connection Status -->
-      <div v-if="!serverAvailable" class="connection-status">
-        <div class="connection-status__content">
-          <div class="connection-status__text">
-            Ожидание подключения к серверу...
-          </div>
-          <BaseButton @click="retryConnection"
-                      variant="secondary"
-                      size="sm"
-                      :loading="isLoading"
-                      class="retry-btn">
-            <RefreshCwIcon class="retry-icon" />
-            Повторить
-          </BaseButton>
-        </div>
       </div>
     </div>
   </form>
@@ -151,11 +130,9 @@
     UserIcon,
     LockIcon,
     AlertIcon,
-    CheckIcon,
     ServerIcon,
     HelpCircleIcon,
-    LifebuoyIcon,
-    RefreshCwIcon,
+    RefreshIcon,
     CloseIcon,
     LoadingSpinner
   } from '@/assets/icons';
@@ -166,13 +143,11 @@
     generalError?: string | null;
     serverAvailable?: boolean;
     showHelpLinks?: boolean;
-    showProgress?: boolean;
   }
 
   interface Emits {
     (e: 'submit', credentials: { username: string; password: string }): void;
     (e: 'forgot-password'): void;
-    (e: 'support'): void;
     (e: 'retry-connection'): void;
     (e: 'clear-error'): void;
   }
@@ -182,7 +157,6 @@
     generalError: null,
     serverAvailable: true,
     showHelpLinks: true,
-    showProgress: false,
   });
 
   const emit = defineEmits<Emits>();
@@ -277,13 +251,6 @@
   };
 
   /**
-   * Обработка обращения в поддержку
-   */
-  const handleSupport = (): void => {
-    emit('support');
-  };
-
-  /**
    * Повторное подключение к серверу
    */
   const retryConnection = (): void => {
@@ -309,78 +276,24 @@
   .auth-form {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl, 1.5rem);
-    width: 100%;
-    background: var(--color-background-card, #ffffff);
-    border-radius: var(--radius-xl, 0.75rem);
-    padding: var(--spacing-2xl, 2rem);
-    border: 1px solid var(--color-border-card, #f1f5f9);
-    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
-  }
-
-  /* Progress Steps */
-  .auth-progress {
-    padding-bottom: var(--spacing-lg, 1.25rem);
-    border-bottom: 1px solid var(--color-border, #e2e8f0);
-  }
-
-  .progress-steps {
-    display: flex;
-    justify-content: center;
-  }
-
-  .progress-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-  }
-
-  .step-indicator {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-success, #10b981);
-    color: white;
-    margin-bottom: var(--spacing-sm, 0.75rem);
-  }
-
-  .step-check ::v-deep(svg) {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  .step-label {
-    font-size: 0.875rem;
-    font-weight: var(--font-weight-semibold, 600);
-    color: var(--color-success, #10b981);
-  }
-
-  /* Form Content */
-  .auth-form__content {
-    display: flex;
-    flex-direction: column;
     gap: var(--spacing-lg, 1.25rem);
+    width: 100%;
   }
 
   .auth-form__fields {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg, 1.25rem);
+    gap: var(--spacing-md, 1rem);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm, 0.75rem);
+    gap: var(--spacing-xs, 0.5rem);
   }
 
   .auth-form__input {
-    min-height: 52px;
+    min-height: 48px;
   }
 
   .auth-form__input-icon {
@@ -406,18 +319,19 @@
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-md, 1rem);
-    padding: var(--spacing-lg, 1.25rem);
+    padding: var(--spacing-md, 1rem);
     background: var(--status-offline-bg, color-mix(in srgb, var(--color-error) 8%, transparent));
     border: 1px solid var(--status-offline-border, color-mix(in srgb, var(--color-error) 30%, transparent));
-    border-radius: var(--radius-lg, 0.75rem);
+    border-radius: var(--radius-md, 0.5rem);
     color: var(--status-offline-text, var(--color-error));
+    font-size: 0.875rem;
   }
 
   .server-status__icon {
     flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--radius-md, 0.5rem);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-sm, 0.375rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -425,8 +339,8 @@
   }
 
     .server-status__icon ::v-deep(svg) {
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 1rem;
+      height: 1rem;
     }
 
   .server-status__content {
@@ -435,27 +349,27 @@
 
   .server-status__title {
     font-weight: var(--font-weight-semibold, 600);
-    margin-bottom: var(--spacing-xs, 0.5rem);
-    font-size: 0.9rem;
+    margin-bottom: 2px;
+    font-size: 0.875rem;
   }
 
   .server-status__description {
     font-size: 0.8rem;
     opacity: 0.9;
-    line-height: 1.4;
+    line-height: 1.3;
   }
 
   /* Submit Button */
   .auth-form__submit {
     width: 100%;
-    min-height: 48px;
+    min-height: 46px;
     height: auto;
     font-weight: var(--font-weight-semibold, 600);
-    font-size: 15px;
-    border-radius: var(--radius-lg, 0.75rem);
+    font-size: 14px;
+    border-radius: var(--radius-md, 0.5rem);
     transition: all var(--transition-normal, 0.3s);
     padding: 12px 16px;
-    margin-top: var(--spacing-sm, 0.75rem);
+    margin-top: var(--spacing-xs, 0.5rem);
     background: var(--gradient-primary, linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%));
     box-shadow: var(--shadow-primary, 0 4px 12px color-mix(in srgb, var(--color-primary) 25%, transparent));
   }
@@ -463,7 +377,7 @@
     .auth-form__submit:not(.base-button--disabled):not(.base-button--loading):hover {
       background: var(--gradient-primary-hover, linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%));
       transform: translateY(-1px);
-      box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
     }
 
   .auth-form__submit-text,
@@ -471,7 +385,6 @@
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-sm, 0.75rem);
-    min-width: 140px;
     justify-content: center;
   }
 
@@ -496,15 +409,13 @@
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-md, 1rem);
-    padding: var(--spacing-lg, 1.25rem);
+    padding: var(--spacing-md, 1rem);
     background: var(--status-offline-bg, color-mix(in srgb, var(--color-error) 8%, transparent));
     border: 1px solid var(--status-offline-border, color-mix(in srgb, var(--color-error) 30%, transparent));
-    border-radius: var(--radius-lg, 0.75rem);
+    border-radius: var(--radius-md, 0.5rem);
     color: var(--status-offline-text, var(--color-error));
-    font-size: 13px;
-    line-height: 1.4;
-    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
-    position: relative;
+    font-size: 0.8rem;
+    line-height: 1.3;
   }
 
   .auth-form__error-icon {
@@ -527,13 +438,13 @@
   .auth-form__error-title {
     font-weight: var(--font-weight-semibold, 600);
     margin-bottom: 2px;
-    font-size: 13px;
+    font-size: 0.8rem;
     color: var(--color-error-dark, #dc2626);
   }
 
   .auth-form__error-text {
     word-break: break-word;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--color-error-dark, #dc2626);
     opacity: 0.9;
   }
@@ -548,9 +459,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-md, 1rem);
     margin-top: var(--spacing-sm, 0.75rem);
-    padding-top: var(--spacing-lg, 1.25rem);
+    padding-top: var(--spacing-md, 1rem);
     border-top: 1px solid var(--color-border, #e2e8f0);
   }
 
@@ -560,10 +470,10 @@
     gap: var(--spacing-xs, 0.5rem);
     color: var(--color-text-muted, #64748b);
     text-decoration: none;
-    font-size: 13px;
+    font-size: 0.8rem;
     transition: all var(--transition-fast, 0.15s);
-    padding: 6px 8px;
-    border-radius: var(--radius-md, 0.5rem);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm, 0.375rem);
   }
 
     .auth-form__help-link:hover {
@@ -573,13 +483,8 @@
     }
 
   .help-link-icon {
-    width: 14px;
-    height: 14px;
-  }
-
-  .help-divider {
-    color: var(--color-text-muted, #64748b);
-    opacity: 0.5;
+    width: 12px;
+    height: 12px;
   }
 
   /* Connection Status */
@@ -587,100 +492,83 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-lg, 1.25rem);
+    padding: var(--spacing-md, 1rem);
     background: var(--color-surface-hover, #f1f5f9);
-    border-radius: var(--radius-lg, 0.75rem);
+    border-radius: var(--radius-md, 0.5rem);
     border: 1px solid var(--color-border, #e2e8f0);
   }
 
   .connection-status__content {
     display: flex;
     align-items: center;
-    gap: var(--spacing-lg, 1.25rem);
+    gap: var(--spacing-md, 1rem);
   }
 
   .connection-status__text {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--color-text-secondary, #475569);
     font-weight: var(--font-weight-medium, 500);
   }
 
   .retry-btn {
     white-space: nowrap;
+    font-size: 0.8rem;
   }
 
   .retry-icon {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
 
   /* Адаптивность для мобильных устройств */
   @media (max-width: 480px) {
     .auth-form {
-      gap: var(--spacing-lg, 1.25rem);
-      padding: var(--spacing-xl, 1.5rem);
+      gap: var(--spacing-md, 1rem);
     }
 
     .auth-form__fields {
-      gap: var(--spacing-md, 1rem);
+      gap: var(--spacing-sm, 0.75rem);
     }
 
     .auth-form__submit {
       min-height: 44px;
-      border-radius: var(--radius-md, 0.5rem);
-      font-size: 14px;
+      font-size: 13px;
       padding: 10px 14px;
     }
 
     .auth-form__error {
-      padding: var(--spacing-md, 1rem);
-      border-radius: var(--radius-md, 0.5rem);
-    }
-
-    .auth-form__help {
-      flex-direction: column;
-      gap: var(--spacing-sm, 0.75rem);
-    }
-
-    .help-divider {
-      display: none;
+      padding: var(--spacing-sm, 0.75rem);
     }
 
     .connection-status__content {
       flex-direction: column;
-      gap: var(--spacing-md, 1rem);
+      gap: var(--spacing-sm, 0.75rem);
       text-align: center;
     }
   }
 
   @media (max-width: 360px) {
-    .auth-form {
-      padding: var(--spacing-lg, 1.25rem);
-    }
-
     .auth-form__submit-text {
-      min-width: 120px;
       font-size: 13px;
     }
 
     .auth-form__help-link {
-      font-size: 12px;
+      font-size: 0.75rem;
     }
   }
 
   /* Ландшафтная ориентация */
   @media (max-height: 500px) and (orientation: landscape) {
     .auth-form {
-      gap: var(--spacing-md, 1rem);
-      padding: var(--spacing-lg, 1.25rem);
-    }
-
-    .auth-form__fields {
       gap: var(--spacing-sm, 0.75rem);
     }
 
+    .auth-form__fields {
+      gap: var(--spacing-xs, 0.5rem);
+    }
+
     .auth-form__input {
-      min-height: 44px;
+      min-height: 42px;
     }
 
     .auth-form__submit {
@@ -689,43 +577,17 @@
     }
 
     .auth-form__error {
-      padding: var(--spacing-md, 1rem);
+      padding: var(--spacing-sm, 0.75rem);
     }
 
     .auth-form__help {
       margin-top: var(--spacing-xs, 0.5rem);
-      padding-top: var(--spacing-md, 1rem);
-    }
-  }
-
-  /* Очень маленькие экраны */
-  @media (max-width: 320px) {
-    .auth-form {
-      gap: var(--spacing-md, 1rem);
-      padding: var(--spacing-md, 1rem);
-    }
-
-    .auth-form__submit {
-      min-height: 42px;
-      padding: 8px 12px;
+      padding-top: var(--spacing-sm, 0.75rem);
     }
   }
 
   /* Темная тема */
   @media (prefers-color-scheme: dark) {
-    .auth-form {
-      background: var(--color-surface-dark, #1e293b);
-      border-color: var(--color-border-dark, #334155);
-    }
-
-    .auth-progress {
-      border-bottom-color: var(--color-border-dark, #334155);
-    }
-
-    .auth-form__help {
-      border-top-color: var(--color-border-dark, #334155);
-    }
-
     .connection-status {
       background: var(--color-surface-hover-dark, #1e293b);
       border-color: var(--color-border-dark, #334155);

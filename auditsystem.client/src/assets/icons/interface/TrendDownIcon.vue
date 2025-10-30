@@ -1,4 +1,4 @@
-<!-- TrendingDownIcon.vue -->
+<!-- TrendDownIcon.vue -->
 <template>
   <svg width="20"
        height="20"
@@ -38,45 +38,45 @@
   })
 
   const iconClasses = computed(() => ({
-    'trending-down-icon': true,
+    'trend-down-icon': true,
     'theme-transition': true
   }))
 </script>
 
 <style scoped>
-  .trending-down-icon {
+  .trend-down-icon {
     transition: color var(--transition-normal);
   }
 
-    .trending-down-icon svg {
+    .trend-down-icon svg {
       color: var(--color-text-primary);
     }
 
-    .trending-down-icon:hover {
+    .trend-down-icon:hover {
       color: var(--color-error);
     }
 
-  .trending-down-icon {
+  .trend-down-icon {
     transform-origin: center;
     transition: all var(--transition-fast);
   }
 
-    .trending-down-icon:hover {
+    .trend-down-icon:hover {
       transform: scale(1.05);
     }
 
   @media (prefers-reduced-motion: reduce) {
-    .trending-down-icon {
+    .trend-down-icon {
       transition: none;
     }
 
-      .trending-down-icon:hover {
+      .trend-down-icon:hover {
         transform: none;
       }
   }
 
   @media (prefers-contrast: high) {
-    .trending-down-icon svg {
+    .trend-down-icon svg {
       stroke-width: 2.5;
     }
   }

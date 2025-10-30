@@ -17,7 +17,6 @@ export { default as PlayIcon } from './actions/PlayIcon.vue';
 export { default as PlusIcon } from './actions/PlusIcon.vue';
 export { default as PrinterIcon } from './actions/PrinterIcon.vue';
 export { default as RefreshIcon } from './actions/RefreshIcon.vue';
-export { default as RefreshCwIcon } from './actions/RefreshIcon.vue'; // Добавлен экспорт для RefreshCwIcon
 export { default as ResetIcon } from './actions/ResetIcon.vue';
 export { default as SaveIcon } from './actions/SaveIcon.vue';
 export { default as StopIcon } from './actions/StopIcon.vue';
@@ -94,8 +93,8 @@ export { default as SettingsIcon } from './interface/SettingsIcon.vue';
 export { default as TimeIcon } from './interface/TimeIcon.vue';
 export { default as ToggleLeftIcon } from './interface/ToggleLeftIcon.vue';
 export { default as ToggleRightIcon } from './interface/ToggleRightIcon.vue';
-export { default as TrendingDownIcon } from './interface/TrendingDownIcon.vue';
-export { default as TrendingUpIcon } from './interface/TrendingUpIcon.vue';
+export { default as TrendDownIcon } from './interface/TrendDownIcon.vue';
+export { default as TrendUpIcon } from './interface/TrendUpIcon.vue';
 
 // ========== БЕЗОПАСНОСТЬ ==========
 export { default as FingerprintIcon } from './security/FingerprintIcon.vue';

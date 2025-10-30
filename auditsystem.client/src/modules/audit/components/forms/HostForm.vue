@@ -152,23 +152,21 @@
         </div>
 
         <!-- Form Actions -->
-        <template #footer>
-          <div class="form-actions">
-            <BaseButton @click="$emit('cancel')"
-                        variant="secondary"
-                        class="cancel-btn">
-              Отмена
-            </BaseButton>
-            <BaseButton type="submit"
-                        variant="primary"
-                        :loading="isSubmitting"
-                        :disabled="!canSubmit"
-                        class="submit-btn">
-              <SaveIcon class="button-icon" />
-              Добавить хост
-            </BaseButton>
-          </div>
-        </template>
+        <div class="form-actions">
+          <BaseButton @click="$emit('cancel')"
+                      variant="secondary"
+                      class="cancel-btn">
+            Отмена
+          </BaseButton>
+          <BaseButton type="submit"
+                      variant="primary"
+                      :loading="isSubmitting"
+                      :disabled="!canSubmit"
+                      class="submit-btn">
+            <SaveIcon class="button-icon" />
+            Добавить хост
+          </BaseButton>
+        </div>
       </form>
     </div>
   </BaseModal>
@@ -182,7 +180,7 @@
   import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
   import BaseSelect from '@/framework/ui/components/forms/BaseSelect.vue';
   import BaseTextarea from '@/framework/ui/components/forms/BaseTextarea.vue';
-  import { SaveIcon, TestConnectionIcon, CheckCircleIcon, XCircleIcon, ServerIcon } from '@/assets/icons';
+  import { SaveIcon, TestConnectionIcon, CheckCircleIcon, XCircleIcon } from '@/assets/icons';
   import { useMilitaryUnits } from '../../composables/useMilitaryUnits';
   import type { CreateHostCommand } from '../../api/audit.types';
 
@@ -390,11 +388,6 @@
       };
 
       emit('save', hostData);
-      showToast({
-        type: 'success',
-        title: 'Хост добавлен',
-        message: 'Новый хост успешно создан'
-      });
     } catch (error) {
       console.error('Failed to create host:', error);
       showToast({
@@ -413,24 +406,7 @@
 </script>
 
 <style scoped>
-  .host-form-modal {
-    /* Custom styles for the modal container */
-  }
-
-    .host-form-modal ::v-deep(.base-modal__container) {
-      display: flex;
-      flex-direction: column;
-      max-height: 85vh;
-    }
-
-    .host-form-modal ::v-deep(.base-modal__content) {
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-    }
-
+  /* Keep all your existing styles - they are fine */
   .host-form-content {
     flex: 1;
     padding: var(--space-xl, 1.5rem);
@@ -450,7 +426,6 @@
     gap: var(--space-2xl, 2rem);
   }
 
-  /* Form Sections */
   .form-section {
     background: var(--color-surface, #fff);
     border-radius: var(--radius-xl, 0.75rem);
@@ -480,7 +455,6 @@
     line-height: 1.4;
   }
 
-  /* Form Grid */
   .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -511,7 +485,6 @@
     color: var(--color-text-muted, #9ca3af);
   }
 
-  /* Test Connection Section */
   .test-connection-section {
     background: var(--color-surface, #fff);
     border-radius: var(--radius-lg, 0.75rem);
@@ -563,7 +536,6 @@
     font-weight: var(--font-weight-medium, 500);
   }
 
-  /* Form Actions */
   .form-actions {
     display: flex;
     gap: var(--space-md, 1rem);
@@ -584,7 +556,6 @@
     margin-right: var(--space-sm, 0.75rem);
   }
 
-  /* Responsive Design */
   @media (max-width: 1024px) {
     .host-form-content {
       padding: var(--space-lg, 1.25rem);
@@ -658,7 +629,6 @@
     }
   }
 
-  /* Animation */
   @keyframes slide-in {
     from {
       opacity: 0;

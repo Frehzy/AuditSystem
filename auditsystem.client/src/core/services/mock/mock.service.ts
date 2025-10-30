@@ -237,6 +237,8 @@ export class MockService {
         hostIds: ['host-1-1', 'host-1-2', 'host-2-1'],
         scriptIds: ['script-1', 'script-2'],
         autoFix: false,
+        parallelExecution: true,
+        generateReport: true,
         status: 'completed',
         progress: 100,
         createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -251,10 +253,29 @@ export class MockService {
         hostIds: ['host-1-1'],
         scriptIds: ['script-1'],
         autoFix: true,
+        parallelExecution: false,
+        generateReport: false,
         status: 'running',
         progress: 65,
         createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+        startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        completedAt: undefined
+      },
+      {
+        id: 'task-3',
+        name: 'Плановое сканирование',
+        description: 'Регулярная проверка безопасности',
+        unitIds: ['unit-2'],
+        hostIds: ['host-2-1'],
+        scriptIds: ['script-2'],
+        autoFix: false,
+        parallelExecution: true,
+        generateReport: true,
+        status: 'pending',
+        progress: 0,
+        createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        startedAt: undefined,
+        completedAt: undefined
       }
     ];
   }
@@ -270,6 +291,15 @@ export class MockService {
         content: 'Mock report content',
         generatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
         fileSize: 1024
+      },
+      {
+        id: 'report-2',
+        name: 'Сводный отчет за месяц',
+        taskId: 'task-2',
+        format: 'html',
+        content: 'Monthly summary report content',
+        generatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        fileSize: 2048
       }
     ];
   }
