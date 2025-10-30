@@ -63,6 +63,29 @@
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
+  /* Status colors for ServerStatus */
+  --status-online-bg: color-mix(in srgb, var(--color-success) 8%, transparent);
+  --status-online-border: color-mix(in srgb, var(--color-success) 30%, transparent);
+  --status-online-indicator: color-mix(in srgb, var(--color-success) 15%, transparent);
+  --status-online-text: var(--color-success);
+  --status-online-dot: var(--color-success);
+  --status-offline-bg: color-mix(in srgb, var(--color-error) 8%, transparent);
+  --status-offline-border: color-mix(in srgb, var(--color-error) 30%, transparent);
+  --status-offline-indicator: color-mix(in srgb, var(--color-error) 15%, transparent);
+  --status-offline-text: var(--color-error);
+  --status-offline-dot: var(--color-error);
+  --status-checking-bg: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  --status-checking-border: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  --status-checking-indicator: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  --status-checking-text: var(--color-warning);
+  --status-checking-dot: var(--color-warning);
+  /* Background colors for cards and containers */
+  --color-card-bg: var(--color-surface);
+  --color-card-border: var(--color-border);
+  --color-input-bg: var(--color-surface);
+  --color-input-border: var(--color-border);
+  --color-input-text: var(--color-text-primary);
+  --color-input-placeholder: var(--color-text-muted);
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -90,6 +113,10 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  --gradient-primary-hover: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  --shadow-primary: 0 4px 12px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .theme-light {
@@ -102,6 +129,12 @@
   --color-border-card: var(--color-border-card-light);
   --color-surface: var(--color-background-card-light);
   --color-surface-hover: var(--color-gray-100);
+  --color-card-bg: var(--color-surface);
+  --color-card-border: var(--color-border);
+  --color-input-bg: var(--color-surface);
+  --color-input-border: var(--color-border);
+  --color-input-text: var(--color-text-primary);
+  --color-input-placeholder: var(--color-text-muted);
 }
 
 .theme-dark {
@@ -114,6 +147,12 @@
   --color-border-card: var(--color-border-card-dark);
   --color-surface: var(--color-background-card-dark);
   --color-surface-hover: var(--color-gray-800);
+  --color-card-bg: var(--color-surface);
+  --color-card-border: var(--color-border);
+  --color-input-bg: var(--color-surface);
+  --color-input-border: var(--color-border);
+  --color-input-text: var(--color-text-primary);
+  --color-input-placeholder: var(--color-text-muted);
 }
 
 /* Utility classes */

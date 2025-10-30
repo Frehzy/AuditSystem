@@ -1,17 +1,15 @@
 <!-- src/modules/auth/views/AuthView.vue -->
 <template>
   <div class="auth-view" :class="themeClass">
-    <!-- Анимированный фон -->
     <div class="auth-view__background">
       <div class="auth-view__gradient"></div>
       <div class="auth-view__particles">
-        <div v-for="i in 15" :key="i" class="auth-view__particle" :style="particleStyle()"></div>
+        <div v-for="i in 15" :key="i" class="auth-view__particle" :style="getParticleStyle(i)"></div>
       </div>
     </div>
 
     <div class="auth-view__container">
       <div class="auth-view__card">
-        <!-- Заголовок и переключатель темы -->
         <header class="auth-view__header">
           <div class="auth-view__logo">
             <div class="auth-view__logo-icon">
@@ -32,7 +30,6 @@
           </button>
         </header>
 
-        <!-- Статус сервера -->
         <ServerStatus :server-url="serverUrl"
                       :status="serverHealth.status.value"
                       :last-check="serverHealth.lastCheck.value || undefined"
@@ -41,15 +38,16 @@
                       @retry="handleRetry"
                       class="auth-view__status" />
 
-        <!-- Форма авторизации -->
-        <AuthForm :is-loading="auth.isLoading.value"
-                  :general-error="auth.error.value"
+        <AuthForm ref="authFormRef"
+                  :is-loading="auth.isLoading.value"
+                  :general-error="localError || auth.error.value"
                   :server-available="isServerAvailable"
                   @submit="handleLogin"
-                  @forgot-password="handleForgotPassword"
+                  @retry-connection="handleRetry"
+                  @clear-error="clearError"
+                  @cancel-request="handleCancelRequest"
                   class="auth-view__form" />
 
-        <!-- Дополнительная информация -->
         <footer class="auth-view__footer">
           <div class="auth-view__info-grid">
             <div class="info-item">
@@ -102,90 +100,65 @@
   const loggerContext = logger.create('AuthView');
   const serverUrl = ref(APP_CONFIG.API.BASE_URL);
   const isDevelopment = import.meta.env.DEV;
+  const localError = ref<string | null>(null);
+  const authFormRef = ref<{ cancelRequest: () => void }>();
 
-  /**
-   * Текущая тема
-   */
   const themeClass = computed(() => `theme-${appStore.resolvedTheme}`);
   const isDarkTheme = computed(() => appStore.isDark);
 
-  /**
-   * Заголовок кнопки переключения темы
-   */
   const themeButtonTitle = computed(() =>
     isDarkTheme.value ? 'Переключить на светлую тему' : 'Переключить на темную тему'
   );
 
-  /**
-   * Переключение темы
-   */
   const toggleTheme = (): void => {
     appStore.toggleTheme();
     loggerContext.info('Theme toggled', { theme: appStore.currentTheme });
   };
 
-  /**
-   * Доступность сервера
-   */
   const isServerAvailable = computed(() => {
     return serverHealth.isOnline.value && serverHealth.isInitialized.value;
   });
 
-  /**
-   * Версия приложения
-   */
   const appVersion = computed(() => {
     return APP_CONFIG.APP.VERSION;
   });
 
-  /**
-   * Окружение
-   */
   const environment = computed(() => {
     return import.meta.env.MODE || 'development';
   });
 
-  /**
-   * Стили для частиц фона
-   */
-  const particleStyle = () => {
-    const size = Math.random() * 3 + 1;
-    const duration = Math.random() * 15 + 10;
+  const getParticleStyle = (index: number) => {
+    const size = Math.random() * 4 + 2;
+    const duration = Math.random() * 20 + 15;
     const delay = Math.random() * 5;
+    const left = Math.random() * 100;
 
     return {
       width: `${size}px`,
       height: `${size}px`,
-      left: `${Math.random() * 100}%`,
+      left: `${left}%`,
       animationDuration: `${duration}s`,
       animationDelay: `${delay}s`,
     };
   };
 
-  /**
-   * Обработка авторизации
-   */
   const handleLogin = async (credentials: { username: string; password: string }): Promise<void> => {
     if (auth.isLoading.value || !isServerAvailable.value) return;
 
+    localError.value = null;
     loggerContext.info('Login attempt', { username: credentials.username });
 
     const success = await auth.login(credentials);
 
     if (success) {
-      // Показываем уведомление об успешном входе через toast
       toast.success('Вход выполнен успешно!');
-
       loggerContext.info('Login successful, redirecting to audit');
 
-      // Даем время для обновления состояния стора и computed свойств
       await nextTick();
-      await new Promise(resolve => setTimeout(resolve, 100)); // Небольшая задержка
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Явная проверка статуса аутентификации перед переходом
       if (auth.isAuthenticated.value) {
         loggerContext.info('Authentication confirmed, redirecting to audit');
-        // Используем replace чтобы избежать навигации назад к login
         await router.replace('/audit');
       } else {
         loggerContext.error('Authentication state not updated after login', {
@@ -196,51 +169,44 @@
         toast.error('Ошибка аутентификации');
       }
     } else {
+      localError.value = auth.error.value;
       loggerContext.error('Login failed', { error: auth.error.value });
     }
   };
 
-  /**
-   * Ручная проверка сервера
-   */
   const handleRetry = async (): Promise<void> => {
     await serverHealth.manualCheck();
   };
 
-  /**
-   * Обработка "Забыли пароль"
-   */
-  const handleForgotPassword = (): void => {
-    toast.info('Функция восстановления пароля в разработке');
-    loggerContext.info('Forgot password flow requested');
+  const handleCancelRequest = (): void => {
+    loggerContext.info('Login request cancelled by user');
+    localError.value = 'Запрос отменен пользователем';
+    // Можно также вызвать метод отмены в API сервисе, если он реализован
   };
 
-  /**
-   * Инициализация
-   */
+  const clearError = (): void => {
+    localError.value = null;
+    auth.clearError?.();
+    appStore.setAuthError(null);
+  };
+
   onMounted(async () => {
     loggerContext.info('AuthView mounted');
 
-    // Перенаправление если уже авторизован
+    // Если пользователь уже аутентифицирован, проверяем токен
     if (auth.isAuthenticated.value) {
-      loggerContext.info('User already authenticated, redirecting to audit');
-
-      // Начальная проверка сервера и запуск периодических проверок
-      try {
-        await serverHealth.checkServerConnection();
-        serverHealth.startPeriodicChecks();
-        loggerContext.info('Server health checks started');
-      } catch (error) {
-        loggerContext.error('Failed to initialize server health checks', { error });
+      const isValid = await auth.validateCurrentToken();
+      if (!isValid) {
+        loggerContext.warn('Token invalid on AuthView mount, clearing auth');
+        appStore.clearAuth();
+        return;
       }
 
-      // Небольшая задержка для лучшего UX
-      await nextTick();
+      loggerContext.info('User already authenticated with valid token, redirecting to audit');
       await router.replace('/audit');
       return;
     }
 
-    // Начальная проверка сервера и запуск периодических проверок
     try {
       await serverHealth.checkServerConnection();
       serverHealth.startPeriodicChecks();
@@ -250,9 +216,6 @@
     }
   });
 
-  /**
-   * Очистка
-   */
   onUnmounted(() => {
     serverHealth.stopPeriodicChecks();
     loggerContext.info('AuthView unmounted');
@@ -266,14 +229,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-md, 1rem);
+    padding: var(--spacing-md);
     position: relative;
-    font-family: var(--font-family-sans, 'Segoe UI', system-ui, -apple-system, sans-serif);
+    font-family: var(--font-family-sans);
     overflow: hidden;
     box-sizing: border-box;
-    transition: background-color var(--transition-normal, 0.3s ease);
-    background-color: var(--color-background, #f8fafc);
-    color: var(--color-text-primary, #1e293b);
+    transition: background-color var(--transition-normal);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
   }
 
   .auth-view__background {
@@ -291,14 +254,14 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
+    background: var(--gradient-primary);
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
-    opacity: 0.03;
+    opacity: 0.08;
   }
 
   .theme-dark .auth-view__gradient {
-    opacity: 0.05;
+    opacity: 0.12;
   }
 
   .auth-view__particles {
@@ -311,17 +274,17 @@
 
   .auth-view__particle {
     position: absolute;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: var(--radius-full);
     animation: float linear infinite;
     pointer-events: none;
   }
 
   .theme-light .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary, #0ea5e9) 10%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 25%, transparent);
   }
 
   .theme-dark .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary-light, #7dd3fc) 15%, transparent);
+    background: color-mix(in srgb, var(--color-primary-light) 30%, transparent);
   }
 
   .auth-view__container {
@@ -334,15 +297,15 @@
 
   .auth-view__card {
     backdrop-filter: blur(20px);
-    border-radius: var(--radius-xl, 0.75rem);
-    padding: var(--spacing-xl, 2rem);
-    box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
-    border: 1px solid var(--color-border-card, #f1f5f9);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--color-border-card);
     width: 100%;
     position: relative;
     overflow: hidden;
-    transition: all var(--transition-normal, 0.3s ease);
-    background: var(--color-surface, #ffffff);
+    transition: all var(--transition-normal);
+    background: var(--color-surface);
   }
 
     .auth-view__card::before {
@@ -352,23 +315,23 @@
       left: 0;
       right: 0;
       height: 3px;
-      background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
+      background: var(--gradient-primary);
       background-size: 200% 100%;
       animation: shimmer 3s linear infinite;
     }
 
   .auth-view__header {
-    margin-bottom: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-lg);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--spacing-md, 1rem);
+    gap: var(--spacing-md);
   }
 
   .auth-view__logo {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md, 1rem);
+    gap: var(--spacing-md);
     flex: 1;
   }
 
@@ -378,11 +341,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
-    border-radius: var(--radius-lg, 0.5rem);
+    background: var(--gradient-primary);
+    border-radius: var(--radius-lg);
     flex-shrink: 0;
     color: white;
-    box-shadow: var(--shadow-primary, 0 4px 12px rgba(14, 165, 233, 0.25));
+    box-shadow: var(--shadow-primary);
   }
 
     .auth-view__logo-icon svg {
@@ -397,12 +360,12 @@
 
   .auth-view__title {
     font-size: 1.25rem;
-    font-weight: var(--font-weight-bold, 700);
-    margin: 0 0 var(--spacing-xs, 0.25rem) 0;
-    background: var(--gradient-primary, linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%));
+    font-weight: 700;
+    margin: 0 0 var(--spacing-xs) 0;
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;
     line-height: 1.2;
   }
 
@@ -410,37 +373,37 @@
     font-size: 0.875rem;
     margin: 0;
     opacity: 0.8;
-    font-weight: var(--font-weight-medium, 500);
-    color: var(--color-text-secondary, #475569);
+    font-weight: 500;
+    color: var(--color-text-secondary);
     line-height: 1.4;
   }
 
   .auth-view__theme-toggle {
-    padding: var(--spacing-sm, 0.5rem);
-    background: var(--color-surface, #ffffff);
-    border: 1px solid var(--color-border, #e2e8f0);
-    border-radius: var(--radius-md, 0.375rem);
+    padding: var(--spacing-sm);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-normal, 0.3s ease);
+    transition: all var(--transition-normal);
     width: 2.5rem;
     height: 2.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: var(--color-text-primary, #1e293b);
-    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-sm);
   }
 
     .auth-view__theme-toggle:hover {
-      background: var(--color-surface-hover, #f1f5f9);
-      border-color: var(--color-primary-light, #7dd3fc);
+      background: var(--color-surface-hover);
+      border-color: var(--color-primary-light);
       transform: scale(1.05);
-      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+      box-shadow: var(--shadow-md);
     }
 
     .auth-view__theme-toggle:focus-visible {
-      outline: 2px solid var(--color-primary, #0ea5e9);
+      outline: 2px solid var(--color-primary);
       outline-offset: 2px;
     }
 
@@ -451,47 +414,41 @@
   }
 
   .auth-view__status {
-    margin-bottom: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-lg);
   }
 
   .auth-view__form {
-    margin-bottom: var(--spacing-lg, 1.5rem);
+    margin-bottom: var(--spacing-lg);
   }
 
   .auth-view__footer {
-    padding-top: var(--spacing-lg, 1.5rem);
-    border-top: 1px solid var(--color-border, #e2e8f0);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
   }
 
   .auth-view__info-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-md, 1rem);
-  }
-
-  @media (min-width: 480px) {
-    .auth-view__info-grid {
-      grid-template-columns: 1fr 1fr;
-    }
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
   }
 
   .info-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm, 0.5rem);
-    padding: var(--spacing-sm, 0.5rem);
-    border-radius: var(--radius-md, 0.375rem);
-    transition: background-color var(--transition-fast, 0.15s ease);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    transition: background-color var(--transition-fast);
   }
 
     .info-item:hover {
-      background: var(--color-surface-hover, #f1f5f9);
+      background: var(--color-surface-hover);
     }
 
   .info-icon {
     width: 2rem;
     height: 2rem;
-    border-radius: var(--radius-md, 0.375rem);
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -500,11 +457,11 @@
   }
 
     .info-icon.version {
-      background: var(--color-info, #3b82f6);
+      background: var(--color-info);
     }
 
     .info-icon.environment {
-      background: var(--color-success, #10b981);
+      background: var(--color-success);
     }
 
     .info-icon svg {
@@ -515,21 +472,21 @@
   .info-content {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs, 0.25rem);
+    gap: var(--spacing-xs);
   }
 
   .info-label {
     font-size: 0.75rem;
-    font-weight: var(--font-weight-medium, 500);
-    color: var(--color-text-muted, #64748b);
+    font-weight: 500;
+    color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .info-value {
     font-size: 0.875rem;
-    font-weight: var(--font-weight-semibold, 600);
-    color: var(--color-text-primary, #1e293b);
+    font-weight: 600;
+    color: var(--color-text-primary);
   }
 
   @keyframes gradientShift {
@@ -576,44 +533,6 @@
     }
   }
 
-  /* Responsive adjustments */
-  @media (max-width: 480px) {
-    .auth-view__card {
-      padding: var(--spacing-lg, 1.5rem);
-    }
-
-    .auth-view__header {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: var(--spacing-md, 1rem);
-    }
-
-    .auth-view__logo {
-      flex-direction: column;
-      text-align: center;
-    }
-
-    .auth-view__theme-toggle {
-      align-self: center;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .auth-view__card {
-      padding: var(--spacing-md, 1rem);
-    }
-
-    .auth-view__title {
-      font-size: 1.125rem;
-    }
-
-    .auth-view__subtitle {
-      font-size: 0.8rem;
-    }
-  }
-
-  /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .auth-view__gradient {
       animation: none;

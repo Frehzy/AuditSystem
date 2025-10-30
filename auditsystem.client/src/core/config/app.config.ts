@@ -57,7 +57,7 @@ export const APP_CONFIG: AppConfig = {
     AUTO_RETRY: true,
     OFFLINE_MODE: false,
     DEBUG_LOGS: import.meta.env.DEV,
-    USE_MOCK: true
+    USE_MOCK: false
   },
 } as const;
 

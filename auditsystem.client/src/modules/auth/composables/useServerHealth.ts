@@ -98,8 +98,17 @@ export const useServerHealth = (config: Partial<HealthCheckConfig> = {}) => {
     state.value.totalChecks++;
 
     try {
-      // Простая проверка доступности сервера через apiClient
-      const isHealthy = await apiClient.checkHealth();
+      // Простая проверка доступности сервера через HEAD запрос
+      const response = await fetch('/api/health', {
+        method: 'HEAD',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        signal: AbortSignal.timeout(currentConfig.timeout)
+      });
+
+      const isHealthy = response.ok;
       const endTime = performance.now();
       const responseTimeMs = Math.round(endTime - startTime);
 

@@ -1,7 +1,6 @@
 <!-- src/modules/auth/components/AuthForm.vue -->
 <template>
   <form @submit.prevent="handleSubmit" class="auth-form" novalidate>
-    <!-- Form Fields -->
     <div class="auth-form__fields">
       <div class="form-group">
         <BaseInput v-model="formData.username"
@@ -9,7 +8,7 @@
                    label="Имя пользователя"
                    placeholder="Введите имя пользователя"
                    :error="validationErrors.username"
-                   :disabled="isLoading || !serverAvailable"
+                   :disabled="isLoading || !serverAvailable || isCancelling"
                    :required="true"
                    autocomplete="username"
                    :clearable="false"
@@ -26,14 +25,14 @@
 
       <div class="form-group">
         <BaseInput v-model="formData.password"
-                   type="password"
+                   :type="showPassword ? 'text' : 'password'"
                    label="Пароль"
                    placeholder="Введите пароль"
                    :error="validationErrors.password"
-                   :disabled="isLoading || !serverAvailable"
+                   :disabled="isLoading || !serverAvailable || isCancelling"
                    :required="true"
                    autocomplete="current-password"
-                   :show-password-toggle="true"
+                   :show-password-toggle="false"
                    :clearable="false"
                    @blur="validateField('password')"
                    @focus="clearFieldError('password')"
@@ -43,11 +42,23 @@
               <LockIcon />
             </span>
           </template>
+          <template #suffix>
+            <BaseButton @click="togglePasswordVisibility"
+                        type="button"
+                        variant="text"
+                        size="sm"
+                        class="password-toggle-btn"
+                        :title="showPassword ? 'Скрыть пароль' : 'Показать пароль'">
+              <span class="password-toggle-icon">
+                <EyeIcon v-if="!showPassword" />
+                <EyeOffIcon v-else />
+              </span>
+            </BaseButton>
+          </template>
         </BaseInput>
       </div>
     </div>
 
-    <!-- Server Status -->
     <div v-if="!serverAvailable" class="server-status-card">
       <div class="server-status__icon status--offline">
         <ServerIcon />
@@ -60,17 +71,25 @@
       </div>
     </div>
 
-    <!-- Submit Button -->
-    <BaseButton type="submit"
-                :is-loading="isLoading"
-                :disabled="!isFormValid || isLoading || !serverAvailable"
+    <BaseButton v-if="isLoading && !isCancelling"
+                @click="cancelRequest"
+                type="button"
+                variant="secondary"
+                size="lg"
+                :full-width="true"
+                class="auth-form__cancel">
+      <span class="auth-form__cancel-text">Отменить</span>
+    </BaseButton>
+
+    <BaseButton v-else
+                type="submit"
+                :is-loading="isLoading && !isCancelling"
+                :disabled="!isFormValid || isLoading || !serverAvailable || isCancelling"
                 variant="primary"
                 size="lg"
                 :full-width="true"
                 class="auth-form__submit">
-      <span class="auth-form__submit-text">
-        {{ serverAvailable ? 'Войти в систему' : 'Сервер недоступен' }}
-      </span>
+      <span class="auth-form__submit-text">{{ submitButtonText }}</span>
       <template #loader>
         <div class="auth-form__submit-loading">
           <LoadingSpinner class="loading-spinner" />
@@ -79,7 +98,6 @@
       </template>
     </BaseButton>
 
-    <!-- General Error -->
     <div v-if="generalError" class="auth-form__error" role="alert">
       <div class="auth-form__error-icon">
         <AlertIcon />
@@ -92,49 +110,25 @@
                   variant="text"
                   size="sm"
                   class="error-close-btn">
-        <CloseIcon size="16" />
+        <CloseIcon />
       </BaseButton>
-    </div>
-
-    <!-- Help Links -->
-    <div v-if="showHelpLinks && serverAvailable" class="auth-form__help">
-      <a href="#" class="auth-form__help-link" @click.prevent="handleForgotPassword">
-        <HelpCircleIcon class="help-link-icon" />
-        <span>Забыли пароль?</span>
-      </a>
-    </div>
-
-    <!-- Connection Status -->
-    <div v-if="!serverAvailable" class="connection-status">
-      <div class="connection-status__content">
-        <div class="connection-status__text">
-          Ожидание подключения к серверу...
-        </div>
-        <BaseButton @click="retryConnection"
-                    variant="secondary"
-                    size="sm"
-                    :loading="isLoading"
-                    class="retry-btn">
-          <RefreshIcon class="retry-icon" />
-          Повторить
-        </BaseButton>
-      </div>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
-  import { reactive, computed, ref } from 'vue';
+  import { reactive, computed, ref, onUnmounted } from 'vue';
   import { BaseInput, BaseButton } from '@/framework/ui';
   import {
     UserIcon,
     LockIcon,
     AlertIcon,
     ServerIcon,
-    HelpCircleIcon,
     RefreshIcon,
     CloseIcon,
-    LoadingSpinner
+    LoadingSpinner,
+    EyeIcon,
+    EyeOffIcon
   } from '@/assets/icons';
   import type { AuthValidationErrors } from '../api/auth.types';
 
@@ -142,21 +136,19 @@
     isLoading?: boolean;
     generalError?: string | null;
     serverAvailable?: boolean;
-    showHelpLinks?: boolean;
   }
 
   interface Emits {
     (e: 'submit', credentials: { username: string; password: string }): void;
-    (e: 'forgot-password'): void;
     (e: 'retry-connection'): void;
     (e: 'clear-error'): void;
+    (e: 'cancel-request'): void;
   }
 
   const props = withDefaults(defineProps<Props>(), {
     isLoading: false,
     generalError: null,
     serverAvailable: true,
-    showHelpLinks: true,
   });
 
   const emit = defineEmits<Emits>();
@@ -167,19 +159,22 @@
   });
 
   const validationErrors = ref<AuthValidationErrors>({});
+  const showPassword = ref(false);
+  const isCancelling = ref(false);
 
-  /**
-   * Проверка валидности формы
-   */
   const isFormValid = computed(() => {
     return formData.username.trim().length > 0 &&
       formData.password.length > 0 &&
       Object.keys(validationErrors.value).length === 0;
   });
 
-  /**
-   * Валидация поля при потере фокуса
-   */
+  const submitButtonText = computed(() => {
+    if (isCancelling.value) return 'Отмена...';
+    if (!props.serverAvailable) return 'Сервер недоступен';
+    if (props.isLoading) return 'Выполняется вход...';
+    return 'Войти в систему';
+  });
+
   const validateField = (field: 'username' | 'password'): void => {
     const value = formData[field];
     let error: string | null = null;
@@ -211,31 +206,27 @@
     }
   };
 
-  /**
-   * Очистка ошибки поля при фокусе
-   */
   const clearFieldError = (field: 'username' | 'password'): void => {
     delete validationErrors.value[field];
   };
 
-  /**
-   * Очистка общей ошибки
-   */
   const clearGeneralError = (): void => {
     emit('clear-error');
+    validationErrors.value = {};
   };
 
-  /**
-   * Обработка отправки формы
-   */
+  const togglePasswordVisibility = (): void => {
+    showPassword.value = !showPassword.value;
+  };
+
   const handleSubmit = (): void => {
     if (!props.serverAvailable) return;
 
-    // Валидируем все поля
     validateField('username');
     validateField('password');
 
     if (Object.keys(validationErrors.value).length === 0) {
+      isCancelling.value = false;
       emit('submit', {
         username: formData.username.trim(),
         password: formData.password,
@@ -243,32 +234,34 @@
     }
   };
 
-  /**
-   * Обработка "Забыли пароль"
-   */
-  const handleForgotPassword = (): void => {
-    emit('forgot-password');
+  const cancelRequest = (): void => {
+    isCancelling.value = true;
+    emit('cancel-request');
+    // Сбрасываем состояние через короткое время
+    setTimeout(() => {
+      isCancelling.value = false;
+    }, 1000);
   };
 
-  /**
-   * Повторное подключение к серверу
-   */
   const retryConnection = (): void => {
     emit('retry-connection');
   };
 
-  /**
-   * Сброс формы
-   */
   const resetForm = (): void => {
     formData.username = '';
     formData.password = '';
     validationErrors.value = {};
+    showPassword.value = false;
+    isCancelling.value = false;
   };
 
-  // Экспорт методов для родительского компонента
+  onUnmounted(() => {
+    isCancelling.value = false;
+  });
+
   defineExpose({
     resetForm,
+    cancelRequest,
   });
 </script>
 
@@ -276,71 +269,94 @@
   .auth-form {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg, 1.25rem);
+    gap: var(--spacing-md);
     width: 100%;
   }
 
   .auth-form__fields {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md, 1rem);
+    gap: var(--spacing-md);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs, 0.5rem);
+    gap: var(--spacing-xs);
   }
 
   .auth-form__input {
-    min-height: 48px;
+    min-height: 44px;
   }
 
   .auth-form__input-icon {
-    font-size: 16px;
-    opacity: 0.7;
-    background: transparent !important;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 20px;
     height: 20px;
-    color: var(--color-text-muted, #64748b);
-    transition: color var(--transition-fast, 0.15s);
+    color: var(--color-text-muted);
+    transition: color var(--transition-fast);
   }
 
   .auth-form__input:focus-within .auth-form__input-icon {
-    color: var(--color-primary, #0ea5e9);
-    opacity: 1;
+    color: var(--color-primary);
   }
 
-  /* Server Status Card */
+  .password-toggle-btn {
+    padding: 6px;
+    min-width: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    color: var(--color-text-muted);
+  }
+
+    .password-toggle-btn:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-primary);
+    }
+
+  .password-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+  }
+
+    .password-toggle-icon :deep(svg) {
+      width: 18px;
+      height: 18px;
+    }
+
   .server-status-card {
     display: flex;
     align-items: flex-start;
-    gap: var(--spacing-md, 1rem);
-    padding: var(--spacing-md, 1rem);
-    background: var(--status-offline-bg, color-mix(in srgb, var(--color-error) 8%, transparent));
-    border: 1px solid var(--status-offline-border, color-mix(in srgb, var(--color-error) 30%, transparent));
-    border-radius: var(--radius-md, 0.5rem);
-    color: var(--status-offline-text, var(--color-error));
-    font-size: 0.875rem;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--status-offline-bg);
+    border: 1px solid var(--status-offline-border);
+    border-radius: var(--radius-md);
+    color: var(--status-offline-text);
+    font-size: 0.8125rem;
   }
 
   .server-status__icon {
     flex-shrink: 0;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: var(--radius-sm, 0.375rem);
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--status-offline-indicator, color-mix(in srgb, var(--color-error) 15%, transparent));
+    background: var(--status-offline-indicator);
   }
 
-    .server-status__icon ::v-deep(svg) {
-      width: 1rem;
-      height: 1rem;
+    .server-status__icon :deep(svg) {
+      width: 16px;
+      height: 16px;
     }
 
   .server-status__content {
@@ -348,49 +364,67 @@
   }
 
   .server-status__title {
-    font-weight: var(--font-weight-semibold, 600);
+    font-weight: 600;
     margin-bottom: 2px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
 
   .server-status__description {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     opacity: 0.9;
     line-height: 1.3;
   }
 
-  /* Submit Button */
+  .auth-form__cancel {
+    margin-top: var(--spacing-sm);
+    min-height: 44px;
+    font-weight: 600;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: all var(--transition-normal);
+  }
+
+  .auth-form__cancel-text {
+    color: var(--color-text-secondary);
+  }
+
+  .auth-form__cancel:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-hover);
+    transform: translateY(-1px);
+  }
+
   .auth-form__submit {
     width: 100%;
-    min-height: 46px;
-    height: auto;
-    font-weight: var(--font-weight-semibold, 600);
-    font-size: 14px;
-    border-radius: var(--radius-md, 0.5rem);
-    transition: all var(--transition-normal, 0.3s);
-    padding: 12px 16px;
-    margin-top: var(--spacing-xs, 0.5rem);
-    background: var(--gradient-primary, linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%));
-    box-shadow: var(--shadow-primary, 0 4px 12px color-mix(in srgb, var(--color-primary) 25%, transparent));
+    min-height: 44px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+    padding: 0.75rem 1rem;
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-primary);
+    position: relative;
+    z-index: 1;
   }
 
     .auth-form__submit:not(.base-button--disabled):not(.base-button--loading):hover {
-      background: var(--gradient-primary-hover, linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%));
+      background: var(--gradient-primary-hover);
       transform: translateY(-1px);
-      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+      box-shadow: var(--shadow-md);
     }
 
   .auth-form__submit-text,
   .auth-form__submit-loading {
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-sm, 0.75rem);
+    gap: var(--spacing-sm);
     justify-content: center;
   }
 
   .loading-spinner {
-    width: 1rem;
-    height: 1rem;
+    width: 18px;
+    height: 18px;
     animation: spin 1s linear infinite;
   }
 
@@ -404,193 +438,102 @@
     }
   }
 
-  /* Error State */
   .auth-form__error {
     display: flex;
     align-items: flex-start;
-    gap: var(--spacing-md, 1rem);
-    padding: var(--spacing-md, 1rem);
-    background: var(--status-offline-bg, color-mix(in srgb, var(--color-error) 8%, transparent));
-    border: 1px solid var(--status-offline-border, color-mix(in srgb, var(--color-error) 30%, transparent));
-    border-radius: var(--radius-md, 0.5rem);
-    color: var(--status-offline-text, var(--color-error));
-    font-size: 0.8rem;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--status-offline-bg);
+    border: 1px solid var(--status-offline-border);
+    border-radius: var(--radius-md);
+    color: var(--status-offline-text);
+    font-size: 0.75rem;
     line-height: 1.3;
+    position: relative;
+    z-index: 10;
   }
 
   .auth-form__error-icon {
     flex-shrink: 0;
     margin-top: 1px;
-    font-size: 14px;
-    background: transparent !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    color: var(--color-error, #ef4444);
+    width: 18px;
+    height: 18px;
+    color: var(--color-error);
   }
+
+    .auth-form__error-icon :deep(svg) {
+      width: 16px;
+      height: 16px;
+    }
 
   .auth-form__error-content {
     flex: 1;
   }
 
   .auth-form__error-title {
-    font-weight: var(--font-weight-semibold, 600);
+    font-weight: 600;
     margin-bottom: 2px;
-    font-size: 0.8rem;
-    color: var(--color-error-dark, #dc2626);
+    font-size: 0.75rem;
+    color: var(--color-error-dark);
   }
 
   .auth-form__error-text {
     word-break: break-word;
-    font-size: 0.75rem;
-    color: var(--color-error-dark, #dc2626);
+    font-size: 0.7rem;
+    color: var(--color-error-dark);
     opacity: 0.9;
   }
 
   .error-close-btn {
     flex-shrink: 0;
-    color: var(--color-error, #ef4444);
+    color: var(--color-error);
+    padding: 4px;
+    min-width: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
   }
 
-  /* Help Links */
-  .auth-form__help {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: var(--spacing-sm, 0.75rem);
-    padding-top: var(--spacing-md, 1rem);
-    border-top: 1px solid var(--color-border, #e2e8f0);
-  }
-
-  .auth-form__help-link {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs, 0.5rem);
-    color: var(--color-text-muted, #64748b);
-    text-decoration: none;
-    font-size: 0.8rem;
-    transition: all var(--transition-fast, 0.15s);
-    padding: 4px 8px;
-    border-radius: var(--radius-sm, 0.375rem);
-  }
-
-    .auth-form__help-link:hover {
-      color: var(--color-primary, #0ea5e9);
-      background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-      text-decoration: none;
+    .error-close-btn:hover {
+      background: var(--color-surface-hover);
+      transform: scale(1.05);
     }
 
-  .help-link-icon {
-    width: 12px;
-    height: 12px;
-  }
+    .error-close-btn:active {
+      transform: scale(0.95);
+    }
 
-  /* Connection Status */
-  .connection-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--spacing-md, 1rem);
-    background: var(--color-surface-hover, #f1f5f9);
-    border-radius: var(--radius-md, 0.5rem);
-    border: 1px solid var(--color-border, #e2e8f0);
-  }
-
-  .connection-status__content {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md, 1rem);
-  }
-
-  .connection-status__text {
-    font-size: 0.8rem;
-    color: var(--color-text-secondary, #475569);
-    font-weight: var(--font-weight-medium, 500);
-  }
+    .error-close-btn :deep(svg) {
+      width: 16px;
+      height: 16px;
+    }
 
   .retry-btn {
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .retry-icon {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
   }
 
-  /* Адаптивность для мобильных устройств */
-  @media (max-width: 480px) {
-    .auth-form {
-      gap: var(--spacing-md, 1rem);
-    }
-
-    .auth-form__fields {
-      gap: var(--spacing-sm, 0.75rem);
-    }
-
-    .auth-form__submit {
-      min-height: 44px;
-      font-size: 13px;
-      padding: 10px 14px;
-    }
-
-    .auth-form__error {
-      padding: var(--spacing-sm, 0.75rem);
-    }
-
-    .connection-status__content {
-      flex-direction: column;
-      gap: var(--spacing-sm, 0.75rem);
-      text-align: center;
-    }
+  /* Улучшение видимости состояния disabled */
+  .base-button--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
   }
 
-  @media (max-width: 360px) {
-    .auth-form__submit-text {
-      font-size: 13px;
+    .base-button--disabled:hover {
+      transform: none !important;
+      box-shadow: var(--shadow-primary) !important;
     }
-
-    .auth-form__help-link {
-      font-size: 0.75rem;
-    }
-  }
-
-  /* Ландшафтная ориентация */
-  @media (max-height: 500px) and (orientation: landscape) {
-    .auth-form {
-      gap: var(--spacing-sm, 0.75rem);
-    }
-
-    .auth-form__fields {
-      gap: var(--spacing-xs, 0.5rem);
-    }
-
-    .auth-form__input {
-      min-height: 42px;
-    }
-
-    .auth-form__submit {
-      min-height: 40px;
-      margin-top: var(--spacing-xs, 0.5rem);
-    }
-
-    .auth-form__error {
-      padding: var(--spacing-sm, 0.75rem);
-    }
-
-    .auth-form__help {
-      margin-top: var(--spacing-xs, 0.5rem);
-      padding-top: var(--spacing-sm, 0.75rem);
-    }
-  }
-
-  /* Темная тема */
-  @media (prefers-color-scheme: dark) {
-    .connection-status {
-      background: var(--color-surface-hover-dark, #1e293b);
-      border-color: var(--color-border-dark, #334155);
-    }
-  }
 </style>

@@ -5,6 +5,7 @@ import { useAppStore } from '@/framework/stores/app.store';
 import { authApiService } from '../api/authApi.service';
 import { errorHandler } from '@/core/services/core/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
+import { tokenService } from '@/core/services/core/auth/token.service';
 import type { LoginCommand, UserDto } from '../api/auth.types';
 
 export const useAuth = () => {
@@ -21,8 +22,20 @@ export const useAuth = () => {
     appStore.setAuthLoading(true);
     appStore.setAuthError(null);
 
+    // Добавляем таймаут для всей операции
+    const loginTimeout = 20000; // 20 секунд максимум
+    let timeoutId: number | null = null;
+
     try {
-      const response = await authApiService.login(credentials);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error('Превышено время ожидания ответа от сервера'));
+        }, loginTimeout);
+      });
+
+      const loginPromise = authApiService.login(credentials);
+
+      const response = await Promise.race([loginPromise, timeoutPromise]);
 
       // Убедимся, что данные корректны перед сохранением
       if (!response.token || !response.user) {
@@ -37,15 +50,29 @@ export const useAuth = () => {
       });
       return true;
     } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.login');
-      appStore.setAuthError(handledError.message);
+      let errorMessage = 'Неизвестная ошибка';
+
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('таймаут')) {
+          errorMessage = 'Сервер не отвежает. Проверьте подключение к сети.';
+        } else if (error.message.includes('network') || error.message.includes('сеть')) {
+          errorMessage = 'Ошибка сети. Сервер недоступен.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      appStore.setAuthError(errorMessage);
 
       loggerContext.error('Login failed', {
-        error: handledError.message,
-        code: handledError.code
+        error: errorMessage,
+        code: error instanceof Error ? error.name : 'UNKNOWN'
       });
       return false;
     } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       appStore.setAuthLoading(false);
     }
   };
@@ -54,13 +81,30 @@ export const useAuth = () => {
     loggerContext.auth('Logout initiated');
 
     try {
-      await authApiService.logout();
+      // Получаем текущие данные пользователя перед выходом
+      const userId = appStore.user?.id;
+      const token = appStore.token;
+
+      if (!userId || !token) {
+        loggerContext.warn('Missing user data for logout');
+        return;
+      }
+
+      // Создаем команду logout с правильными данными
+      const logoutCommand = {
+        userId: userId,
+        token: token
+      };
+
+      await authApiService.logout(logoutCommand);
+      loggerContext.auth('Logout API call completed');
     } catch (error) {
       const handledError = errorHandler.handle(error, 'auth.logout');
       loggerContext.error('Logout API call failed', { error: handledError.message });
     } finally {
+      // Всегда очищаем данные аутентификации
       appStore.clearAuth();
-      loggerContext.auth('Logout completed');
+      loggerContext.auth('Logout completed - auth data cleared');
 
       // Redirect to login after logout
       await router.push('/login');
@@ -128,6 +172,11 @@ export const useAuth = () => {
     return remainingTime > 0 && remainingTime < 5 * 60 * 1000; // 5 minutes
   });
 
+  // Добавьте этот метод
+  const clearError = (): void => {
+    appStore.setAuthError(null);
+  };
+
   return {
     // State
     isLoading: computed(() => appStore.authLoading),
@@ -142,8 +191,7 @@ export const useAuth = () => {
     validateCurrentToken,
     refreshToken,
     checkAuthStatus,
-    register: authApiService.register,
-    requestPasswordReset: authApiService.requestPasswordReset,
+    clearError,
 
     // User management
     updateUserProfile: (userData: Partial<UserDto>): void => {
@@ -171,6 +219,3 @@ export const useAuth = () => {
 };
 
 export type UseAuthReturn = ReturnType<typeof useAuth>;
-
-// Import tokenService for token utilities
-import { tokenService } from '@/core/services/core/auth/token.service';

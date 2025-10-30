@@ -5,16 +5,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="DTOs\Auth\Новая папка\**" />
+    <EmbeddedResource Remove="DTOs\Auth\Новая папка\**" />
+    <None Remove="DTOs\Auth\Новая папка\**" />
+  </ItemGroup>
 	
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
-	</ItemGroup>
-	
-	<ItemGroup>
-	  <Folder Include="DTOs\Auth\Новая папка\" />
 	</ItemGroup>
 	
 </Project>

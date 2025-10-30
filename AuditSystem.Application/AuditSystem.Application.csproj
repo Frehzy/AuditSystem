@@ -6,6 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Features\Auth\Commands\Новая папка\**" />
+    <EmbeddedResource Remove="Features\Auth\Commands\Новая папка\**" />
+    <None Remove="Features\Auth\Commands\Новая папка\**" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="AutoMapper" Version="15.0.1" />
 		<PackageReference Include="FluentValidation" Version="12.0.0" />
@@ -19,10 +25,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\AuditSystem.Domain\AuditSystem.Domain.csproj" />
 		<ProjectReference Include="..\AuditSystem.Shared\AuditSystem.Shared.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Features\Auth\Commands\Новая папка\" />
 	</ItemGroup>
 	
 </Project>

@@ -1,14 +1,14 @@
 ﻿using AuditSystem.Application.Common.Models;
-using AuditSystem.Shared.DTOs.Auth;
 using MediatR;
 using FluentValidation;
-using AuditSystem.Shared.DTOs.Auth.Logout;
 
 namespace AuditSystem.Application.Features.Auth.Commands.Logout;
 
-public class LogoutCommand : IRequest<Result<LogoutResponse>>
+public class LogoutCommand : IRequest<Result>
 {
     public Guid UserId { get; set; } = Guid.Empty;
+
+    public string Token { get; set; } = string.Empty;
 }
 
 public class LogoutCommandValidator : AbstractValidator<LogoutCommand>
@@ -17,5 +17,8 @@ public class LogoutCommandValidator : AbstractValidator<LogoutCommand>
     {
         RuleFor(x => x.UserId)
             .NotNull().WithMessage("Username is required");
+
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token is required");
     }
 }

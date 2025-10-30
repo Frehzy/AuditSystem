@@ -1,6 +1,7 @@
 ﻿using AuditSystem.Application.Features.Auth.Commands;
 using AuditSystem.Application.Features.Auth.Commands.Login;
 using AuditSystem.Application.Features.Auth.Commands.Logout;
+using AuditSystem.Application.Features.Auth.Commands.Validate;
 using AuditSystem.Application.Features.Auth.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,14 +24,9 @@ public class AuthController(IAuthService authService) : BaseApiController
     }
 
     [HttpPost("validate")]
-    public async Task<IActionResult> ValidateToken([FromBody] ValidateTokenRequest request)
+    public async Task<IActionResult> ValidateToken([FromBody] ValidateCommand command)
     {
-        var result = await authService.ValidateTokenAsync(request.Token);
+        var result = await authService.ValidateTokenAsync(command);
         return HandleResult(result);
     }
-}
-
-public class ValidateTokenRequest
-{
-    public string Token { get; set; } = string.Empty;
 }

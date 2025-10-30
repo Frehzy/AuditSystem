@@ -1,6 +1,6 @@
 <!-- src/modules/auth/components/ServerStatus.vue -->
 <template>
-  <div class="server-status" :class="statusClass" @click="handleClick">
+  <div class="server-status" :class="[statusClass, { 'server-status--clickable': clickable }]" @click="handleClick">
     <div class="server-status__content">
       <div class="server-status__info">
         <div class="server-status__icon">
@@ -38,11 +38,8 @@
             <RefreshIcon />
           </span>
         </template>
+        <span v-if="status !== 'checking'" class="server-status__retry-text">Повторить</span>
       </BaseButton>
-    </div>
-
-    <div v-if="lastCheck" class="server-status__timestamp">
-      Проверено: {{ formatRelativeTime(lastCheck) }}
     </div>
   </div>
 </template>
@@ -76,14 +73,8 @@
 
   const emit = defineEmits<Emits>();
 
-  /**
-   * Класс статуса для стилизации
-   */
   const statusClass = computed(() => `server-status--${props.status}`);
 
-  /**
-   * Текст статуса
-   */
   const statusText = computed(() => {
     const statusMap = {
       'checking': 'Проверка...',
@@ -93,51 +84,18 @@
     return statusMap[props.status] || 'Неизвестен';
   });
 
-  /**
-   * Обрезанный URL для отображения
-   */
   const truncatedUrl = computed(() => {
     const url = props.serverUrl;
     if (url.length <= 25) return url;
     return url.substring(0, 12) + '...' + url.substring(url.length - 10);
   });
 
-  /**
-   * Форматирование относительного времени
-   */
-  const formatRelativeTime = (date: Date): string => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-
-    if (diffSec < 60) {
-      return 'только что';
-    } else if (diffMin < 60) {
-      return `${diffMin} мин назад`;
-    } else if (diffHour < 24) {
-      return `${diffHour} ч назад`;
-    } else {
-      return date.toLocaleTimeString('ru-RU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-  };
-
-  /**
-   * Обработка повторной проверки
-   */
   const handleRetry = (): void => {
     if (props.status !== 'checking') {
       emit('retry');
     }
   };
 
-  /**
-   * Обработка клика по компоненту
-   */
   const handleClick = (): void => {
     if (props.clickable) {
       emit('click');
@@ -147,20 +105,23 @@
 
 <style scoped>
   .server-status {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     transition: all var(--transition-normal);
-    cursor: v-bind('clickable ? "pointer" : "default"');
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
   }
 
-    .server-status:hover {
-      transform: v-bind('clickable ? "translateY(-1px)" : "none"');
-      box-shadow: v-bind('clickable ? "var(--shadow-md)" : "var(--shadow-sm)"');
+  .server-status--clickable {
+    cursor: pointer;
+  }
+
+    .server-status--clickable:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
 
   .server-status__content {
@@ -180,8 +141,8 @@
   }
 
   .server-status__icon {
-    width: 32px;
-    height: 32px;
+    width: 2.5rem;
+    height: 2.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -192,9 +153,9 @@
     box-shadow: var(--shadow-sm);
   }
 
-    .server-status__icon ::v-deep(svg) {
-      width: 16px;
-      height: 16px;
+    .server-status__icon :deep(svg) {
+      width: 20px;
+      height: 20px;
     }
 
   .server-status__details {
@@ -204,39 +165,39 @@
   }
 
   .server-status__label {
-    font-size: 0.7rem;
-    font-weight: var(--font-weight-bold, 700);
+    font-size: 0.75rem;
+    font-weight: 700;
     color: var(--color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 2px;
+    margin-bottom: 0.25rem;
   }
 
   .server-status__url {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--color-text-secondary);
     font-family: var(--font-family-mono);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-bottom: 4px;
+    margin-bottom: 0.375rem;
   }
 
   .server-status__response-time {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
-    font-weight: var(--font-weight-medium, 500);
-    margin-bottom: 4px;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
   }
 
   .server-status__indicator {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 8px;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
     border-radius: var(--radius-full);
-    font-size: 0.7rem;
-    font-weight: var(--font-weight-bold, 700);
+    font-size: 0.75rem;
+    font-weight: 700;
     width: fit-content;
     transition: all var(--transition-normal);
     border: 1px solid transparent;
@@ -246,13 +207,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
   }
 
-    .server-status__status-icon ::v-deep(svg) {
-      width: 10px;
-      height: 10px;
+    .server-status__status-icon :deep(svg) {
+      width: 14px;
+      height: 14px;
     }
 
   .server-status__text {
@@ -261,18 +222,25 @@
 
   .server-status__retry {
     flex-shrink: 0;
-    font-size: 0.7rem;
-    padding: 4px 8px;
-    min-height: 24px;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
   }
 
   .server-status__spinner {
     animation: spin 1s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-    .server-status__spinner ::v-deep(svg) {
-      width: 12px;
-      height: 12px;
+    .server-status__spinner :deep(svg) {
+      width: 14px;
+      height: 14px;
     }
 
   .server-status__retry-icon {
@@ -281,52 +249,47 @@
     justify-content: center;
   }
 
-    .server-status__retry-icon ::v-deep(svg) {
-      width: 12px;
-      height: 12px;
+    .server-status__retry-icon :deep(svg) {
+      width: 14px;
+      height: 14px;
     }
 
-  .server-status__timestamp {
-    margin-top: var(--spacing-sm);
-    font-size: 0.65rem;
-    color: var(--color-text-muted);
-    text-align: center;
-    border-top: 1px solid var(--color-border);
-    padding-top: var(--spacing-xs);
+  .server-status__retry-text {
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
-  /* Status variants - используем цвета из темы */
   .server-status--online {
-    border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
-    background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
+    border-color: var(--status-online-border);
+    background: var(--status-online-bg);
   }
 
     .server-status--online .server-status__indicator {
-      background: color-mix(in srgb, var(--color-success) 8%, transparent);
-      color: var(--color-success);
-      border-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+      background: var(--status-online-indicator);
+      color: var(--status-online-text);
+      border-color: var(--status-online-border);
     }
 
   .server-status--offline {
-    border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
-    background: color-mix(in srgb, var(--color-error) 5%, var(--color-surface));
+    border-color: var(--status-offline-border);
+    background: var(--status-offline-bg);
   }
 
     .server-status--offline .server-status__indicator {
-      background: color-mix(in srgb, var(--color-error) 8%, transparent);
-      color: var(--color-error);
-      border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+      background: var(--status-offline-indicator);
+      color: var(--status-offline-text);
+      border-color: var(--status-offline-border);
     }
 
   .server-status--checking {
-    border-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
-    background: color-mix(in srgb, var(--color-warning) 5%, var(--color-surface));
+    border-color: var(--status-checking-border);
+    background: var(--status-checking-bg);
   }
 
     .server-status--checking .server-status__indicator {
-      background: color-mix(in srgb, var(--color-warning) 8%, transparent);
-      color: var(--color-warning);
-      border-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
+      background: var(--status-checking-indicator);
+      color: var(--status-checking-text);
+      border-color: var(--status-checking-border);
     }
 
   @keyframes spin {
@@ -337,68 +300,5 @@
     to {
       transform: rotate(360deg);
     }
-  }
-
-  /* Адаптивность */
-  @media (max-width: 768px) {
-    .server-status {
-      padding: var(--spacing-sm);
-      border-radius: var(--radius-md);
-    }
-
-    .server-status__content {
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--spacing-sm);
-    }
-
-    .server-status__info {
-      justify-content: flex-start;
-    }
-
-    .server-status__retry {
-      align-self: center;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .server-status__icon {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--radius-sm);
-    }
-
-      .server-status__icon ::v-deep(svg) {
-        width: 14px;
-        height: 14px;
-      }
-
-    .server-status__details {
-      min-width: 0;
-    }
-
-    .server-status__url {
-      font-size: 0.75rem;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .server-status {
-      padding: var(--spacing-sm) var(--spacing-xs);
-    }
-
-    .server-status__info {
-      gap: var(--spacing-xs);
-    }
-
-    .server-status__icon {
-      width: 24px;
-      height: 24px;
-    }
-
-      .server-status__icon ::v-deep(svg) {
-        width: 12px;
-        height: 12px;
-      }
   }
 </style>

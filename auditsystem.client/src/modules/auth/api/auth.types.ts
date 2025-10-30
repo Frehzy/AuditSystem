@@ -21,28 +21,13 @@ export interface LoginCommand {
   rememberMe?: boolean;
 }
 
-export interface RegisterCommand {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  firstName?: string;
-  lastName?: string;
+export interface LogoutCommand {
+  userId: string;
+  token: string;
 }
 
 export interface ValidateTokenRequest {
   token: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface ResetPasswordCommand {
-  email: string;
-  token?: string;
-  newPassword?: string;
-  confirmPassword?: string;
 }
 
 // ==================== RESPONSE TYPES ====================
@@ -76,22 +61,9 @@ export interface LoginResponseData {
   user: UserDto;
 }
 
-export interface ValidateTokenResponseData {
-  isValid: boolean;
-  expiresAt?: string;
-  user?: UserDto;
-}
-
-export interface RefreshTokenResponseData {
-  token: string;
-  expiresAt: string;
-  refreshToken?: string;
-}
-
 // Типы для обернутых ответов (если бекенд использует стандартную обертку)
 export type LoginResponse = SuccessResponse<LoginResponseData>;
-export type ValidateTokenResponse = SuccessResponse<ValidateTokenResponseData>;
-export type RefreshTokenResponse = SuccessResponse<RefreshTokenResponseData>;
+export type ValidateTokenResponse = ApiResponse;
 
 // ==================== STATE TYPES ====================
 
@@ -111,12 +83,6 @@ export interface AuthValidationErrors {
   confirmPassword?: string;
   general?: string;
 }
-
-// ==================== UTILITY TYPES ====================
-
-export type ApiResult<T> =
-  | { success: true; data: T; status?: number }
-  | { success: false; error: string; status?: number };
 
 // ==================== TYPE GUARDS ====================
 

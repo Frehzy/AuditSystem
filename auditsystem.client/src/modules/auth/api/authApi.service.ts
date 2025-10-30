@@ -1,17 +1,11 @@
+// src/modules/auth/api/authApi.service.ts
 import { apiClient } from '@/core/services/core/api/api-client.service';
 import { errorHandler } from '@/core/services/core/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
 import type {
   LoginCommand,
   ValidateTokenRequest,
-  LoginResponseData,
-  ValidateTokenResponseData,
-  RegisterCommand,
-  ApiResult,
-  UserDto,
-  ResetPasswordCommand,
-  RefreshTokenRequest,
-  RefreshTokenResponseData
+  LoginResponseData
 } from './auth.types';
 
 interface AuthApiConfig {
@@ -19,6 +13,12 @@ interface AuthApiConfig {
   timeout: number;
   retryAttempts: number;
   enableLogging: boolean;
+}
+
+// Интерфейс для команды logout
+interface LogoutCommand {
+  userId: string;
+  token: string;
 }
 
 class AuthApiService {
@@ -32,17 +32,24 @@ class AuthApiService {
 
   private requestQueue = new Map<string, Promise<unknown>>();
   private activeRequests = new Set<string>();
+  private abortControllers = new Map<string, AbortController>();
 
   constructor(config?: Partial<AuthApiConfig>) {
     this.config = { ...this.config, ...config };
   }
 
   /**
-   * Авторизация пользователя
+   * Авторизация пользователя с улучшенной обработкой ошибок
    */
   async login(credentials: LoginCommand): Promise<LoginResponseData> {
     const endpoint = `${this.config.basePath}/login`;
     const requestKey = `login:${credentials.username}`;
+
+    // Отменяем предыдущий запрос с тем же ключом
+    if (this.abortControllers.has(requestKey)) {
+      this.abortControllers.get(requestKey)?.abort();
+      this.abortControllers.delete(requestKey);
+    }
 
     // Дедупликация запросов
     if (this.requestQueue.has(requestKey)) {
@@ -59,6 +66,14 @@ class AuthApiService {
       rememberMe: credentials.rememberMe
     });
 
+    // Создаем AbortController для возможности отмены запроса
+    const abortController = new AbortController();
+    this.abortControllers.set(requestKey, abortController);
+
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, this.config.timeout);
+
     try {
       this.activeRequests.add(requestKey);
 
@@ -66,12 +81,16 @@ class AuthApiService {
         endpoint,
         'POST',
         credentials,
-        { requireAuth: false }
+        {
+          requireAuth: false,
+          signal: abortController.signal // передаем сигнал отмены
+        }
       );
 
       this.requestQueue.set(requestKey, requestPromise);
 
       const response = await requestPromise;
+      clearTimeout(timeoutId);
 
       // Упрощенная проверка ответа - бекенд возвращает данные напрямую
       if (!response || typeof response !== 'object') {
@@ -92,16 +111,39 @@ class AuthApiService {
       return response;
 
     } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.login');
+      clearTimeout(timeoutId);
+
+      // Обработка различных типов ошибок
+      let handledError;
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        handledError = errorHandler.create(
+          'Сервер не отвечает. Проверьте подключение к сети.',
+          'NETWORK_TIMEOUT',
+          { originalError: error }
+        );
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        handledError = errorHandler.create(
+          'Ошибка сети. Сервер недоступен.',
+          'NETWORK_ERROR',
+          { originalError: error }
+        );
+      } else {
+        handledError = errorHandler.handle(error, 'auth.login');
+      }
+
       this.logger.error('Login failed', {
         error: handledError.message,
         username: credentials.username,
-        code: handledError.code
+        code: handledError.code,
+        timeout: this.config.timeout
       });
+
       throw handledError;
     } finally {
       this.activeRequests.delete(requestKey);
       this.requestQueue.delete(requestKey);
+      this.abortControllers.delete(requestKey);
     }
   }
 
@@ -113,225 +155,58 @@ class AuthApiService {
     const requestData: ValidateTokenRequest = { token };
 
     try {
-      const response = await this.executeRequest<ValidateTokenResponseData>(
+      // Бекенд возвращает пустой ответ с кодом 200 при успехе
+      // или ошибку при невалидном токене
+      await this.executeRequest<unknown>(
         endpoint,
         'POST',
         requestData,
         { requireAuth: false }
       );
 
-      const isValid = response.isValid;
-      this.logger.auth('Token validation', { isValid });
-      return isValid;
+      // Если запрос прошел без ошибок - токен валиден
+      this.logger.auth('Token validation successful');
+      return true;
 
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.validateToken');
-      this.logger.error('Token validation error', {
-        error: handledError.message
+      this.logger.error('Token validation failed', {
+        error: handledError.message,
+        code: handledError.code,
+        status: handledError.status
       });
       return false;
-    }
-  }
-
-  /**
-   * Регистрация пользователя
-   */
-  async register(command: RegisterCommand): Promise<ApiResult<UserDto>> {
-    const endpoint = `${this.config.basePath}/register`;
-
-    this.logger.auth('Registration request', {
-      username: command.username,
-      email: command.email
-    });
-
-    try {
-      const userData = await this.executeRequest<UserDto>(
-        endpoint,
-        'POST',
-        command,
-        { requireAuth: false }
-      );
-
-      this.logger.auth('Registration successful', {
-        userId: userData.id
-      });
-
-      return { success: true, data: userData };
-
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.register');
-      this.logger.error('Registration failed', {
-        error: handledError.message
-      });
-
-      return {
-        success: false,
-        error: handledError.message,
-        status: handledError.status
-      };
-    }
-  }
-
-  /**
-   * Получение профиля пользователя
-   */
-  async getProfile(): Promise<UserDto> {
-    const endpoint = `${this.config.basePath}/profile`;
-
-    try {
-      const userData = await this.executeRequest<UserDto>(endpoint, 'GET');
-
-      if (!userData?.id) {
-        throw errorHandler.create('Invalid profile response format', 'INVALID_RESPONSE');
-      }
-
-      this.logger.auth('Profile fetched', {
-        userId: userData.id
-      });
-
-      return userData;
-
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.getProfile');
-      this.logger.error('Profile fetch failed', {
-        error: handledError.message
-      });
-      throw handledError;
     }
   }
 
   /**
    * Выход из системы
    */
-  async logout(): Promise<void> {
+  async logout(logoutCommand?: LogoutCommand): Promise<void> {
     const endpoint = `${this.config.basePath}/logout`;
 
     try {
-      await this.executeRequest(endpoint, 'POST');
-      this.logger.auth('Logout completed');
+      // Если передана команда logout, используем ее, иначе создаем пустую
+      const command = logoutCommand || { userId: '', token: '' };
+
+      await this.executeRequest(
+        endpoint,
+        'POST',
+        command,
+        { requireAuth: true } // logout требует авторизации
+      );
+
+      this.logger.auth('Logout completed', {
+        userId: command.userId ? `${command.userId.substring(0, 8)}...` : 'unknown'
+      });
     } catch (error: unknown) {
       const handledError = errorHandler.handle(error, 'auth.logout');
       this.logger.error('Logout error', {
-        error: handledError.message
+        error: handledError.message,
+        code: handledError.code
       });
       // Не бросаем ошибку, так как выход должен завершиться в любом случае
-    }
-  }
-
-  /**
-   * Сброс пароля
-   */
-  async requestPasswordReset(email: string): Promise<ApiResult<void>> {
-    const endpoint = `${this.config.basePath}/forgot-password`;
-
-    try {
-      await this.executeRequest(endpoint, 'POST', { email });
-      this.logger.auth('Password reset requested', { email });
-      return { success: true, data: undefined };
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.requestPasswordReset');
-      this.logger.error('Password reset request failed', {
-        error: handledError.message
-      });
-
-      return {
-        success: false,
-        error: handledError.message
-      };
-    }
-  }
-
-  /**
-   * Подтверждение сброса пароля
-   */
-  async confirmPasswordReset(command: ResetPasswordCommand): Promise<ApiResult<void>> {
-    const endpoint = `${this.config.basePath}/reset-password`;
-
-    try {
-      await this.executeRequest(endpoint, 'POST', command);
-      this.logger.auth('Password reset confirmed', { email: command.email });
-      return { success: true, data: undefined };
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.confirmPasswordReset');
-      this.logger.error('Password reset confirmation failed', {
-        error: handledError.message
-      });
-
-      return {
-        success: false,
-        error: handledError.message
-      };
-    }
-  }
-
-  /**
-   * Обновление профиля пользователя
-   */
-  async updateProfile(userData: Partial<UserDto>): Promise<UserDto> {
-    const endpoint = `${this.config.basePath}/profile`;
-
-    try {
-      const updatedUser = await this.executeRequest<UserDto>(endpoint, 'PUT', userData);
-
-      this.logger.auth('Profile updated', {
-        userId: updatedUser.id
-      });
-
-      return updatedUser;
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.updateProfile');
-      this.logger.error('Profile update failed', {
-        error: handledError.message
-      });
-      throw handledError;
-    }
-  }
-
-  /**
-   * Проверка доступности имени пользователя
-   */
-  async checkUsernameAvailability(username: string): Promise<boolean> {
-    const endpoint = `${this.config.basePath}/check-username`;
-
-    try {
-      const response = await this.executeRequest<{ available: boolean }>(
-        endpoint,
-        'POST',
-        { username },
-        { requireAuth: false }
-      );
-
-      return response.available;
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.checkUsername');
-      this.logger.error('Username check failed', {
-        error: handledError.message
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Проверка доступности email
-   */
-  async checkEmailAvailability(email: string): Promise<boolean> {
-    const endpoint = `${this.config.basePath}/check-email`;
-
-    try {
-      const response = await this.executeRequest<{ available: boolean }>(
-        endpoint,
-        'POST',
-        { email },
-        { requireAuth: false }
-      );
-
-      return response.available;
-    } catch (error: unknown) {
-      const handledError = errorHandler.handle(error, 'auth.checkEmail');
-      this.logger.error('Email check failed', {
-        error: handledError.message
-      });
-      return false;
+      // Но логируем для отладки
     }
   }
 
@@ -371,25 +246,31 @@ class AuthApiService {
     endpoint: string,
     method: string,
     data?: unknown,
-    options: { requireAuth?: boolean } = {}
+    options: { requireAuth?: boolean; signal?: AbortSignal } = {}
   ): Promise<T> {
     const requestOptions = {
       requireAuth: options.requireAuth ?? true,
       timeout: this.config.timeout,
       retryAttempts: this.config.retryAttempts,
+      signal: options.signal,
     };
 
-    switch (method) {
-      case 'GET':
-        return await apiClient.get<T>(endpoint, requestOptions);
-      case 'POST':
-        return await apiClient.post<T>(endpoint, data, requestOptions);
-      case 'PUT':
-        return await apiClient.put<T>(endpoint, data, requestOptions);
-      case 'DELETE':
-        return await apiClient.delete<T>(endpoint, requestOptions);
-      default:
-        throw errorHandler.create(`Unsupported HTTP method: ${method}`, 'UNSUPPORTED_METHOD');
+    try {
+      switch (method) {
+        case 'GET':
+          return await apiClient.get<T>(endpoint, requestOptions);
+        case 'POST':
+          return await apiClient.post<T>(endpoint, data, requestOptions);
+        case 'PUT':
+          return await apiClient.put<T>(endpoint, data, requestOptions);
+        case 'DELETE':
+          return await apiClient.delete<T>(endpoint, requestOptions);
+        default:
+          throw errorHandler.create(`Unsupported HTTP method: ${method}`, 'UNSUPPORTED_METHOD');
+      }
+    } catch (error: unknown) {
+      // Перебрасываем ошибку для обработки в вызывающем коде
+      throw error;
     }
   }
 
@@ -397,11 +278,20 @@ class AuthApiService {
    * Методы для управления запросами
    */
   cancelRequest(key: string): void {
+    if (this.abortControllers.has(key)) {
+      this.abortControllers.get(key)?.abort();
+      this.abortControllers.delete(key);
+    }
     this.requestQueue.delete(key);
     this.activeRequests.delete(key);
   }
 
   cancelAllRequests(): void {
+    // Отменяем все AbortController'ы
+    this.abortControllers.forEach(controller => controller.abort());
+    this.abortControllers.clear();
+
+    // Очищаем очереди
     this.requestQueue.clear();
     this.activeRequests.clear();
   }

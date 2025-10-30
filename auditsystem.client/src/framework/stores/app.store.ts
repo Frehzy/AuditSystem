@@ -25,7 +25,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Theme state
   const currentTheme = ref<Theme>(themeService.getCurrentTheme());
-  const themePreference = ref<Theme>(themeService.getCurrentTheme()); // Добавлено отсутствующее свойство
+  const themePreference = ref<Theme>(themeService.getCurrentTheme());
 
   // App state
   const isOnline = ref(navigator.onLine);
@@ -205,6 +205,13 @@ export const useAppStore = defineStore('app', () => {
     window.addEventListener('offline', () => setOnlineStatus(false));
   };
 
+  // Вместо getStoreState используем прямые computed свойства
+  const getCurrentAuthState = () => ({
+    token: token.value,
+    user: user.value,
+    isAuthenticated: isAuthenticated.value
+  });
+
   // Theme subscription
   const unsubscribeTheme = themeService.subscribe((newTheme: Theme) => {
     currentTheme.value = newTheme;
@@ -242,7 +249,7 @@ export const useAppStore = defineStore('app', () => {
     authLoading: computed(() => authLoading.value),
     authError: computed(() => authError.value),
     currentTheme: computed(() => currentTheme.value),
-    themePreference: computed(() => themePreference.value), // Добавлено в возвращаемые значения
+    themePreference: computed(() => themePreference.value),
     resolvedTheme: computed(() => resolvedTheme.value),
     isOnline: computed(() => isOnline.value),
     isLoading: computed(() => isLoading.value),
@@ -277,6 +284,7 @@ export const useAppStore = defineStore('app', () => {
     clearErrors,
 
     // Store management
+    getCurrentAuthState,
     initialize,
     cleanup
   };

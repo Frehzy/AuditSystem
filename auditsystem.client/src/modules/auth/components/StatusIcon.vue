@@ -62,23 +62,21 @@
     transition: inherit;
   }
 
-  /* Size variants */
   .size-sm {
-    width: 0.875rem;
-    height: 0.875rem;
+    width: 16px;
+    height: 16px;
   }
 
   .size-md {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 20px;
+    height: 20px;
   }
 
   .size-lg {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 24px;
+    height: 24px;
   }
 
-  /* Status variants with theme colors */
   .status--online {
     color: var(--color-success);
     background: var(--status-online-bg);
@@ -97,7 +95,6 @@
     border: 1px solid var(--status-checking-border);
   }
 
-    /* Animation for checking status */
     .status--checking .status-svg {
       animation: rotate 2s linear infinite;
     }
@@ -112,7 +109,6 @@
     }
   }
 
-  /* Pulse animation */
   .status-pulse {
     position: absolute;
     top: 50%;
@@ -154,7 +150,6 @@
     }
   }
 
-  /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .status--checking .status-svg {
       animation: none;
@@ -166,7 +161,6 @@
     }
   }
 
-  /* High contrast mode support */
   @media (prefers-contrast: high) {
     .status--online {
       border: 2px solid var(--color-success);
