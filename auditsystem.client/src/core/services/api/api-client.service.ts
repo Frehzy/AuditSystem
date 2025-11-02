@@ -86,9 +86,7 @@ class ApiClientImpl implements ApiClient {
   }> {
     const healthEndpoints = [
       '/api/health',
-      '/health',
-      '/api/health/db',
-      '/api/status'
+      '/api/health/db'
     ];
 
     const startTime = performance.now();

@@ -85,9 +85,7 @@ class ApiHelperImpl implements ApiHelper {
   async checkServerHealth(timeout: number = 5000): Promise<boolean> {
     const healthEndpoints = [
       '/api/health',
-      '/health',
-      '/api/health/db',
-      '/api/status'
+      '/api/health/db'
     ];
 
     const controller = new AbortController();
