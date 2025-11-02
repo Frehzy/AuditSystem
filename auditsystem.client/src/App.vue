@@ -79,7 +79,7 @@
 
     // Сохранение router в глобальной области для navigation.service
     if (import.meta.env.DEV) {
-      (window as any).__VUE_ROUTER__ = router;
+      (window as Window & { __VUE_ROUTER__?: typeof router }).__VUE_ROUTER__ = router;
     }
 
     // Добавляем слушатель системных предпочтений темы

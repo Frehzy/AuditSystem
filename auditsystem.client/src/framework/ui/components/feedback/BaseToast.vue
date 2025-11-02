@@ -1,4 +1,3 @@
-// src/framework/ui/components/feedback/BaseToast.vue
 <template>
   <teleport to="body">
     <transition-group name="toast-list" tag="div" class="base-toast-container">
@@ -44,9 +43,9 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
+  import { ref, onUnmounted, defineAsyncComponent } from 'vue'
   import type { Component } from 'vue';
-  import { notificationService } from '@/core/services/core/ui/notification.service';
+  import { notificationService } from '@/core/services/ui/notification.service';
   import type { Notification } from '@/core/types/services';
 
   // Асинхронные импорты иконок

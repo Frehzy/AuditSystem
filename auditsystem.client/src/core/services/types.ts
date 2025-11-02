@@ -1,7 +1,7 @@
 // Unified types for all services
 
 // Log Types
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'auth' | 'network' | 'api' | 'router' | 'storage' | 'notification' | 'analytics' | 'http';
 
 export interface LogEntry {
   level: LogLevel;
@@ -20,6 +20,21 @@ export interface ApiRequestOptions {
   headers?: Record<string, string>;
   retryAttempts?: number;
   retryDelay?: number;
+  useCache?: boolean;
+  cacheKey?: string;
+  cacheTtl?: number;
+  forceRefresh?: boolean;
+}
+
+export interface ApiRequestConfig {
+  timeout?: number;
+  retryAttempts?: number;
+  retryDelay?: number;
+  requireAuth?: boolean;
+  skipErrorHandler?: boolean;
+  headers?: Record<string, string>;
+  useCache?: boolean;
+  cacheTtl?: number;
 }
 
 export interface ApiClient {
@@ -32,6 +47,19 @@ export interface ApiClient {
   setAuthToken(token: string): void;
   clearAuthToken(): void;
   getBaseUrl(): string;
+  checkHealth(): Promise<{
+    isHealthy: boolean;
+    responseTime: number;
+    details?: string;
+    endpoint?: string;
+  }>;
+  clearCache(pattern?: RegExp): void;
+  getCacheStats(): {
+    size: number;
+    keys: string[];
+    totalSize: number;
+    hitRate?: number;
+  };
 }
 
 export interface ApiHelper {
@@ -41,15 +69,14 @@ export interface ApiHelper {
   createRequestContext(url: string, method: string, config?: ApiRequestConfig): RequestContext;
   setAuthToken(token: string): void;
   clearAuthToken(): void;
-}
-
-export interface ApiRequestConfig {
-  timeout?: number;
-  retryAttempts?: number;
-  retryDelay?: number;
-  requireAuth?: boolean;
-  skipErrorHandler?: boolean;
-  headers?: Record<string, string>;
+  getRequestHistory(): RequestContext[];
+  clearRequestHistory(): void;
+  getRequestStats(): {
+    totalRequests: number;
+    successfulRequests: number;
+    failedRequests: number;
+    averageResponseTime: number;
+  };
 }
 
 export interface RequestMetadata {
@@ -79,6 +106,29 @@ export interface AppError extends Error {
   status?: number;
   timestamp: number;
   context?: string;
+  wrapped?: boolean;
+  originalMessage?: string;
+  originalStack?: string;
+  stack?: string;
+}
+
+export interface ErrorDetails {
+  message: string;
+  timestamp: number;
+  context?: string;
+  code?: string;
+  status?: number;
+  originalError?: unknown;
+  backendErrors?: string[] | Record<string, unknown>;
+  backendMessage?: string;
+  stack?: string;
+  filename?: string;
+  lineno?: number;
+  colno?: number;
+  isUnhandledRejection?: boolean;
+  isUncaughtError?: boolean;
+  promise?: unknown;
+  responseData?: unknown;
 }
 
 export interface ErrorHandler {
@@ -91,11 +141,18 @@ export interface ErrorHandler {
   isClientError(error: unknown): boolean;
   isValidationError(error: unknown): boolean;
   getUserMessage(error: unknown): string;
+  initializeGlobalHandlers(): void;
+  cleanupGlobalHandlers(): void;
+  getErrorStats(): {
+    totalHandled: number;
+    categories: Record<string, number>;
+    recentErrors: AppError[];
+  };
 }
 
 // Form Types
 export interface ValidationRule {
-  test: (value: unknown, formData?: Record<string, unknown>) => boolean;
+  test: (value: unknown, formData?: Record<string, unknown>) => boolean | Promise<boolean>;
   message: string;
   key?: string;
 }
@@ -121,12 +178,25 @@ export interface FormValidationRules {
   min: (min: number, message?: string) => ValidationRule;
   max: (max: number, message?: string) => ValidationRule;
   custom: (validator: (value: unknown, formData?: Record<string, unknown>) => boolean, message: string) => ValidationRule;
+  phone: (message?: string) => ValidationRule;
+  url: (message?: string) => ValidationRule;
+  strongPassword: (message?: string) => ValidationRule;
+  dateAfter: (date: Date, message?: string) => ValidationRule;
+  dateBefore: (date: Date, message?: string) => ValidationRule;
+  oneOf: (allowedValues: unknown[], message?: string) => ValidationRule;
+  range: (min: number, max: number, message?: string) => ValidationRule;
 }
 
 export interface FormService {
   validateField(value: unknown, rules: ValidationRule[], formData?: Record<string, unknown>): FieldValidation;
   validateForm(data: Record<string, unknown>, rules: Record<string, ValidationRule[]>, touchedFields?: string[]): FormValidation;
+  validateFieldAsync(value: unknown, rules: ValidationRule[], formData?: Record<string, unknown>): Promise<FieldValidation>;
+  validateArray(values: unknown[], rules: ValidationRule[], formData?: Record<string, unknown>): { isValid: boolean; errors: string[][]; };
+  validateNested(data: Record<string, unknown>, rules: Record<string, ValidationRule[]>, formData?: Record<string, unknown>): FormValidation;
+  cleanFormData<T extends Record<string, unknown>>(data: T): Partial<T>;
+  getFormChanges<T extends Record<string, unknown>>(original: T, current: T): Partial<T>;
   createRule(test: (value: unknown, formData?: Record<string, unknown>) => boolean, message: string): ValidationRule;
+  createValidationSet(...rules: ValidationRule[]): ValidationRule[];
   readonly rules: FormValidationRules;
 }
 
@@ -149,6 +219,22 @@ export interface NavigationResult {
   error?: string;
 }
 
+export interface NavigationHistoryItem {
+  target: NavigationTarget;
+  timestamp: number;
+  scrollPosition: number;
+  title?: string;
+  data?: unknown;
+}
+
+export interface NavigationConfig {
+  enableHistory: boolean;
+  maxHistoryLength: number;
+  scrollRestoration: boolean;
+  enableAnalytics: boolean;
+  defaultRoute: string;
+}
+
 export interface NavigationService {
   navigate(target: NavigationTarget): Promise<NavigationResult>;
   back(): void;
@@ -161,16 +247,29 @@ export interface NavigationService {
   getCurrentState(): unknown;
   canGoBack(): boolean;
   canGoForward(): boolean;
+  getHistory(): NavigationHistoryItem[];
+  clearHistory(): void;
+  setRouter(router: any): void;
+  updateConfig(newConfig: Partial<NavigationConfig>): void;
 }
 
 // Notification Types
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
+
+export interface NotificationAction {
+  label: string;
+  onClick: () => void;
+}
 
 export interface NotificationOptions {
   title?: string;
   dismissible?: boolean;
   duration?: number;
   pauseOnHover?: boolean;
+  action?: NotificationAction;
+  priority?: 'low' | 'normal' | 'high';
+  group?: string;
+  icon?: string;
 }
 
 export interface Notification {
@@ -182,6 +281,11 @@ export interface Notification {
   duration?: number;
   createdAt: number;
   pauseOnHover: boolean;
+  priority?: 'low' | 'normal' | 'high';
+  group?: string;
+  icon?: string;
+  action?: NotificationAction;
+  read?: boolean;
 }
 
 export interface NotificationService {
@@ -196,6 +300,13 @@ export interface NotificationService {
   subscribe(listener: (notifications: Notification[]) => void): () => void;
   getNotifications(): Notification[];
   getStats(): { active: number; queued: number; types: Record<string, number> };
+  getHistory(): Notification[];
+  clearHistory(): void;
+  pauseAutoDismiss(id: string): void;
+  resumeAutoDismiss(id: string): void;
+  markAsRead(id: string): void;
+  markAllAsRead(): void;
+  getConfig(): { maxVisible: number; maxHistory: number; defaultDuration: number };
 }
 
 // Theme Types
@@ -205,12 +316,18 @@ export interface ThemeService {
   getCurrentTheme(): Theme;
   getResolvedTheme(): 'light' | 'dark';
   setTheme(theme: Theme): void;
-  toggleTheme(): void;
+  toggleTheme(): Theme;
   initialize(): void;
   subscribe(listener: (theme: Theme) => void): () => void;
   isDark(): boolean;
   isLight(): boolean;
   destroy(): void;
+  getThemeInfo(): {
+    current: Theme;
+    resolved: 'light' | 'dark';
+    system: 'light' | 'dark';
+    isAuto: boolean;
+  };
 }
 
 // State Management Types
@@ -219,6 +336,7 @@ export interface StateUpdate<T> {
   prevValue: T;
   nextValue: T;
   timestamp: number;
+  source?: string;
 }
 
 export interface StateManager {
@@ -231,6 +349,14 @@ export interface StateManager {
   keys(): string[];
   size(): number;
   destroy(): void;
+  getHistory(): StateUpdate<unknown>[];
+  getStats(): {
+    totalKeys: number;
+    totalSubscribers: number;
+    historySize: number;
+    activeTimers: number;
+  };
+  serialize(): Record<string, unknown>;
 }
 
 // Storage Types
@@ -265,11 +391,18 @@ export interface StorageService {
   getToken(): string | null;
   setUser(user: UserDto): void;
   getUser(): UserDto | null;
+  clearAuth(): void;
   clearAuthData(): void;
 
   // Theme methods
   setTheme(theme: Theme): void;
   getTheme(): Theme | null;
+
+  getStorageStats(): {
+    local: { items: number; size: number };
+    session: { items: number; size: number };
+    subscribers: number;
+  };
 }
 
 // Token Types
@@ -283,6 +416,14 @@ export interface TokenPayload {
   [key: string]: unknown;
 }
 
+export interface TokenValidationResult {
+  isValid: boolean;
+  isExpired: boolean;
+  payload: TokenPayload | null;
+  errors: string[];
+  timestamp: number;
+}
+
 export interface TokenService {
   parseToken(token: string): TokenPayload | null;
   isTokenExpired(token: string): boolean;
@@ -291,7 +432,15 @@ export interface TokenService {
   getTokenRemainingTime(token: string): number;
   shouldRefreshToken(token: string, refreshThreshold?: number): boolean;
   getTokenPayload<T = TokenPayload>(token: string): T | null;
-  validateToken(token: string): { isValid: boolean; isExpired: boolean; payload: TokenPayload | null; errors: string[] };
+  validateToken(token: string): TokenValidationResult;
+  getTokenInfo(token: string): {
+    isValid: boolean;
+    isExpired: boolean;
+    issuedAt?: string;
+    expiresAt?: string;
+    subject?: string;
+    remainingTime: number;
+  };
 }
 
 // HTTP Types
@@ -301,6 +450,8 @@ export interface HttpRequestConfig {
   retryAttempts?: number;
   retryDelay?: number;
   signal?: AbortSignal;
+  useCache?: boolean;
+  cacheTtl?: number;
 }
 
 export interface HttpResponse<T = unknown> {
@@ -308,6 +459,7 @@ export interface HttpResponse<T = unknown> {
   status: number;
   statusText: string;
   headers: Record<string, string>;
+  responseTime?: number;
 }
 
 export interface HttpService {
@@ -317,6 +469,13 @@ export interface HttpService {
   patch<T>(url: string, data?: unknown, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
   delete<T>(url: string, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
   request<T>(method: string, url: string, data?: unknown, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
+  clearCache(): void;
+  cancelAllPendingRequests(): void;
+  getStats(): {
+    pendingRequests: number;
+    cacheSize: number;
+    cacheKeys: string[];
+  };
 }
 
 // User DTO
@@ -329,4 +488,12 @@ export interface UserDto {
   updatedAt?: string;
   lastLoginAt?: string;
   isActive?: boolean;
+}
+
+// Backend Result
+export interface BackendResult<T> {
+  succeeded: boolean;
+  data?: T;
+  message?: string;
+  errors?: string[];
 }

@@ -19,7 +19,6 @@ interface FeaturesConfig {
   AUTO_RETRY: boolean;
   OFFLINE_MODE: boolean;
   DEBUG_LOGS: boolean;
-  USE_MOCK: boolean;
 }
 
 interface AppConfig {
@@ -56,8 +55,7 @@ export const APP_CONFIG: AppConfig = {
     HEALTH_CHECKS: true,
     AUTO_RETRY: true,
     OFFLINE_MODE: false,
-    DEBUG_LOGS: import.meta.env.DEV,
-    USE_MOCK: false
+    DEBUG_LOGS: import.meta.env.DEV
   },
 } as const;
 

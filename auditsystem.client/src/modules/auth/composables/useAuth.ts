@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/framework/stores/app.store';
 import { authApiService } from '../api/authApi.service';
-import { errorHandler } from '@/core/services/core/utils/error-handler.service';
+import { errorHandler } from '@/core/services/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
 import type { LoginCommand, UserDto } from '../api/auth.types';
 
@@ -54,25 +54,29 @@ export const useAuth = () => {
         username: response.user.username
       });
       return true;
-    } catch (error: unknown) {
+    } catch (err: unknown) {
       let errorMessage = 'Неизвестная ошибка';
 
-      if (error instanceof Error) {
+      if (err instanceof Error) {
         // Улучшенная обработка ошибок с учетом структуры бэкенда
-        if (error.message.includes('timeout') || error.message.includes('таймаут')) {
+        if (err.message.includes('timeout') || err.message.includes('таймаут')) {
           errorMessage = 'Сервер не отвежает. Проверьте подключение к сети.';
-        } else if (error.message.includes('network') || error.message.includes('сеть')) {
+        } else if (err.message.includes('network') || err.message.includes('сеть')) {
           errorMessage = 'Ошибка сети. Сервер недоступен.';
-        } else if (error.message.includes('Invalid username or password') ||
-          error.message.includes('Invalid credentials')) {
+        } else if (err.message.includes('Invalid username or password') ||
+          err.message.includes('Invalid credentials')) {
           errorMessage = 'Неверное имя пользователя или пароль';
-        } else if (error.message.includes('Account is deactivated')) {
+        } else if (err.message.includes('Account is deactivated')) {
           errorMessage = 'Учетная запись деактивирована';
-        } else if (error.message.includes('User not found')) {
+        } else if (err.message.includes('User not found')) {
           errorMessage = 'Пользователь не найден';
         } else {
-          errorMessage = error.message;
+          errorMessage = err.message;
         }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else {
+        errorMessage = 'Произошла неизвестная ошибка при входе в систему';
       }
 
       error.value = errorMessage;
@@ -80,8 +84,8 @@ export const useAuth = () => {
 
       loggerContext.error('Login failed', {
         error: errorMessage,
-        code: error instanceof Error ? error.name : 'UNKNOWN',
-        originalError: error
+        code: err instanceof Error ? err.name : 'UNKNOWN',
+        originalError: err
       });
       return false;
     } finally {
@@ -114,8 +118,8 @@ export const useAuth = () => {
 
       await authApiService.logout(logoutCommand);
       loggerContext.auth('Logout API call completed');
-    } catch (error) {
-      const handledError = errorHandler.handle(error, 'auth.logout');
+    } catch (err) {
+      const handledError = errorHandler.handle(err, 'auth.logout');
       loggerContext.error('Logout API call failed', { error: handledError.message });
     } finally {
       // Всегда очищаем данные аутентификации
@@ -148,8 +152,8 @@ export const useAuth = () => {
       }
 
       return isValid;
-    } catch (error) {
-      const handledError = errorHandler.handle(error, 'auth.validateToken');
+    } catch (err) {
+      const handledError = errorHandler.handle(err, 'auth.validateToken');
       loggerContext.error('Token validation error', { error: handledError.message });
       appStore.clearAuth();
       return false;

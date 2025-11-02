@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { logger } from '@/core/utils/logger';
 import { useAppStore } from '@/framework/stores/app.store';
-import { tokenService } from '@/core/services/core/auth/token.service';
+import { tokenService } from '@/core/services/auth/token.service';
 
 // Динамические импорты для code splitting
 const AuthView = () => import('@/modules/auth/views/AuthView.vue');

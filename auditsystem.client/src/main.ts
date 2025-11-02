@@ -4,8 +4,6 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import { logger } from '@/core/utils/logger';
-import { mockService } from '@/core/services/mock/mock.service';
-import { APP_CONFIG } from '@/core/config/app.config';
 import './assets/styles/theme.css'
 
 /**
@@ -13,12 +11,6 @@ import './assets/styles/theme.css'
  */
 const initializeApp = async () => {
   try {
-    // Инициализация mock service в development режиме
-    if (APP_CONFIG.APP.ENV === 'development' && APP_CONFIG.FEATURES.USE_MOCK) {
-      mockService.enable();
-      console.log('🔧 Mock service enabled - using mock data');
-    }
-
     // Создание экземпляра приложения
     const app = createApp(App);
     const pinia = createPinia();
@@ -44,8 +36,7 @@ const initializeApp = async () => {
 
     logger.info('Application initialized successfully', {
       environment: import.meta.env.MODE,
-      version: import.meta.env.VITE_APP_VERSION || '1.0.0',
-      mockEnabled: mockService.isMockEnabled()
+      version: import.meta.env.VITE_APP_VERSION || '1.0.0'
     });
 
   } catch (error: unknown) {

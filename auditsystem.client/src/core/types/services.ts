@@ -1,6 +1,77 @@
 // src/core/types/services.ts
 // Unified types for all services
 
+// Cache Types
+export interface CacheOptions {
+  useCache?: boolean;
+  forceRefresh?: boolean;
+  cacheKey?: string;
+  cacheTtl?: number;
+}
+
+// Extended API Request Options
+export interface ApiRequestOptions extends CacheOptions {
+  requireAuth?: boolean;
+  skipErrorHandler?: boolean;
+  retryOnNetworkError?: boolean;
+  timeout?: number;
+  headers?: Record<string, string>;
+  retryAttempts?: number;
+  retryDelay?: number;
+}
+
+// Extended HttpResponse
+export interface HttpResponse<T = unknown> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  responseTime?: number;
+}
+
+// Backend Result Types
+export interface BackendResult<T = unknown> {
+  succeeded: boolean;
+  data?: T;
+  message?: string;
+  errors?: string[];
+  statusCode?: number;
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data: T;
+  message?: string;
+  timestamp?: string;
+}
+
+// Token Validation Types
+export interface TokenValidationResult {
+  isValid: boolean;
+  isExpired: boolean;
+  payload: TokenPayload | null;
+  errors: string[];
+  timestamp?: number; // Добавлено для совместимости
+}
+
+// Error Details Types - ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС
+export interface ErrorDetails {
+  message: string; // Обязательное поле
+  code?: string;
+  status?: number;
+  context?: string;
+  stack?: string;
+  filename?: string;
+  lineNumber?: number;
+  columnNumber?: number;
+  url?: string;
+  method?: string;
+  backendErrors?: string[];
+  backendMessage?: string;
+  originalError?: unknown;
+  timestamp?: number;
+}
+
 // Log Types
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -13,16 +84,6 @@ export interface LogEntry {
 }
 
 // API Types
-export interface ApiRequestOptions {
-  requireAuth?: boolean;
-  skipErrorHandler?: boolean;
-  retryOnNetworkError?: boolean;
-  timeout?: number;
-  headers?: Record<string, string>;
-  retryAttempts?: number;
-  retryDelay?: number;
-}
-
 export interface ApiClient {
   get<T>(endpoint: string, options?: ApiRequestOptions): Promise<T>;
   post<T>(endpoint: string, data?: unknown, options?: ApiRequestOptions): Promise<T>;
@@ -292,7 +353,7 @@ export interface TokenService {
   getTokenRemainingTime(token: string): number;
   shouldRefreshToken(token: string, refreshThreshold?: number): boolean;
   getTokenPayload<T = TokenPayload>(token: string): T | null;
-  validateToken(token: string): { isValid: boolean; isExpired: boolean; payload: TokenPayload | null; errors: string[] };
+  validateToken(token: string): TokenValidationResult;
 }
 
 // HTTP Types
@@ -302,13 +363,6 @@ export interface HttpRequestConfig {
   retryAttempts?: number;
   retryDelay?: number;
   signal?: AbortSignal;
-}
-
-export interface HttpResponse<T = unknown> {
-  data: T;
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
 }
 
 export interface HttpService {

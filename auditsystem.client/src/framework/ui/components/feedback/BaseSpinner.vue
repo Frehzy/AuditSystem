@@ -60,10 +60,6 @@
   }
 
   // Computed properties
-  const computedSize = computed(() => {
-    return sizeMap[props.size as keyof typeof sizeMap] || props.size
-  })
-
   const computedSpeed = computed(() => {
     return speedMap[props.speed as keyof typeof speedMap] || props.speed
   })
@@ -81,11 +77,6 @@
       'base-spinner--with-text': props.showText
     }
   ])
-
-  const computedSpinnerStyle = computed(() => ({
-    width: computedSize.value,
-    height: computedSize.value,
-  }))
 
   const computedVariantColor = computed(() => {
     if (props.color) return props.color

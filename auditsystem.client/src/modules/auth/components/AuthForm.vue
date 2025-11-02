@@ -124,7 +124,6 @@
     LockIcon,
     AlertIcon,
     ServerIcon,
-    RefreshIcon,
     CloseIcon,
     LoadingSpinner,
     EyeIcon,
@@ -241,10 +240,6 @@
     setTimeout(() => {
       isCancelling.value = false;
     }, 1000);
-  };
-
-  const retryConnection = (): void => {
-    emit('retry-connection');
   };
 
   const resetForm = (): void => {
@@ -511,19 +506,6 @@
       width: 16px;
       height: 16px;
     }
-
-  .retry-btn {
-    white-space: nowrap;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .retry-icon {
-    width: 14px;
-    height: 14px;
-  }
 
   /* Улучшение видимости состояния disabled */
   .base-button--disabled {

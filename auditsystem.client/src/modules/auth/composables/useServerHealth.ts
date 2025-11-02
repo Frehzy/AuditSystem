@@ -1,9 +1,8 @@
 // src/modules/auth/composables/useServerHealth.ts
 import { ref, onUnmounted, computed, watch } from 'vue';
-import { apiClient } from '@/core/services/core/api/api-client.service';
 import { logger } from '@/core/utils/logger';
 // Исправлено: правильный импорт
-import { notificationService } from '@/core/services/core/ui/notification.service';
+import { notificationService } from '@/core/services/ui/notification.service';
 
 export type ServerStatus = 'checking' | 'online' | 'offline';
 

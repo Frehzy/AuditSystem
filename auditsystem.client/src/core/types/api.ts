@@ -13,5 +13,8 @@ export type {
   ApiResult,
   RequestContext,
   RequestMetadata,
-  ApiRequestConfig
+  ApiRequestConfig,
+  BackendResult,
+  ApiResponse,
+  TokenValidationResult
 } from './services';

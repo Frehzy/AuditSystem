@@ -1,6 +1,6 @@
 // src/modules/auth/api/authApi.service.ts
-import { apiClient } from '@/core/services/core/api/api-client.service';
-import { errorHandler } from '@/core/services/core/utils/error-handler.service';
+import { apiClient } from '@/core/services/api/api-client.service';
+import { errorHandler } from '@/core/services/utils/error-handler.service';
 import { logger } from '@/core/utils/logger';
 import type {
   LoginCommand,

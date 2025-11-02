@@ -79,7 +79,7 @@
     title?: string
     subtitle?: string
     message?: string
-    icon?: any
+    icon?: object
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen'
     closable?: boolean
     closeOnBackdrop?: boolean

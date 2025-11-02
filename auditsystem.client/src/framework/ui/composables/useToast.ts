@@ -1,6 +1,6 @@
 // src/framework/ui/composables/useToast.ts
 import { inject, provide } from 'vue'
-import { notificationService } from '@/core/services/core/ui/notification.service';
+import { notificationService } from '@/core/services/ui/notification.service';
 import type { NotificationType, NotificationOptions } from '@/core/types/services';
 
 export interface ToastApi {
