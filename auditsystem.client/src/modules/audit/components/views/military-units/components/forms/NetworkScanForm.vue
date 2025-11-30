@@ -1,12 +1,5 @@
 <template>
-  <BaseModal :model-value="true"
-             title="Настройка сетевого сканирования"
-             subtitle="Настройте параметры для поиска хостов в сети"
-             icon="ScanIcon"
-             size="lg"
-             :wrapper-class="`network-scan-form-modal`"
-             @close="$emit('cancel')">
-
+  <div class="network-scan-form">
     <!-- Progress Steps -->
     <div class="scan-header">
       <div class="scan-progress">
@@ -23,7 +16,7 @@
             @click="setStep(index)">
             <div class="step-indicator">
               <span v-if="currentStep > index" class="step-check">
-                <CheckIcon size="16" />
+                <CheckIcon class="step-icon" />
               </span>
               <span v-else class="step-number">{{ index + 1 }}</span>
             </div>
@@ -43,20 +36,23 @@
 
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label required">IP-диапазон или сеть</label>
-            <BaseInput v-model="formData.ipRange"
+            <label for="ip-range" class="form-label required">IP-диапазон или сеть</label>
+            <BaseInput id="ip-range"
+                       v-model="formData.ipRange"
                        placeholder="192.168.1.0/24 или 192.168.1.1-192.168.1.254"
                        required
                        class="form-control"
-                       @blur="validateStep(0)" />
+                       :error="errors.ipRange"
+                       @blur="validateIpRange" />
             <div class="form-hint">
               Поддерживаются форматы CIDR (192.168.1.0/24) и диапазоны (192.168.1.1-192.168.1.254)
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Порты для сканирования</label>
-            <BaseInput v-model="formData.ports"
+            <label for="ports" class="form-label">Порты для сканирования</label>
+            <BaseInput id="ports"
+                       v-model="formData.ports"
                        placeholder="22,80,443,3389"
                        class="form-control" />
             <div class="form-hint">
@@ -65,8 +61,9 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Таймаут (сек)</label>
-            <BaseInput v-model.number="formData.timeout"
+            <label for="timeout" class="form-label">Таймаут (сек)</label>
+            <BaseInput id="timeout"
+                       v-model.number="formData.timeout"
                        type="number"
                        placeholder="5"
                        min="1"
@@ -76,8 +73,9 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Параллельные потоки</label>
-            <BaseInput v-model.number="formData.threads"
+            <label for="threads" class="form-label">Параллельные потоки</label>
+            <BaseInput id="threads"
+                       v-model.number="formData.threads"
                        type="number"
                        placeholder="10"
                        min="1"
@@ -140,7 +138,7 @@
           <div class="preview-grid">
             <div class="preview-card">
               <div class="preview-icon">
-                <ScanIcon />
+                <ScanIcon class="icon" />
               </div>
               <div class="preview-content">
                 <div class="preview-value">{{ scanType }}</div>
@@ -150,7 +148,7 @@
 
             <div class="preview-card">
               <div class="preview-icon">
-                <PortIcon />
+                <PortIcon class="icon" />
               </div>
               <div class="preview-content">
                 <div class="preview-value">{{ portCount }}</div>
@@ -160,7 +158,7 @@
 
             <div class="preview-card">
               <div class="preview-icon">
-                <TimeIcon />
+                <TimeIcon class="icon" />
               </div>
               <div class="preview-content">
                 <div class="preview-value">{{ estimatedTime }}</div>
@@ -170,7 +168,7 @@
 
             <div class="preview-card">
               <div class="preview-icon">
-                <ThreadsIcon />
+                <ThreadsIcon class="icon" />
               </div>
               <div class="preview-content">
                 <div class="preview-value">{{ formData.threads }}</div>
@@ -210,50 +208,47 @@
     </div>
 
     <!-- Navigation -->
-    <template #footer>
-      <div class="scan-config-actions">
-        <BaseButton @click="handlePreviousStep"
-                    variant="secondary"
-                    :disabled="currentStep === 0"
-                    class="nav-btn">
-          <ArrowLeftIcon class="button-icon" />
-          Назад
-        </BaseButton>
+    <div class="scan-config-actions">
+      <BaseButton @click="handlePreviousStep"
+                  variant="secondary"
+                  :disabled="currentStep === 0"
+                  class="nav-btn">
+        <ArrowLeftIcon class="button-icon" />
+        Назад
+      </BaseButton>
 
-        <div class="step-indicators">
-          <span class="step-info">Шаг {{ currentStep + 1 }} из {{ steps.length }}</span>
-        </div>
-
-        <BaseButton v-if="currentStep < steps.length - 1"
-                    @click="handleNextStep"
-                    variant="primary"
-                    :disabled="!canProceedToNextStep"
-                    class="nav-btn">
-          Далее
-          <ArrowRightIcon class="button-icon" />
-        </BaseButton>
-
-        <BaseButton v-else
-                    @click="handleStartScan"
-                    variant="primary"
-                    :loading="isSubmitting"
-                    :disabled="!canStartScan"
-                    class="nav-btn start-btn">
-          <ScanIcon class="button-icon" />
-          Начать сканирование
-        </BaseButton>
+      <div class="step-indicators">
+        <span class="step-info">Шаг {{ currentStep + 1 }} из {{ steps.length }}</span>
       </div>
-    </template>
-  </BaseModal>
+
+      <BaseButton v-if="currentStep < steps.length - 1"
+                  @click="handleNextStep"
+                  variant="primary"
+                  :disabled="!canProceedToNextStep"
+                  class="nav-btn">
+        Далее
+        <ArrowRightIcon class="button-icon" />
+      </BaseButton>
+
+      <BaseButton v-else
+                  @click="handleStartScan"
+                  variant="primary"
+                  :loading="isSubmitting"
+                  :disabled="!canStartScan"
+                  class="nav-btn start-btn">
+        <ScanIcon class="button-icon" />
+        Начать сканирование
+      </BaseButton>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
-  import { useToast } from '@/framework/ui/composables/useToast'
-  import BaseModal from '@/framework/ui/components/overlay/BaseModal.vue'
-  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue'
-  import BaseInput from '@/framework/ui/components/forms/BaseInput.vue'
-  import BaseToggle from '@/framework/ui/components/forms/BaseToggle.vue'
+  import { ref, computed } from 'vue';
+  import { useToast } from '@/framework/ui/composables/useToast';
+  import BaseButton from '@/framework/ui/components/buttons/BaseButton.vue';
+  import BaseInput from '@/framework/ui/components/forms/BaseInput.vue';
+  import BaseToggle from '@/framework/ui/components/forms/BaseToggle.vue';
   import {
     ScanIcon,
     ArrowLeftIcon,
@@ -262,45 +257,46 @@
     PortIcon,
     TimeIcon,
     ThreadsIcon
-  } from '@/assets/icons'
+  } from '@/assets/icons';
 
   interface NetworkScanFormData {
-    ipRange: string
-    ports: string
-    timeout: number
-    threads: number
-    quickScan: boolean
-    osDetection: boolean
-    serviceDetection: boolean
+    ipRange: string;
+    ports: string;
+    timeout: number;
+    threads: number;
+    quickScan: boolean;
+    osDetection: boolean;
+    serviceDetection: boolean;
   }
 
   interface Props {
-    initialData?: Partial<NetworkScanFormData>
-    unitId?: string
+    initialData?: Partial<NetworkScanFormData>;
+    unitId?: string;
   }
 
   interface Emits {
-    (e: 'submit', data: NetworkScanFormData): void
-    (e: 'cancel'): void
+    (e: 'submit', data: NetworkScanFormData): void;
+    (e: 'cancel'): void;
   }
 
   const props = withDefaults(defineProps<Props>(), {
     initialData: () => ({}),
     unitId: undefined
-  })
+  });
 
-  const emit = defineEmits<Emits>()
+  const emit = defineEmits<Emits>();
 
-  const { showToast } = useToast()
+  const { showToast } = useToast();
 
-  const isSubmitting = ref(false)
-  const currentStep = ref(0)
+  const isSubmitting = ref(false);
+  const currentStep = ref(0);
+  const errors = ref<Record<string, string>>({});
 
   // Steps configuration
   const steps = ref([
     { id: 'basic', label: 'Параметры сканирования' },
     { id: 'preview', label: 'Предпросмотр' }
-  ])
+  ]);
 
   const formData = ref<NetworkScanFormData>({
     ipRange: '',
@@ -311,97 +307,91 @@
     osDetection: false,
     serviceDetection: false,
     ...props.initialData
-  })
+  });
 
   // Computed properties
   const canProceedToNextStep = computed(() => {
     switch (currentStep.value) {
       case 0: // Basic settings
-        return formData.value.ipRange.trim().length > 0 && validateIpRange()
+        return formData.value.ipRange.trim().length > 0 && validateIpRange();
       case 1: // Preview
-        return true
+        return true;
       default:
-        return true
+        return true;
     }
-  })
+  });
 
   const canStartScan = computed(() => {
-    return formData.value.ipRange.trim().length > 0 && validateIpRange()
-  })
+    return formData.value.ipRange.trim().length > 0 && validateIpRange();
+  });
 
   const scanType = computed(() => {
-    return formData.value.quickScan ? 'Быстрое' : 'Полное'
-  })
+    return formData.value.quickScan ? 'Быстрое' : 'Полное';
+  });
 
   const portCount = computed(() => {
-    if (!formData.value.ports.trim()) return 'Все'
-    if (formData.value.quickScan) return 'Основные (10)'
+    if (!formData.value.ports.trim()) return 'Все';
+    if (formData.value.quickScan) return 'Основные (10)';
 
-    const ports = formData.value.ports.split(',')
-    return ports.length.toString()
-  })
+    const ports = formData.value.ports.split(',');
+    return ports.length.toString();
+  });
 
   const estimatedTime = computed(() => {
-    if (!formData.value.ipRange) return '-'
+    if (!formData.value.ipRange) return '-';
 
-    const baseTime = formData.value.quickScan ? 30 : 120
-    const threadFactor = Math.max(1, 10 / formData.value.threads)
-    const estimatedSeconds = Math.round(baseTime * threadFactor)
+    const baseTime = formData.value.quickScan ? 30 : 120;
+    const threadFactor = Math.max(1, 10 / formData.value.threads);
+    const estimatedSeconds = Math.round(baseTime * threadFactor);
 
     if (estimatedSeconds < 60) {
-      return `${estimatedSeconds} сек`
+      return `${estimatedSeconds} сек`;
     } else {
-      return `${Math.round(estimatedSeconds / 60)} мин`
+      return `${Math.round(estimatedSeconds / 60)} мин`;
     }
-  })
+  });
 
   // Methods
   const setStep = (stepIndex: number) => {
     if (stepIndex <= currentStep.value) {
-      currentStep.value = stepIndex
+      currentStep.value = stepIndex;
     }
-  }
+  };
 
   const handleNextStep = () => {
     if (canProceedToNextStep.value && currentStep.value < steps.value.length - 1) {
-      currentStep.value++
+      currentStep.value++;
     }
-  }
+  };
 
   const handlePreviousStep = () => {
     if (currentStep.value > 0) {
-      currentStep.value--
+      currentStep.value--;
     }
-  }
-
-  const validateStep = (stepIndex: number) => {
-    console.log('Validating step:', stepIndex)
-  }
+  };
 
   const validateIpRange = (): boolean => {
-    if (!formData.value.ipRange.trim()) return false
+    errors.value.ipRange = '';
 
-    const ipRangeRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2}|-\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?$/
-    return ipRangeRegex.test(formData.value.ipRange)
-  }
-
-  const validateForm = (): boolean => {
     if (!formData.value.ipRange.trim()) {
-      showToast({
-        type: 'warning',
-        title: 'Заполните IP-диапазон',
-        message: 'IP-диапазон обязателен для сканирования'
-      })
-      return false
+      errors.value.ipRange = 'IP-диапазон обязателен для заполнения';
+      return false;
     }
 
+    const ipRangeRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2}|-\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?$/;
+    if (!ipRangeRegex.test(formData.value.ipRange)) {
+      errors.value.ipRange = 'Неверный формат IP-диапазона';
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateForm = (): boolean => {
+    errors.value = {};
+
     if (!validateIpRange()) {
-      showToast({
-        type: 'warning',
-        title: 'Неверный формат IP-диапазона',
-        message: 'Введите корректный IP-диапазон (например: 192.168.1.0/24 или 192.168.1.1-192.168.1.254)'
-      })
-      return false
+      return false;
     }
 
     if (formData.value.timeout < 1 || formData.value.timeout > 60) {
@@ -409,8 +399,8 @@
         type: 'warning',
         title: 'Неверный таймаут',
         message: 'Таймаут должен быть в диапазоне от 1 до 60 секунд'
-      })
-      return false
+      });
+      return false;
     }
 
     if (formData.value.threads < 1 || formData.value.threads > 100) {
@@ -418,69 +408,51 @@
         type: 'warning',
         title: 'Неверное количество потоков',
         message: 'Количество потоков должно быть в диапазоне от 1 до 100'
-      })
-      return false
+      });
+      return false;
     }
 
-    return true
-  }
+    return true;
+  };
 
   const handleStartScan = async (): Promise<void> => {
     if (!validateForm()) {
-      return
+      return;
     }
 
-    isSubmitting.value = true
+    isSubmitting.value = true;
 
     try {
       const scanData: NetworkScanFormData = {
-        ipRange: formData.value.ipRange,
-        ports: formData.value.ports,
+        ipRange: formData.value.ipRange.trim(),
+        ports: formData.value.ports.trim(),
         timeout: formData.value.timeout,
         threads: formData.value.threads,
         quickScan: formData.value.quickScan,
         osDetection: formData.value.osDetection,
         serviceDetection: formData.value.serviceDetection
-      }
+      };
 
-      emit('submit', scanData)
-
-      showToast({
-        type: 'success',
-        title: 'Сканирование запущено',
-        message: 'Сетевое сканирование успешно начато'
-      })
+      emit('submit', scanData);
     } catch (error) {
-      console.error('Failed to start network scan:', error)
+      console.error('Failed to start network scan:', error);
       showToast({
         type: 'error',
         title: 'Ошибка',
         message: 'Не удалось запустить сетевое сканирование'
-      })
+      });
     } finally {
-      isSubmitting.value = false
+      isSubmitting.value = false;
     }
-  }
+  };
 </script>
 
 <style scoped>
-  .network-scan-form-modal {
-    /* Custom styles for the modal container */
+  .network-scan-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
-
-    .network-scan-form-modal ::v-deep(.base-modal__container) {
-      display: flex;
-      flex-direction: column;
-      max-height: 80vh;
-    }
-
-    .network-scan-form-modal ::v-deep(.base-modal__content) {
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-    }
 
   /* Fixed Header */
   .scan-header {
@@ -551,7 +523,7 @@
     color: white;
   }
 
-  .step-check ::v-deep(svg) {
+  .step-check .step-icon {
     width: 1rem;
     height: 1rem;
   }
@@ -758,6 +730,11 @@
     flex-shrink: 0;
   }
 
+    .preview-icon .icon {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
   .preview-content {
     flex: 1;
   }
@@ -826,6 +803,9 @@
     justify-content: space-between;
     width: 100%;
     flex-shrink: 0;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
   }
 
   .nav-btn {

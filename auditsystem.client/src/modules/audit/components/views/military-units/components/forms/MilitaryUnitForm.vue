@@ -1,6 +1,6 @@
 <template>
   <div class="military-unit-form theme-transition">
-    <form @submit.prevent="handleSubmit" class="unit-form">
+    <form @submit.prevent="handleSubmit" class="unit-form" novalidate>
       <!-- Основная информация -->
       <div class="form-section">
         <div class="step-header">
@@ -10,28 +10,33 @@
 
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label required">Название части</label>
-            <BaseInput v-model="formData.name"
+            <label for="unit-name" class="form-label required">Название части</label>
+            <BaseInput id="unit-name"
+                       v-model="formData.name"
                        placeholder="Введите название войсковой части"
                        required
                        class="form-control"
+                       :error="errors.name"
                        @blur="validateField('name')" />
             <div class="form-hint">Обязательное поле</div>
           </div>
 
           <div class="form-group">
-            <label class="form-label required">Местоположение</label>
-            <BaseInput v-model="formData.location"
+            <label for="unit-location" class="form-label required">Местоположение</label>
+            <BaseInput id="unit-location"
+                       v-model="formData.location"
                        placeholder="Введите местоположение"
                        required
                        class="form-control"
+                       :error="errors.location"
                        @blur="validateField('location')" />
             <div class="form-hint">Обязательное поле</div>
           </div>
 
           <div class="form-group">
-            <label class="form-label required">Статус</label>
-            <BaseSelect v-model="formData.status"
+            <label for="unit-status" class="form-label required">Статус</label>
+            <BaseSelect id="unit-status"
+                        v-model="formData.status"
                         :options="statusOptions"
                         required
                         class="form-control" />
@@ -39,8 +44,9 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Описание</label>
-          <BaseTextarea v-model="formData.description"
+          <label for="unit-description" class="form-label">Описание</label>
+          <BaseTextarea id="unit-description"
+                        v-model="formData.description"
                         placeholder="Описание войсковой части..."
                         rows="3"
                         :maxlength="500"
@@ -52,13 +58,14 @@
       <!-- Подсети -->
       <div class="form-section">
         <div class="section-header">
-          <div class="selection-title">
+          <div class="section-title">
             <NetworkIcon class="title-icon" />
             <span>Подсети</span>
           </div>
           <BaseButton @click="addSubnet"
                       variant="secondary"
-                      size="sm">
+                      size="sm"
+                      type="button">
             <PlusIcon class="button-icon" />
             Добавить подсеть
           </BaseButton>
@@ -73,7 +80,9 @@
               <BaseButton @click="removeSubnet(index)"
                           variant="text"
                           size="sm"
-                          color="error">
+                          color="error"
+                          type="button"
+                          :disabled="formData.subnets.length === 1">
                 <DeleteIcon class="button-icon" />
                 Удалить
               </BaseButton>
@@ -82,36 +91,43 @@
             <div class="subnet-form">
               <div class="form-grid">
                 <div class="form-group">
-                  <label class="form-label required">Название</label>
-                  <BaseInput v-model="subnet.name"
+                  <label :for="`subnet-name-${index}`" class="form-label required">Название</label>
+                  <BaseInput :id="`subnet-name-${index}`"
+                             v-model="subnet.name"
                              placeholder="Название подсети"
                              required
                              class="form-control"
+                             :error="errors[`subnet-${index}-name`]"
                              @blur="validateSubnet(index, 'name')" />
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label required">Сеть</label>
-                  <BaseInput v-model="subnet.network"
+                  <label :for="`subnet-network-${index}`" class="form-label required">Сеть</label>
+                  <BaseInput :id="`subnet-network-${index}`"
+                             v-model="subnet.network"
                              placeholder="192.168.1.0"
                              required
                              class="form-control"
+                             :error="errors[`subnet-${index}-network`]"
                              @blur="validateSubnet(index, 'network')" />
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label required">Маска</label>
-                  <BaseInput v-model="subnet.mask"
+                  <label :for="`subnet-mask-${index}`" class="form-label required">Маска</label>
+                  <BaseInput :id="`subnet-mask-${index}`"
+                             v-model="subnet.mask"
                              placeholder="24"
                              required
                              class="form-control"
+                             :error="errors[`subnet-${index}-mask`]"
                              @blur="validateSubnet(index, 'mask')" />
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Описание</label>
-                <BaseInput v-model="subnet.description"
+                <label :for="`subnet-description-${index}`" class="form-label">Описание</label>
+                <BaseInput :id="`subnet-description-${index}`"
+                           v-model="subnet.description"
                            placeholder="Описание подсети..."
                            class="form-control" />
               </div>
@@ -131,13 +147,14 @@
       <!-- Хосты -->
       <div class="form-section">
         <div class="section-header">
-          <div class="selection-title">
+          <div class="section-title">
             <ServerIcon class="title-icon" />
             <span>Хосты</span>
           </div>
           <BaseButton @click="addHost"
                       variant="secondary"
-                      size="sm">
+                      size="sm"
+                      type="button">
             <PlusIcon class="button-icon" />
             Добавить хост
           </BaseButton>
@@ -152,7 +169,9 @@
               <BaseButton @click="removeHost(index)"
                           variant="text"
                           size="sm"
-                          color="error">
+                          color="error"
+                          type="button"
+                          :disabled="formData.hosts.length === 1">
                 <DeleteIcon class="button-icon" />
                 Удалить
               </BaseButton>
@@ -161,26 +180,31 @@
             <div class="host-form">
               <div class="form-grid">
                 <div class="form-group">
-                  <label class="form-label required">Имя хоста</label>
-                  <BaseInput v-model="host.name"
+                  <label :for="`host-name-${index}`" class="form-label required">Имя хоста</label>
+                  <BaseInput :id="`host-name-${index}`"
+                             v-model="host.name"
                              placeholder="server-01"
                              required
                              class="form-control"
+                             :error="errors[`host-${index}-name`]"
                              @blur="validateHost(index, 'name')" />
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label required">IP адрес</label>
-                  <BaseInput v-model="host.ipAddress"
+                  <label :for="`host-ip-${index}`" class="form-label required">IP адрес</label>
+                  <BaseInput :id="`host-ip-${index}`"
+                             v-model="host.ipAddress"
                              placeholder="192.168.1.100"
                              required
                              class="form-control"
+                             :error="errors[`host-${index}-ipAddress`]"
                              @blur="validateHost(index, 'ipAddress')" />
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label required">Операционная система</label>
-                  <BaseSelect v-model="host.osType"
+                  <label :for="`host-os-${index}`" class="form-label required">Операционная система</label>
+                  <BaseSelect :id="`host-os-${index}`"
+                              v-model="host.osType"
                               :options="osOptions"
                               required
                               class="form-control" />
@@ -188,12 +212,13 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Описание</label>
-                <BaseInput v-model="host.description"
+                <label :for="`host-description-${index}`" class="form-label">Описание</label>
+                <BaseInput :id="`host-description-${index}`"
+                           v-model="host.description"
                            placeholder="Описание хоста..."
                            :maxlength="200"
                            class="form-control" />
-                <div class="form-hint">{{ host.description.length }}/200 символов</div>
+                <div class="form-hint">{{ host.description?.length || 0 }}/200 символов</div>
               </div>
 
               <!-- Учетные данные -->
@@ -202,41 +227,49 @@
 
                 <div class="form-grid">
                   <div class="form-group">
-                    <label class="form-label">Тип авторизации</label>
-                    <BaseSelect v-model="host.credentials.authType"
+                    <label :for="`host-auth-type-${index}`" class="form-label">Тип авторизации</label>
+                    <BaseSelect :id="`host-auth-type-${index}`"
+                                v-model="host.credentials.authType"
                                 :options="authTypeOptions"
                                 class="form-control" />
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label required">Пользователь</label>
-                    <BaseInput v-model="host.credentials.username"
+                    <label :for="`host-username-${index}`" class="form-label required">Пользователь</label>
+                    <BaseInput :id="`host-username-${index}`"
+                               v-model="host.credentials.username"
                                placeholder="root"
                                required
                                class="form-control"
+                               :error="errors[`host-${index}-username`]"
                                @blur="validateHostCredentials(index, 'username')" />
                   </div>
 
                   <div class="form-group">
-                    <label class="form-label">Порт</label>
-                    <BaseInput v-model.number="host.credentials.port"
+                    <label :for="`host-port-${index}`" class="form-label">Порт</label>
+                    <BaseInput :id="`host-port-${index}`"
+                               v-model.number="host.credentials.port"
                                type="number"
                                placeholder="22"
+                               min="1"
+                               max="65535"
                                class="form-control" />
                   </div>
                 </div>
 
                 <div v-if="host.credentials.authType === 'password'" class="form-group">
-                  <label class="form-label">Пароль</label>
-                  <BaseInput v-model="host.credentials.password"
+                  <label :for="`host-password-${index}`" class="form-label">Пароль</label>
+                  <BaseInput :id="`host-password-${index}`"
+                             v-model="host.credentials.password"
                              type="password"
                              placeholder="Пароль пользователя"
                              class="form-control" />
                 </div>
 
                 <div v-if="host.credentials.authType === 'rsa'" class="form-group">
-                  <label class="form-label">RSA ключ</label>
-                  <BaseTextarea v-model="host.credentials.rsaKey"
+                  <label :for="`host-rsa-key-${index}`" class="form-label">RSA ключ</label>
+                  <BaseTextarea :id="`host-rsa-key-${index}`"
+                                v-model="host.credentials.rsaKey"
                                 placeholder="-----BEGIN RSA PRIVATE KEY-----"
                                 rows="4"
                                 class="form-control" />
@@ -280,13 +313,16 @@
       <div class="form-actions">
         <BaseButton @click="$emit('cancel')"
                     variant="secondary"
-                    class="cancel-btn">
+                    type="button"
+                    class="cancel-btn"
+                    :disabled="isSubmitting">
           Отмена
         </BaseButton>
         <BaseButton type="submit"
                     variant="primary"
                     :loading="isSubmitting"
-                    class="submit-btn">
+                    class="submit-btn"
+                    :disabled="!canSubmit">
           <SaveIcon class="button-icon" />
           {{ unit ? 'Обновить' : 'Создать' }} войсковую часть
         </BaseButton>
@@ -310,7 +346,7 @@
     NetworkIcon,
     ServerIcon
   } from '@/assets/icons';
-  import type { MilitaryUnit, CreateUnitCommand } from '../../api/audit.types';
+  import type { MilitaryUnit, CreateUnitCommand } from '@/modules/audit/api/audit.types';
 
   interface Props {
     unit?: MilitaryUnit;
@@ -327,6 +363,7 @@
   const { showToast } = useToast();
 
   const isSubmitting = ref(false);
+  const errors = ref<Record<string, string>>({});
 
   const formData = ref({
     name: '',
@@ -374,7 +411,8 @@
   // Computed properties
   const canSubmit = computed(() => {
     return formData.value.name.trim().length > 0 &&
-      formData.value.location.trim().length > 0;
+      formData.value.location.trim().length > 0 &&
+      Object.keys(errors.value).length === 0;
   });
 
   // Methods
@@ -388,7 +426,9 @@
   };
 
   const removeSubnet = (index: number): void => {
-    formData.value.subnets.splice(index, 1);
+    if (formData.value.subnets.length > 1) {
+      formData.value.subnets.splice(index, 1);
+    }
   };
 
   const addHost = (): void => {
@@ -408,33 +448,53 @@
   };
 
   const removeHost = (index: number): void => {
-    formData.value.hosts.splice(index, 1);
+    if (formData.value.hosts.length > 1) {
+      formData.value.hosts.splice(index, 1);
+    }
   };
 
   const validateField = (field: string): void => {
-    if (!formData.value[field as keyof typeof formData.value]) {
-      console.log(`Field ${field} is empty`);
+    const value = formData.value[field as keyof typeof formData.value];
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      errors.value[field] = 'Это поле обязательно для заполнения';
+    } else {
+      delete errors.value[field];
     }
   };
 
   const validateSubnet = (index: number, field: string): void => {
     const subnet = formData.value.subnets[index];
-    if (!subnet[field as keyof typeof subnet]) {
-      console.log(`Subnet ${index} field ${field} is empty`);
+    const value = subnet[field as keyof typeof subnet];
+    const errorKey = `subnet-${index}-${field}`;
+
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      errors.value[errorKey] = 'Это поле обязательно для заполнения';
+    } else {
+      delete errors.value[errorKey];
     }
   };
 
   const validateHost = (index: number, field: string): void => {
     const host = formData.value.hosts[index];
-    if (!host[field as keyof typeof host]) {
-      console.log(`Host ${index} field ${field} is empty`);
+    const value = host[field as keyof typeof host];
+    const errorKey = `host-${index}-${field}`;
+
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      errors.value[errorKey] = 'Это поле обязательно для заполнения';
+    } else {
+      delete errors.value[errorKey];
     }
   };
 
   const validateHostCredentials = (index: number, field: string): void => {
     const host = formData.value.hosts[index];
-    if (!host.credentials[field as keyof typeof host.credentials]) {
-      console.log(`Host ${index} credentials field ${field} is empty`);
+    const value = host.credentials[field as keyof typeof host.credentials];
+    const errorKey = `host-${index}-${field}`;
+
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      errors.value[errorKey] = 'Это поле обязательно для заполнения';
+    } else {
+      delete errors.value[errorKey];
     }
   };
 
@@ -465,18 +525,30 @@
 
     try {
       const unitData: CreateUnitCommand = {
-        name: formData.value.name,
-        location: formData.value.location,
+        name: formData.value.name.trim(),
+        location: formData.value.location.trim(),
         status: formData.value.status,
-        description: formData.value.description
+        description: formData.value.description.trim(),
+        subnets: formData.value.subnets.map(subnet => ({
+          ...subnet,
+          name: subnet.name.trim(),
+          network: subnet.network.trim(),
+          mask: subnet.mask.trim(),
+          description: subnet.description.trim()
+        })),
+        hosts: formData.value.hosts.map(host => ({
+          ...host,
+          name: host.name.trim(),
+          ipAddress: host.ipAddress.trim(),
+          description: host.description.trim(),
+          credentials: {
+            ...host.credentials,
+            username: host.credentials.username.trim()
+          }
+        }))
       };
 
       emit('save', unitData);
-      showToast({
-        type: 'success',
-        title: props.unit ? 'Войсковая часть обновлена' : 'Войсковая часть создана',
-        message: 'Данные успешно сохранены'
-      });
     } catch (error) {
       console.error('Failed to save military unit:', error);
       showToast({
@@ -490,55 +562,33 @@
   };
 
   const validateForm = (): boolean => {
-    if (!formData.value.name.trim()) {
-      showToast({
-        type: 'warning',
-        title: 'Заполните название',
-        message: 'Название войсковой части обязательно для заполнения'
-      });
-      return false;
-    }
+    errors.value = {};
 
-    if (!formData.value.location.trim()) {
-      showToast({
-        type: 'warning',
-        title: 'Заполните местоположение',
-        message: 'Местоположение обязательно для заполнения'
-      });
-      return false;
-    }
+    // Validate main fields
+    validateField('name');
+    validateField('location');
 
     // Validate subnets
-    for (const [index, subnet] of formData.value.subnets.entries()) {
-      if (!subnet.name.trim() || !subnet.network.trim() || !subnet.mask.trim()) {
-        showToast({
-          type: 'warning',
-          title: 'Заполните данные подсети',
-          message: `Все поля подсети ${index + 1} обязательны для заполнения`
-        });
-        return false;
-      }
-    }
+    formData.value.subnets.forEach((subnet, index) => {
+      validateSubnet(index, 'name');
+      validateSubnet(index, 'network');
+      validateSubnet(index, 'mask');
+    });
 
     // Validate hosts
-    for (const [index, host] of formData.value.hosts.entries()) {
-      if (!host.name.trim() || !host.ipAddress.trim()) {
-        showToast({
-          type: 'warning',
-          title: 'Заполните данные хоста',
-          message: `Имя и IP адрес хоста ${index + 1} обязательны для заполнения`
-        });
-        return false;
-      }
+    formData.value.hosts.forEach((host, index) => {
+      validateHost(index, 'name');
+      validateHost(index, 'ipAddress');
+      validateHostCredentials(index, 'username');
+    });
 
-      if (!host.credentials.username.trim()) {
-        showToast({
-          type: 'warning',
-          title: 'Заполните учетные данные',
-          message: `Имя пользователя для хоста ${index + 1} обязательно для заполнения`
-        });
-        return false;
-      }
+    if (Object.keys(errors.value).length > 0) {
+      showToast({
+        type: 'warning',
+        title: 'Заполните обязательные поля',
+        message: 'Пожалуйста, проверьте правильность заполнения формы'
+      });
+      return false;
     }
 
     return true;
@@ -577,6 +627,10 @@
           }
         }))
       };
+    } else {
+      // Add empty subnet and host by default
+      addSubnet();
+      addHost();
     }
   };
 
@@ -630,7 +684,7 @@
     margin-bottom: var(--spacing-lg);
   }
 
-  .selection-title {
+  .section-title {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);

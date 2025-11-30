@@ -10,9 +10,9 @@ const AuthView = () => import('@/modules/auth/views/AuthView.vue');
 const AuditView = () => import('@/modules/audit/views/AuditView.vue');
 const MonitoringView = () => import('@/modules/audit/components/views/MonitoringView.vue');
 const ReportsView = () => import('@/modules/audit/components/views/ReportsView.vue');
-const SettingsView = () => import('@/modules/audit/components/views/SettingsView.vue');
+const SettingsView = () => import('@/modules/audit/components/views/settings/SettingsView.vue');
 const ScriptsView = () => import('@/modules/audit/components/views/ScriptsView.vue');
-const MilitaryUnitsView = () => import('@/modules/audit/components/views/MilitaryUnitsView.vue');
+const MilitaryUnitsView = () => import('@/modules/audit/components/views/military-units/MilitaryUnitsView.vue');
 
 declare module 'vue-router' {
   interface RouteMeta {

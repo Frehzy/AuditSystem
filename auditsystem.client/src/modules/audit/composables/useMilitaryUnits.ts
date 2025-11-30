@@ -1,160 +1,162 @@
-// src/modules/audit/composables/useMilitaryUnits.ts
 import { ref, computed } from 'vue';
+import { useToast } from '@/framework/ui/composables/useToast';
 import { auditApiService } from '../api/auditApi.service';
-import type { MilitaryUnit, Subnet, Host, CreateUnitCommand, CreateSubnetCommand, CreateHostCommand } from '../api/audit.types';
+import type {
+  MilitaryUnit,
+  CreateUnitCommand,
+  UpdateUnitCommand,
+  NetworkScanCommand
+} from '../api/audit.types';
 
-export const useMilitaryUnits = () => {
+export function useMilitaryUnits() {
+  const { showToast } = useToast();
+
   const units = ref<MilitaryUnit[]>([]);
-  const selectedUnit = ref<MilitaryUnit | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
-
-  const activeUnits = computed(() => {
-    return units.value.filter(unit => unit.status === 'active');
-  });
-
-  const deployedUnits = computed(() => {
-    return units.value.filter(unit => unit.status === 'deployed');
-  });
 
   const loadUnits = async (): Promise<void> => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      units.value = await auditApiService.getMilitaryUnits();
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to load military units';
-      console.error('Error loading military units:', err);
+      const response = await auditApiService.getMilitaryUnits();
+      units.value = response.data;
+    } catch (err) {
+      error.value = 'Не удалось загрузить войсковые части';
+      console.error('Failed to load military units:', err);
+      showToast({
+        type: 'error',
+        title: 'Ошибка загрузки',
+        message: 'Не удалось загрузить список войсковых частей'
+      });
     } finally {
       isLoading.value = false;
     }
   };
 
-  const createUnit = async (command: CreateUnitCommand): Promise<MilitaryUnit> => {
-    isLoading.value = true;
-    error.value = null;
-
+  const createUnit = async (unitData: CreateUnitCommand): Promise<MilitaryUnit> => {
     try {
-      const unit = await auditApiService.createMilitaryUnit(command);
-      units.value.push(unit);
-      return unit;
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to create military unit';
-      console.error('Error creating military unit:', err);
+      const response = await auditApiService.createMilitaryUnit(unitData);
+      units.value.push(response.data);
+      showToast({
+        type: 'success',
+        title: 'Успешно',
+        message: 'Войсковая часть успешно создана'
+      });
+      return response.data;
+    } catch (err) {
+      console.error('Failed to create military unit:', err);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось создать войсковую часть'
+      });
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
-  const updateUnit = async (id: string, command: Partial<CreateUnitCommand>): Promise<MilitaryUnit> => {
-    isLoading.value = true;
-    error.value = null;
-
+  const updateUnit = async (unitId: string, unitData: UpdateUnitCommand): Promise<MilitaryUnit> => {
     try {
-      const unit = await auditApiService.updateMilitaryUnit(id, command);
-      const index = units.value.findIndex(u => u.id === id);
+      const response = await auditApiService.updateMilitaryUnit(unitId, unitData);
+      const index = units.value.findIndex(unit => unit.id === unitId);
       if (index !== -1) {
-        units.value[index] = { ...units.value[index], ...unit };
+        units.value[index] = response.data;
       }
-      return unit;
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to update military unit';
-      console.error('Error updating military unit:', err);
+      showToast({
+        type: 'success',
+        title: 'Успешно',
+        message: 'Войсковая часть успешно обновлена'
+      });
+      return response.data;
+    } catch (err) {
+      console.error('Failed to update military unit:', err);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось обновить войсковую часть'
+      });
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
-  const deleteUnit = async (id: string): Promise<void> => {
-    isLoading.value = true;
-    error.value = null;
-
+  const deleteUnit = async (unitId: string): Promise<void> => {
     try {
-      await auditApiService.deleteMilitaryUnit(id);
-      units.value = units.value.filter(unit => unit.id !== id);
-      if (selectedUnit.value?.id === id) {
-        selectedUnit.value = null;
-      }
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete military unit';
-      console.error('Error deleting military unit:', err);
+      await auditApiService.deleteMilitaryUnit(unitId);
+      units.value = units.value.filter(unit => unit.id !== unitId);
+      showToast({
+        type: 'success',
+        title: 'Успешно',
+        message: 'Войсковая часть успешно удалена'
+      });
+    } catch (err) {
+      console.error('Failed to delete military unit:', err);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось удалить войсковую часть'
+      });
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
-  const createSubnet = async (command: CreateSubnetCommand): Promise<Subnet> => {
-    isLoading.value = true;
-    error.value = null;
-
+  const startNetworkScan = async (scanData: NetworkScanCommand): Promise<void> => {
     try {
-      const subnet = await auditApiService.createSubnet(command);
-
-      // Update the unit's subnets list
-      const unitIndex = units.value.findIndex(unit => unit.id === command.unitId);
-      if (unitIndex !== -1) {
-        units.value[unitIndex].subnets.push(subnet);
-      }
-
-      return subnet;
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to create subnet';
-      console.error('Error creating subnet:', err);
+      await auditApiService.startNetworkScan(scanData);
+      showToast({
+        type: 'success',
+        title: 'Сканирование запущено',
+        message: 'Сетевое сканирование успешно начато'
+      });
+    } catch (err) {
+      console.error('Failed to start network scan:', err);
+      showToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: 'Не удалось запустить сетевое сканирование'
+      });
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
-  const createHost = async (command: CreateHostCommand): Promise<Host> => {
-    isLoading.value = true;
-    error.value = null;
+  const getUnitById = computed(() => (unitId: string) => {
+    return units.value.find(unit => unit.id === unitId);
+  });
 
-    try {
-      const host = await auditApiService.createHost(command);
+  const unitsCount = computed(() => units.value.length);
 
-      // Update the unit's hosts list
-      const unitIndex = units.value.findIndex(unit => unit.id === command.unitId);
-      if (unitIndex !== -1) {
-        units.value[unitIndex].hosts.push(host);
-      }
+  const totalHosts = computed(() =>
+    units.value.reduce((total, unit) => total + unit.hosts.length, 0)
+  );
 
-      return host;
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Failed to create host';
-      console.error('Error creating host:', err);
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  };
+  const totalSubnets = computed(() =>
+    units.value.reduce((total, unit) => total + unit.subnets.length, 0)
+  );
 
-  const selectUnit = (unit: MilitaryUnit | null): void => {
-    selectedUnit.value = unit;
-  };
-
-  const clearError = (): void => {
-    error.value = null;
-  };
+  const onlineHosts = computed(() =>
+    units.value.reduce((total, unit) =>
+      total + unit.hosts.filter(host => host.status === 'online').length, 0
+    )
+  );
 
   return {
+    // State
     units,
-    selectedUnit,
     isLoading,
     error,
-    activeUnits,
-    deployedUnits,
+
+    // Actions
     loadUnits,
     createUnit,
     updateUnit,
     deleteUnit,
-    createSubnet,
-    createHost,
-    selectUnit,
-    clearError
+    startNetworkScan,
+
+    // Getters
+    getUnitById,
+    unitsCount,
+    totalHosts,
+    totalSubnets,
+    onlineHosts
   };
-};
+}
