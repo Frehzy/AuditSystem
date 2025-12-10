@@ -1,493 +1,535 @@
-// src/framework/stores/app.store.ts
+// framework/stores/app.store.ts
 import { defineStore } from 'pinia';
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { computed, onUnmounted } from 'vue';
 import { logger } from '@/core/utils/logger';
-import { storageService } from '@/core/services/auth/storage.service';
-import { tokenService } from '@/core/services/auth/token.service';
-import { themeService } from '@/core/services/ui/theme.service';
-import type { UserDto } from '@/modules/auth/api/auth.types';
-import type { Theme, AppError as CoreAppError } from '@/core/types';
-
-// Локальные типы для store
-interface AppError {
-  id: string;
-  message: string;
-  timestamp: Date;
-  type: 'error' | 'warning' | 'info';
-  context?: string;
-  details?: unknown;
-}
-
-interface AppState {
-  token: string | null;
-  user: UserDto | null;
-  authLoading: boolean;
-  authError: string | null;
-  currentTheme: Theme;
-  themePreference: Theme;
-  isOnline: boolean;
-  isLoading: boolean;
-  errors: AppError[];
-  serverHealth: boolean;
-  lastActivity: number;
-}
+import { useAuthStore } from './auth.store';
+import { useThemeStore } from './theme.store';
+import { useErrorStore } from './error.store';
+import { useAppStateStore } from './app-state.store';
+import { useActivityStore } from './activity.store';
+import type { StoreSnapshot, StoreConfig } from './types/app.types';
+import type { StoreHealthCheck, HealthReport } from './types/health.types';
 
 /**
- * Улучшенный App Store с оптимизированной производительностью
- * и расширенной функциональностью
+ * Координирующий стор, который объединяет все специализированные сторе
+ * Обеспечивает централизованное управление состоянием приложения
  */
 export const useAppStore = defineStore('app', () => {
-  // ==================== REACTIVE STATE ====================
+  // Подключаем все специализированные сторе
+  const authStore = useAuthStore();
+  const themeStore = useThemeStore();
+  const errorStore = useErrorStore();
+  const appStateStore = useAppStateStore();
+  const activityStore = useActivityStore();
 
-  // Auth state
-  const token = ref<string | null>(storageService.getToken());
-  const user = ref<UserDto | null>(storageService.getUser());
-  const authLoading = ref(false);
-  const authError = ref<string | null>(null);
+  // ==================== КОМПЬЮТЕД СВОЙСТВА ====================
 
-  // Theme state
-  const currentTheme = ref<Theme>(themeService.getCurrentTheme());
-  const themePreference = ref<Theme>(themeService.getCurrentTheme());
+  /** Авторизован ли пользователь */
+  const isAuthenticated = computed(() => authStore.isAuthenticated);
 
-  // App state
-  const isOnline = ref(navigator.onLine);
-  const isLoading = ref(false);
-  const errors = ref<AppError[]>([]);
-  const serverHealth = ref(false);
-  const lastActivity = ref(Date.now());
+  /** Есть ли ошибки в системе */
+  const hasErrors = computed(() => errorStore.hasErrors);
 
-  // ==================== COMPUTED PROPERTIES ====================
+  /** Текущая тема (с учетом автоматического режима) */
+  const resolvedTheme = computed(() => themeStore.resolved);
+
+  /** Онлайн ли приложение */
+  const isOnline = computed(() => appStateStore.isOnline);
+
+  /** Загружается ли приложение */
+  const isLoading = computed(() => appStateStore.isLoading);
+
+  // ==================== КООРДИНИРУЮЩИЕ ДЕЙСТВИЯ ====================
 
   /**
-   * Оптимизированная проверка аутентификации с мемоизацией
+   * Инициализация всех систем приложения
+   * @returns Функция очистки для использования в onUnmounted
    */
-  const isAuthenticated = computed(() => {
-    const hasToken = !!token.value;
-    const hasUser = !!user.value;
-
-    // Быстрая проверка без валидации токена в development
-    if (import.meta.env.DEV) {
-      return hasToken && hasUser;
-    }
-
-    // Полная проверка в production
-    if (!hasToken || !hasUser) return false;
-
+  const initialize = (config?: StoreConfig) => {
     try {
-      return tokenService.isValidFormat(token.value!) &&
-        !tokenService.isTokenExpired(token.value!);
-    } catch (error) {
-      logger.error('Token validation error in store', { error });
-      return false;
-    }
-  });
+      logger.info('Начинаем инициализацию приложения', { config });
 
-  // User information with safe access
-  const userInfo = computed(() => user.value);
+      // Инициализация темы
+      themeStore.initialize();
+      logger.debug('Тема инициализирована');
 
-  // Role-based access control
-  const hasRole = computed(() => (role: string) =>
-    user.value?.role === role
-  );
-
-  const hasAnyRole = computed(() => (roles: string[]) =>
-    roles.includes(user.value?.role || '')
-  );
-
-  const hasPermission = computed(() => (permission: string) =>
-    user.value?.permissions?.includes(permission) || false
-  );
-
-  // Error management
-  const hasErrors = computed(() => errors.value.length > 0);
-  const latestError = computed(() => errors.value[errors.value.length - 1]);
-  const errorCount = computed(() => errors.value.length);
-
-  // Theme utilities
-  const isDark = computed(() => currentTheme.value === 'dark');
-  const isLight = computed(() => currentTheme.value === 'light');
-
-  const resolvedTheme = computed(() => {
-    if (currentTheme.value === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return currentTheme.value;
-  });
-
-  // Activity tracking
-  const timeSinceLastActivity = computed(() => Date.now() - lastActivity.value);
-  const isInactive = computed(() => timeSinceLastActivity.value > 300000); // 5 minutes
-
-  // ==================== ACTIONS ====================
-
-  // Auth actions
-  const setAuthData = (newToken: string, userData: UserDto) => {
-    logger.debug('Setting auth data in store', {
-      tokenPreview: newToken ? `${newToken.substring(0, 20)}...` : 'null',
-      user: userData.username
-    });
-
-    token.value = newToken;
-    user.value = userData;
-    authError.value = null;
-
-    // Сохраняем в storage
-    storageService.setToken(newToken);
-    storageService.setUser(userData);
-
-    // Обновляем активность
-    updateLastActivity();
-
-    logger.auth('Auth data set successfully', {
-      userId: userData.id,
-      username: userData.username,
-      isAuthenticated: isAuthenticated.value
-    });
-  };
-
-  const clearAuth = () => {
-    const wasAuthenticated = isAuthenticated.value;
-
-    token.value = null;
-    user.value = null;
-    authError.value = null;
-
-    storageService.clearAuth();
-
-    logger.auth('Auth data cleared', {
-      wasAuthenticated,
-      isAuthenticated: isAuthenticated.value
-    });
-  };
-
-  const setAuthLoading = (loading: boolean) => {
-    authLoading.value = loading;
-    if (loading) {
-      updateLastActivity();
-    }
-  };
-
-  const setAuthError = (errorMessage: string | null) => {
-    authError.value = errorMessage;
-    if (errorMessage) {
-      logger.auth('Auth error set', { errorMessage });
-      addError(errorMessage, 'error', 'auth');
-    }
-  };
-
-  // Theme actions
-  const initializeTheme = () => {
-    themeService.initialize();
-    currentTheme.value = themeService.getCurrentTheme();
-    themePreference.value = themeService.getCurrentTheme();
-    logger.info('Theme system initialized', { theme: currentTheme.value });
-  };
-
-  const setTheme = (theme: Theme) => {
-    themeService.setTheme(theme);
-    currentTheme.value = theme;
-    themePreference.value = theme;
-    updateLastActivity();
-
-    logger.info('Theme changed', {
-      previous: currentTheme.value,
-      new: theme
-    });
-  };
-
-  const toggleTheme = () => {
-    const newTheme = themeService.toggleTheme();
-    currentTheme.value = newTheme;
-    themePreference.value = newTheme;
-    updateLastActivity();
-
-    logger.info('Theme toggled', { newTheme });
-    return newTheme;
-  };
-
-  // App state actions
-  const setOnlineStatus = (status: boolean) => {
-    const previousStatus = isOnline.value;
-    isOnline.value = status;
-
-    if (previousStatus !== status) {
-      logger.info('Network status changed', {
-        previous: previousStatus ? 'online' : 'offline',
-        current: status ? 'online' : 'offline'
-      });
-
-      // Добавляем уведомление об изменении статуса сети
-      if (!status) {
-        addError('Потеряно подключение к интернету', 'warning', 'network');
+      // Валидация начального состояния аутентификации
+      if (authStore.token && authStore.user) {
+        const tokenValidation = authStore.validateToken();
+        if (!tokenValidation.isValid) {
+          logger.warn('Невалидный токен при инициализации, очищаем авторизацию', {
+            errors: tokenValidation.errors
+          });
+          authStore.clearAuth();
+        } else {
+          logger.info('Токен валиден при инициализации');
+        }
       }
+
+      // Настройка слушателей сетевого статуса
+      const handleOnline = () => {
+        logger.info('Соединение восстановлено');
+        appStateStore.setOnlineStatus(true);
+      };
+
+      const handleOffline = () => {
+        logger.warn('Потеряно соединение с интернетом');
+        appStateStore.setOnlineStatus(false);
+        // Добавляем предупреждение об отсутствии соединения
+        errorStore.addError(
+          'Отсутствует подключение к интернету',
+          'warning',
+          'network.offline',
+          null,
+          { autoResolve: true, timeout: 30000 }
+        );
+      };
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      logger.debug('Слушатели сетевого статуса установлены');
+
+      // Сохраняем ссылки для последующей очистки
+      const cleanupNetworkListeners = () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        logger.debug('Слушатели сетевого статуса удалены');
+      };
+
+      logger.info('Стор приложения успешно инициализирован', getCurrentState());
+
+      // Возвращаем функцию очистки для onUnmounted
+      return cleanupNetworkListeners;
+    } catch (error) {
+      logger.error('Ошибка при инициализации стора приложения', { error });
+      errorStore.addError(
+        'Не удалось инициализировать приложение',
+        'error',
+        'app.initialize',
+        error
+      );
+      throw error;
     }
   };
 
-  const setLoading = (loading: boolean) => {
-    isLoading.value = loading;
-    if (!loading) {
-      updateLastActivity();
-    }
-  };
-
-  const setServerHealth = (health: boolean) => {
-    const previousHealth = serverHealth.value;
-    serverHealth.value = health;
-
-    if (previousHealth !== health) {
-      logger.info('Server health changed', {
-        previous: previousHealth ? 'healthy' : 'unhealthy',
-        current: health ? 'healthy' : 'unhealthy'
+  /**
+   * Установка данных аутентификации с обновлением активности
+   * @param token - JWT токен
+   * @param user - Данные пользователя
+   */
+  const setAuthData = (token: string, user: any) => {
+    try {
+      logger.info('Устанавливаем данные аутентификации', {
+        userId: user?.id,
+        username: user?.username
       });
+
+      authStore.setAuthData(token, user);
+      activityStore.updateLastActivity();
+
+      logger.info('Данные аутентификации успешно установлены');
+    } catch (error) {
+      logger.error('Ошибка при установке данных аутентификации', { error });
+      errorStore.addError(
+        'Не удалось выполнить аутентификацию',
+        'error',
+        'auth.setAuthData',
+        error
+      );
+      throw error;
     }
   };
 
-  // Error management actions
+  /**
+   * Очистка данных аутентификации
+   */
+  const clearAuth = () => {
+    logger.info('Очищаем данные аутентификации');
+    authStore.clearAuth();
+    activityStore.updateLastActivity();
+    logger.info('Данные аутентификации очищены');
+  };
+
+  /**
+   * Установка ошибки аутентификации
+   * @param errorMessage - Сообщение об ошибке или null для очистки
+   */
+  const setAuthError = (errorMessage: string | null) => {
+    logger.info('Устанавливаем ошибку аутентификации', { errorMessage });
+    authStore.setError(errorMessage);
+    if (errorMessage) {
+      errorStore.addError(errorMessage, 'error', 'auth');
+      logger.warn('Ошибка аутентификации добавлена в error store');
+    }
+  };
+
+  /**
+   * Переключение темы с обновлением активности
+   * @returns Новая тема
+   */
+  const toggleTheme = () => {
+    try {
+      logger.info('Переключаем тему');
+      const newTheme = themeStore.toggleTheme();
+      activityStore.updateLastActivity();
+
+      logger.info('Тема переключена', { newTheme });
+      return newTheme;
+    } catch (error) {
+      logger.error('Ошибка при переключении темы', { error });
+      errorStore.addError(
+        'Не удалось изменить тему',
+        'error',
+        'theme.toggle',
+        error
+      );
+      throw error;
+    }
+  };
+
+  /**
+   * Добавление ошибки с обновлением активности
+   * @param message - Сообщение об ошибке
+   * @param type - Тип ошибки
+   * @param context - Контекст ошибки
+   * @param details - Детали ошибки
+   * @returns ID созданной ошибки
+   */
   const addError = (
     message: string,
-    type: AppError['type'] = 'error',
+    type: 'error' | 'warning' | 'info' = 'error',
     context?: string,
     details?: unknown
   ) => {
-    const error: AppError = {
-      id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      message,
-      timestamp: new Date(),
-      type,
-      context,
-      details
+    logger.info('Добавляем ошибку через app store', { message, type, context });
+    const errorId = errorStore.addError(message, type, context, details);
+    activityStore.updateLastActivity();
+    return errorId;
+  };
+
+  /**
+   * Установка состояния загрузки с обновлением активности
+   * @param loading - Флаг загрузки
+   */
+  const setLoading = (loading: boolean) => {
+    logger.debug('Устанавливаем состояние загрузки', { loading });
+    appStateStore.setLoading(loading);
+    if (!loading) {
+      activityStore.updateLastActivity();
+      logger.debug('Загрузка завершена, обновляем активность');
+    }
+  };
+
+  /**
+   * Получение текущего состояния для отладки
+   * @returns Снимок текущего состояния всех сторов
+   */
+  const getCurrentState = (): StoreSnapshot => {
+    const snapshot = {
+      auth: {
+        token: authStore.token,
+        user: authStore.user,
+        isAuthenticated: authStore.isAuthenticated,
+        isLoading: authStore.loading
+      },
+      theme: {
+        current: themeStore.current,
+        preference: themeStore.preference,
+        resolved: themeStore.resolved
+      },
+      app: {
+        isOnline: appStateStore.isOnline,
+        isLoading: appStateStore.isLoading,
+        serverHealth: appStateStore.serverHealth,
+        lastActivity: activityStore.lastActivity
+      },
+      errors: {
+        count: errorStore.errorCount,
+        latest: errorStore.latestError
+      }
     };
 
-    errors.value.push(error);
-    updateLastActivity();
-
-    // Автоматически очищаем старые ошибки
-    if (errors.value.length > 50) {
-      errors.value = errors.value.slice(-50);
-    }
-
-    // Логируем в соответствующий канал
-    const logMethod = type === 'error' ? 'error' :
-      type === 'warning' ? 'warn' : 'info';
-    logger[logMethod]('App error recorded', {
-      message,
-      context,
-      details
-    });
+    logger.debug('Текущее состояние приложения', snapshot);
+    return snapshot;
   };
-
-  const removeError = (id: string) => {
-    const index = errors.value.findIndex(error => error.id === id);
-    if (index > -1) {
-      errors.value.splice(index, 1);
-      logger.debug('Error removed', { id });
-    }
-  };
-
-  const clearErrors = () => {
-    const count = errors.value.length;
-    errors.value = [];
-    logger.debug('All errors cleared', { count });
-  };
-
-  const clearErrorsByContext = (context: string) => {
-    const initialCount = errors.value.length;
-    errors.value = errors.value.filter(error => error.context !== context);
-    const removedCount = initialCount - errors.value.length;
-
-    if (removedCount > 0) {
-      logger.debug('Errors cleared by context', { context, count: removedCount });
-    }
-  };
-
-  // Activity tracking
-  const updateLastActivity = () => {
-    lastActivity.value = Date.now();
-  };
-
-  const resetInactivityTimer = () => {
-    updateLastActivity();
-  };
-
-  // ==================== EVENT HANDLERS ====================
-
-  const setupEventListeners = () => {
-    // Network status
-    window.addEventListener('online', () => setOnlineStatus(true));
-    window.addEventListener('offline', () => setOnlineStatus(false));
-
-    // User activity tracking
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    activityEvents.forEach(event => {
-      document.addEventListener(event, updateLastActivity, { passive: true });
-    });
-
-    // Visibility change
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        updateLastActivity();
-      }
-    });
-
-    logger.debug('App store event listeners initialized');
-  };
-
-  const cleanupEventListeners = () => {
-    // Будет реализовано при необходимости
-  };
-
-  // ==================== STORE MANAGEMENT ====================
 
   /**
-   * Получение текущего состояния store для отладки
-   */
-  const getCurrentState = () => ({
-    auth: {
-      token: token.value,
-      user: user.value,
-      isAuthenticated: isAuthenticated.value,
-      isLoading: authLoading.value
-    },
-    theme: {
-      current: currentTheme.value,
-      preference: themePreference.value,
-      resolved: resolvedTheme.value
-    },
-    app: {
-      isOnline: isOnline.value,
-      isLoading: isLoading.value,
-      serverHealth: serverHealth.value,
-      lastActivity: lastActivity.value
-    },
-    errors: {
-      count: errorCount.value,
-      latest: latestError.value
-    }
-  });
-
-  /**
-   * Сброс store к начальному состоянию
+   * Сброс всех сторов к начальному состоянию
    */
   const reset = () => {
-    clearAuth();
-    clearErrors();
-    setLoading(false);
-    setServerHealth(false);
+    try {
+      logger.info('Сбрасываем все сторе к начальному состоянию');
 
-    logger.info('App store reset to initial state');
+      authStore.clearAuth();
+      errorStore.clearErrors();
+      appStateStore.setLoading(false);
+      appStateStore.setServerHealth(false);
+      activityStore.resetInactivityTimer();
+
+      logger.info('Все сторе успешно сброшены');
+    } catch (error) {
+      logger.error('Ошибка при сбросе сторов', { error });
+      errorStore.addError(
+        'Не удалось сбросить состояние приложения',
+        'error',
+        'app.reset',
+        error
+      );
+      throw error;
+    }
   };
 
-  // ==================== WATCHERS ====================
+  /**
+   * Очистка всех ресурсов
+   */
+  const cleanup = () => {
+    try {
+      logger.info('Начинаем очистку ресурсов приложения');
 
-  // Автоматическая очистка старых ошибок
-  watch(errors, (newErrors) => {
-    if (newErrors.length > 100) {
-      errors.value = newErrors.slice(-50);
-      logger.debug('Auto-trimmed error history', {
-        from: newErrors.length,
-        to: errors.value.length
-      });
+      themeStore.cleanup();
+      activityStore.cleanupActivityListeners();
+
+      logger.info('Очистка ресурсов завершена');
+    } catch (error) {
+      logger.error('Ошибка при очистке ресурсов', { error });
+      // Не бросаем ошибку здесь, так как cleanup вызывается в onUnmounted
     }
-  }, { deep: true });
+  };
 
-  // Отслеживание изменений темы
-  const unsubscribeTheme = themeService.subscribe((newTheme: Theme) => {
-    currentTheme.value = newTheme;
-    logger.debug('Theme updated from service', { newTheme });
+  /**
+   * Проверка возможности выполнить действие (комбинация нескольких условий)
+   */
+  const canPerformAction = computed(() => ({
+    // Можно выполнять действия, если приложение онлайн и не загружается
+    basic: isOnline.value && !appStateStore.isLoading,
+
+    // Можно выполнять защищённые действия, если аутентифицирован и онлайн
+    authenticated: isAuthenticated.value && isOnline.value && !appStateStore.isLoading,
+
+    // Можно выполнять действия, требующие сервера
+    withServer: isOnline.value && appStateStore.serverHealth && !appStateStore.isLoading,
+
+    // Можно выполнять критические действия
+    critical: isOnline.value && appStateStore.serverHealth && isAuthenticated.value && !appStateStore.isLoading
+  }));
+
+  /**
+   * Проверка здоровья системы (внутренняя проверка состояния сторов)
+   * @returns Отчет о здоровье
+   */
+  const checkHealth = (): HealthReport => {
+    const checks: StoreHealthCheck[] = [
+      {
+        name: 'auth',
+        status: authStore.isAuthenticated ? 'healthy' : 'degraded',
+        issues: authStore.error ? [authStore.error] : [],
+        lastChecked: Date.now(),
+        metrics: {
+          isAuthenticated: authStore.isAuthenticated,
+          tokenValid: authStore.validateToken().isValid
+        }
+      },
+      {
+        name: 'network',
+        status: appStateStore.isOnline ? 'healthy' : 'unhealthy',
+        issues: appStateStore.isOnline ? [] : ['Нет сетевого соединения'],
+        lastChecked: Date.now(),
+        metrics: {
+          isOnline: appStateStore.isOnline,
+          serverHealth: appStateStore.serverHealth
+        }
+      },
+      {
+        name: 'errors',
+        status: errorStore.errorCount > 5 ? 'degraded' : 'healthy',
+        issues: errorStore.errorCount > 5 ? [`Активных ошибок: ${errorStore.errorCount}`] : [],
+        lastChecked: Date.now(),
+        metrics: {
+          errorCount: errorStore.errorCount,
+          latestError: errorStore.latestError?.message
+        }
+      },
+      {
+        name: 'performance',
+        status: 'healthy',
+        issues: [],
+        lastChecked: Date.now(),
+        metrics: {
+          lastActivity: activityStore.lastActivity,
+          timeSinceActivity: activityStore.timeSinceLastActivity
+        }
+      }
+    ];
+
+    const allHealthy = checks.every(c => c.status === 'healthy');
+    const overallStatus = allHealthy ? 'healthy' :
+      checks.some(c => c.status === 'unhealthy') ? 'unhealthy' : 'degraded';
+
+    const report: HealthReport = {
+      timestamp: Date.now(),
+      overallStatus,
+      checks,
+      uptime: Date.now() - (activityStore.lastActivity || Date.now())
+    };
+
+    logger.info('Проверка здоровья завершена', report);
+    return report;
+  };
+
+  /**
+   * Получение метрик состояния приложения
+   */
+  const getMetrics = () => ({
+    auth: {
+      isAuthenticated: authStore.isAuthenticated,
+      tokenValid: authStore.validateToken().isValid
+    },
+    performance: {
+      lastActivity: activityStore.lastActivity,
+      timeSinceActivity: activityStore.timeSinceLastActivity
+    },
+    errors: {
+      count: errorStore.errorCount,
+      severity: errorStore.errorsBySeverity,
+      categories: errorStore.errorCategories
+    },
+    network: {
+      isOnline: appStateStore.isOnline,
+      serverHealth: appStateStore.serverHealth
+    }
   });
 
-  // ==================== INITIALIZATION ====================
+  // Автоматическая инициализация
+  let cleanupNetworkListeners: (() => void) | null = null;
 
-  const initialize = () => {
-    setupEventListeners();
-    initializeTheme();
+  try {
+    cleanupNetworkListeners = initialize();
+    logger.info('Автоматическая инициализация завершена');
+  } catch (error) {
+    logger.error('Ошибка при автоматической инициализации', { error });
+  }
 
-    // Валидация начального состояния аутентификации
-    if (token.value && user.value) {
-      const tokenValidation = tokenService.validateToken(token.value);
-      if (!tokenValidation.isValid) {
-        logger.warn('Invalid token on initialization, clearing auth', {
-          errors: tokenValidation.errors
-        });
-        clearAuth();
-      }
+  /**
+   * Полная очистка всех ресурсов
+   */
+  const fullCleanup = () => {
+    logger.info('Начинаем полную очистку приложения');
+
+    if (cleanupNetworkListeners) {
+      cleanupNetworkListeners();
     }
 
-    logger.info('App store initialized successfully', getCurrentState());
+    cleanup();
+
+    logger.info('Полная очистка завершена');
   };
 
-  const cleanup = () => {
-    cleanupEventListeners();
-    unsubscribeTheme();
-    logger.debug('App store cleanup completed');
-  };
-
-  // Автоматическая инициализация при создании store
-  initialize();
-
-  // ==================== STORE EXPORTS ====================
+  // Автоматическая очистка при размонтировании
+  onUnmounted(() => {
+    logger.info('Компонент размонтируется, выполняем очистку');
+    fullCleanup();
+  });
 
   return {
-    // State
-    token: computed(() => token.value),
-    user: userInfo,
-    authLoading: computed(() => authLoading.value),
-    authError: computed(() => authError.value),
-    currentTheme: computed(() => currentTheme.value),
-    themePreference: computed(() => themePreference.value),
-    resolvedTheme,
-    isOnline: computed(() => isOnline.value),
-    isLoading: computed(() => isLoading.value),
-    errors: computed(() => errors.value),
-    serverHealth: computed(() => serverHealth.value),
-    lastActivity: computed(() => lastActivity.value),
-
-    // Computed
+    // ==================== КОМПЬЮТЕД СВОЙСТВА ====================
     isAuthenticated,
-    hasRole,
-    hasAnyRole,
-    hasPermission,
     hasErrors,
-    latestError,
-    errorCount,
-    isDark,
-    isLight,
-    timeSinceLastActivity,
-    isInactive,
+    resolvedTheme,
+    isOnline,
+    isLoading,
+    canPerformAction,
 
-    // Auth actions
-    setAuthData,
-    clearAuth,
-    setAuthLoading,
-    setAuthError,
+    // ==================== АУТЕНТИФИКАЦИЯ ====================
+    auth: {
+      token: authStore.token,
+      user: authStore.user,
+      loading: authStore.loading,
+      error: authStore.error,
+      isAuthenticated: authStore.isAuthenticated,
+      setAuthData,
+      clearAuth,
+      setLoading: authStore.setLoading,
+      setError: setAuthError,
+      hasRole: authStore.hasRole,
+      hasAnyRole: authStore.hasAnyRole,
+      hasPermission: authStore.hasPermission,
+      validateToken: authStore.validateToken
+    },
 
-    // Theme actions
-    initializeTheme,
-    setTheme,
-    toggleTheme,
+    // ==================== ТЕМА ====================
+    theme: {
+      current: themeStore.current,
+      preference: themeStore.preference,
+      resolved: themeStore.resolved,
+      isDark: themeStore.isDark,
+      isLight: themeStore.isLight,
+      initialize: themeStore.initialize,
+      setTheme: themeStore.setTheme,
+      toggleTheme
+    },
 
-    // App actions
-    setOnlineStatus,
-    setLoading,
-    setServerHealth,
+    // ==================== ОШИБКИ ====================
+    errors: {
+      list: errorStore.errors,
+      hasErrors,
+      latest: errorStore.latestError,
+      count: errorStore.errorCount,
+      active: errorStore.activeErrors,
+      addError,
+      removeError: errorStore.removeError,
+      clearErrors: errorStore.clearErrors,
+      clearByContext: errorStore.clearErrorsByContext,
+      clearByType: errorStore.clearErrorsByType,
+      filterErrors: errorStore.filterErrors,
+      getInsights: errorStore.getErrorInsights
+    },
 
-    // Error actions
-    addError,
-    removeError,
-    clearErrors,
-    clearErrorsByContext,
+    // ==================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ ====================
+    appState: {
+      isOnline: appStateStore.isOnline,
+      isLoading: appStateStore.isLoading,
+      serverHealth: appStateStore.serverHealth,
+      setOnlineStatus: appStateStore.setOnlineStatus,
+      setLoading,
+      setServerHealth: appStateStore.setServerHealth
+    },
 
-    // Activity actions
-    updateLastActivity,
-    resetInactivityTimer,
+    // ==================== АКТИВНОСТЬ ====================
+    activity: {
+      lastActivity: activityStore.lastActivity,
+      timeSinceLastActivity: activityStore.timeSinceLastActivity,
+      isInactive: activityStore.isInactive,
+      updateLastActivity: activityStore.updateLastActivity,
+      resetInactivityTimer: activityStore.resetInactivityTimer
+    },
 
-    // Store management
+    // ==================== ЗДОРОВЬЕ СИСТЕМЫ ====================
+    health: {
+      checkHealth,
+      getMetrics
+    },
+
+    // ==================== УПРАВЛЕНИЕ СТОРОМ ====================
     getCurrentState,
     reset,
     initialize,
-    cleanup
+    cleanup: fullCleanup,
+
+    // ==================== ЛОГИРОВАНИЕ ====================
+    logs: {
+      logAction: (action: string, metadata?: Record<string, unknown>) => {
+        logger.info(`Действие: ${action}`, metadata);
+      },
+      logError: (error: Error, context?: string) => {
+        logger.error(`Ошибка в контексте: ${context || 'unknown'}`, { error });
+        addError(error.message, 'error', context, error.stack);
+      },
+      logWarning: (warning: string, context?: string) => {
+        logger.warn(`Предупреждение: ${warning}`, { context });
+        addError(warning, 'warning', context);
+      }
+    }
   };
 });
 
-// Тип для использования в компонентах
 export type AppStore = ReturnType<typeof useAppStore>;
