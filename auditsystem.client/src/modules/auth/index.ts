@@ -1,25 +1,21 @@
-// Composables
-export { useAuth } from './composables/useAuth';
-export { useAuthValidation } from './composables/useAuthValidation';
-export { useServerHealth } from './composables/useServerHealth';
+// src/modules/auth/index.ts
+// Типы
+export * from './types';
 
-// Services
-export { authApiService } from './api/authApi.service';
+// API
+export { authApi, healthApi } from './api';
 
-// Types
-export type {
-  LoginCommand,
-  LoginResponseData,
-  UserDto,
-  AuthState,
-  AuthValidationErrors,
-  ApiResponse,
-  ApiResult
-} from './api/auth.types';
+// Сервисы
+export { authService, tokenService, healthService } from './services';
 
-// Components
-export { default as AuthForm } from './components/AuthForm.vue';
-export { default as ServerStatus } from './components/ServerStatus.vue';
+// Композаблы
+export { useAuth, useAuthValidation, useServerHealth } from './composables';
+
+// Компоненты
+export { AuthForm, ServerStatus, StatusIcon } from './components';
 
 // Views
-export { default as AuthView } from './views/AuthView.vue';
+export { AuthView } from './views';
+
+// Store
+export { useAuthStore } from './stores/use-auth.store';

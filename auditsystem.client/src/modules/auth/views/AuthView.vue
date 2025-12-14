@@ -1,135 +1,179 @@
 <!-- src/modules/auth/views/AuthView.vue -->
 <template>
-  <div class="auth-view" :class="themeClass">
+  <div :class="['auth-view', themeClass]">
     <div class="auth-view__background">
       <div class="auth-view__gradient"></div>
       <div class="auth-view__particles">
-        <div v-for="i in 15" :key="i" class="auth-view__particle" :style="getParticleStyle(i)"></div>
+        <div v-for="i in 20" :key="i" class="auth-view__particle" :style="getParticleStyle(i)"></div>
       </div>
     </div>
 
     <div class="auth-view__container">
       <div class="auth-view__card">
         <header class="auth-view__header">
-          <div class="auth-view__logo">
-            <div class="auth-view__logo-icon">
+          <div class="auth-view__brand">
+            <div class="auth-view__logo">
               <RobotIcon />
             </div>
-            <div class="auth-view__logo-text">
+            <div class="auth-view__brand-info">
               <h1 class="auth-view__title">AuditSystem Client</h1>
-              <p class="auth-view__subtitle">Войдите в свою учетную запись</p>
+              <p class="auth-view__subtitle">Аудит информационной безопасности</p>
             </div>
           </div>
-          <button @click="toggleTheme" class="auth-view__theme-toggle" :title="themeButtonTitle">
-            <span v-if="isDarkTheme" class="auth-view__theme-icon">
-              <MoonIcon />
-            </span>
-            <span v-else class="auth-view__theme-icon">
-              <SunIcon />
-            </span>
+
+          <button @click="toggleTheme"
+                  class="auth-view__theme-toggle"
+                  :title="themeButtonTitle"
+                  aria-label="Переключить тему">
+            <SunIcon v-if="isDarkTheme" />
+            <MoonIcon v-else />
           </button>
         </header>
 
         <ServerStatus :server-url="serverUrl"
-                      :status="serverHealth.status.value"
-                      :last-check="serverHealth.lastCheck.value || undefined"
-                      :response-time="serverHealth.responseTime.value || undefined"
-                      :show-retry="true"
-                      @retry="handleRetry"
-                      class="auth-view__status" />
+                      :status="serverStatus"
+                      :last-check="lastServerCheck"
+                      :response-time="serverResponseTime"
+                      :is-checking="isCheckingServer"
+                      show-retry
+                      @retry="checkServerHealth"
+                      class="auth-view__server-status" />
 
-        <AuthForm ref="authFormRef"
-                  :is-loading="auth.isLoading.value"
-                  :general-error="localError || auth.error.value"
+        <AuthForm :is-loading="isLoggingIn"
+                  :error="loginError"
                   :server-available="isServerAvailable"
                   @submit="handleLogin"
-                  @retry-connection="handleRetry"
-                  @clear-error="clearError"
-                  @cancel-request="handleCancelRequest"
+                  @cancel="cancelLogin"
+                  @clear-error="clearLoginError"
                   class="auth-view__form" />
 
         <footer class="auth-view__footer">
-          <div class="auth-view__info-grid">
-            <div class="info-item">
-              <div class="info-icon version">
-                <CodeIcon />
-              </div>
-              <div class="info-content">
-                <div class="info-label">Версия</div>
-                <div class="info-value">v{{ appVersion }}</div>
-              </div>
+          <div class="auth-view__info">
+            <div class="auth-view__info-item">
+              <CodeIcon />
+              <span>Версия {{ appVersion }}</span>
             </div>
-            <div v-if="isDevelopment" class="info-item">
-              <div class="info-icon environment">
-                <ServerIcon />
-              </div>
-              <div class="info-content">
-                <div class="info-label">Окружение</div>
-                <div class="info-value">{{ environment }}</div>
-              </div>
+
+            <div v-if="isDevelopment" class="auth-view__info-item">
+              <ServerIcon />
+              <span>{{ environment }}</span>
             </div>
+          </div>
+
+          <div class="auth-view__links">
+            <a href="#" class="auth-view__link">Документация</a>
+            <a href="#" class="auth-view__link">Поддержка</a>
           </div>
         </footer>
       </div>
     </div>
+
+    <AuthFormLoading v-if="isLoggingIn"
+                     :message="loginMessage"
+                     :fullscreen="false"
+                     class="auth-view__loading" />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import { useRouter } from 'vue-router';
-  import { useAuth } from '../composables/useAuth';
-  import { useServerHealth } from '../composables/useServerHealth';
   import { useAppStore } from '@/framework/stores/app.store';
   import { useToast } from '@/framework/ui/composables/useToast';
-  import AuthForm from '../components/AuthForm.vue';
-  import ServerStatus from '../components/ServerStatus.vue';
-  import { RobotIcon, MoonIcon, SunIcon, CodeIcon, ServerIcon } from '@/assets/icons';
+  import { AuthForm, ServerStatus } from '../components';
+  import AuthFormLoading from '../components/auth-form/AuthFormLoading.vue';
+  import { useAuth } from '../composables/use-auth';
+  import { useServerHealth } from '../composables/use-server-health';
+  import { RobotIcon, SunIcon, MoonIcon, CodeIcon, ServerIcon } from '@/assets/icons';
   import { APP_CONFIG } from '@/core/config/app.config';
   import { logger } from '@/core/utils/logger';
 
   const router = useRouter();
-  const auth = useAuth();
-  const toast = useToast();
   const appStore = useAppStore();
+  const toast = useToast();
+  const loggerContext = logger.create('AuthView');
+
+  // Авторизация
+  const auth = useAuth();
+  const isLoggingIn = computed(() => auth.isLoading.value);
+  const loginError = computed(() => auth.error.value);
+
+  // Здоровье сервера
   const serverHealth = useServerHealth({
     checkInterval: APP_CONFIG.API.HEALTH_CHECK_INTERVAL,
-    notifyOnStatusChange: true
+    notifyOnChange: true,
   });
 
-  const loggerContext = logger.create('AuthView');
-  const serverUrl = ref(APP_CONFIG.API.BASE_URL);
-  const isDevelopment = import.meta.env.DEV;
-  const localError = ref<string | null>(null);
-  const authFormRef = ref<{ cancelRequest: () => void }>();
+  const serverStatus = computed(() => serverHealth.status.value);
+  const isServerAvailable = computed(() => serverHealth.isOnline.value);
+  const lastServerCheck = computed(() => serverHealth.lastCheck.value);
+  const serverResponseTime = computed(() => serverHealth.lastResponseTime.value);
+  const isCheckingServer = computed(() => serverHealth.isChecking.value);
+  const serverUrl = APP_CONFIG.API.BASE_URL;
 
-  const themeClass = computed(() => `theme-${appStore.resolvedTheme}`);
-  const isDarkTheme = computed(() => appStore.isDark);
-
+  // Тема
+  const themeClass = computed(() => `theme-${appStore.theme.resolved}`);
+  const isDarkTheme = computed(() => appStore.theme.resolved === 'dark');
   const themeButtonTitle = computed(() =>
     isDarkTheme.value ? 'Переключить на светлую тему' : 'Переключить на темную тему'
   );
 
-  const toggleTheme = (): void => {
-    appStore.toggleTheme();
-    loggerContext.info('Theme toggled', { theme: appStore.currentTheme });
+  // Версия и окружение
+  const appVersion = APP_CONFIG.APP.VERSION;
+  const isDevelopment = import.meta.env.DEV;
+  const environment = import.meta.env.MODE || 'development';
+
+  // Локальное состояние
+  const loginMessage = ref('Выполняется вход в систему...');
+
+  // Методы
+  const toggleTheme = () => {
+    appStore.theme.toggleTheme();
+    loggerContext.debug('Theme toggled');
   };
 
-  const isServerAvailable = computed(() => {
-    return serverHealth.isOnline.value && serverHealth.isInitialized.value;
-  });
+  const checkServerHealth = async () => {
+    await serverHealth.manualCheck();
+  };
 
-  const appVersion = computed(() => {
-    return APP_CONFIG.APP.VERSION;
-  });
+  const handleLogin = async (credentials: { username: string; password: string }) => {
+    loggerContext.info('Login attempt', { username: credentials.username });
 
-  const environment = computed(() => {
-    return import.meta.env.MODE || 'development';
-  });
+    const success = await auth.login({
+      username: credentials.username,
+      password: credentials.password,
+    });
+
+    if (success) {
+      toast.success('Вход выполнен успешно');
+      loggerContext.info('Login successful, redirecting...');
+
+      // Даем время на обновление состояния
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (auth.isAuthenticated.value) {
+        await router.replace('/audit');
+      } else {
+        loggerContext.error('Authentication state mismatch after login');
+        toast.error('Ошибка аутентификации');
+      }
+    } else {
+      loggerContext.error('Login failed', { error: auth.error.value });
+    }
+  };
+
+  const cancelLogin = () => {
+    loggerContext.info('Login cancelled by user');
+    // В будущем можно добавить отмену запроса через API
+  };
+
+  const clearLoginError = () => {
+    auth.clearError();
+  };
 
   const getParticleStyle = (index: number) => {
-    const size = Math.random() * 4 + 2;
-    const duration = Math.random() * 20 + 15;
+    const size = Math.random() * 4 + 1;
+    const duration = Math.random() * 20 + 10;
     const delay = Math.random() * 5;
     const left = Math.random() * 100;
 
@@ -142,79 +186,28 @@
     };
   };
 
-  const handleLogin = async (credentials: { username: string; password: string }): Promise<void> => {
-    if (auth.isLoading.value || !isServerAvailable.value) return;
-
-    localError.value = null;
-    auth.clearError();
-    loggerContext.info('Login attempt', { username: credentials.username });
-
-    const success = await auth.login(credentials);
-
-    if (success) {
-      toast.success('Вход выполнен успешно!');
-      loggerContext.info('Login successful, redirecting to audit');
-
-      await nextTick();
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      if (auth.isAuthenticated.value) {
-        loggerContext.info('Authentication confirmed, redirecting to audit');
-        await router.replace('/audit');
-      } else {
-        loggerContext.error('Authentication state not updated after login', {
-          token: !!auth.token.value,
-          user: !!auth.user.value,
-          isAuthenticated: auth.isAuthenticated.value
-        });
-        toast.error('Ошибка аутентификации');
-      }
-    } else {
-      localError.value = auth.error.value;
-      loggerContext.error('Login failed', { error: auth.error.value });
-    }
-  };
-
-  const handleRetry = async (): Promise<void> => {
-    await serverHealth.manualCheck();
-  };
-
-  const handleCancelRequest = (): void => {
-    loggerContext.info('Login request cancelled by user');
-    localError.value = 'Запрос отменен пользователем';
-    // Можно также вызвать метод отмены в API сервисе, если он реализован
-  };
-
-  const clearError = (): void => {
-    localError.value = null;
-    auth.clearError();
-    appStore.setAuthError(null);
-  };
-
+  // Хуки жизненного цикла
   onMounted(async () => {
     loggerContext.info('AuthView mounted');
 
-    // Если пользователь уже аутентифицирован, проверяем токен
+    // Проверяем авторизацию
     if (auth.isAuthenticated.value) {
-      const isValid = await auth.validateCurrentToken();
+      const isValid = await auth.validateToken();
       if (!isValid) {
-        loggerContext.warn('Token invalid on AuthView mount, clearing auth');
-        appStore.clearAuth();
+        loggerContext.warn('Token invalid on mount, clearing auth');
+        auth.clearAuth();
         return;
       }
 
-      loggerContext.info('User already authenticated with valid token, redirecting to audit');
+      loggerContext.info('User already authenticated, redirecting');
       await router.replace('/audit');
       return;
     }
 
-    try {
-      await serverHealth.checkServerConnection();
-      serverHealth.startPeriodicChecks();
-      loggerContext.info('Server health checks started');
-    } catch (error) {
-      loggerContext.error('Failed to initialize server health checks', { error });
-    }
+    // Запускаем проверку сервера
+    await serverHealth.check();
+    serverHealth.startPeriodicChecks();
+    loggerContext.info('Server health monitoring started');
   });
 
   onUnmounted(() => {
@@ -232,12 +225,10 @@
     justify-content: center;
     padding: var(--spacing-md);
     position: relative;
-    font-family: var(--font-family-sans);
     overflow: hidden;
-    box-sizing: border-box;
-    transition: background-color var(--transition-normal);
-    background-color: var(--color-background);
+    background: var(--color-background);
     color: var(--color-text-primary);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
   }
 
   .auth-view__background {
@@ -247,6 +238,7 @@
     right: 0;
     bottom: 0;
     z-index: 1;
+    overflow: hidden;
   }
 
   .auth-view__gradient {
@@ -256,13 +248,13 @@
     right: 0;
     bottom: 0;
     background: var(--gradient-primary);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
-    opacity: 0.08;
+    opacity: 0.05;
+    animation: gradient-shift 20s ease infinite;
+    background-size: 200% 200%;
   }
 
   .theme-dark .auth-view__gradient {
-    opacity: 0.12;
+    opacity: 0.08;
   }
 
   .auth-view__particles {
@@ -278,35 +270,33 @@
     border-radius: var(--radius-full);
     animation: float linear infinite;
     pointer-events: none;
+    top: 110%;
   }
 
   .theme-light .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
 
   .theme-dark .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary-light) 30%, transparent);
+    background: color-mix(in srgb, var(--color-primary-light) 25%, transparent);
   }
 
   .auth-view__container {
     position: relative;
     z-index: 2;
     width: 100%;
-    max-width: min(420px, 95vw);
-    margin: 0 auto;
+    max-width: min(26rem, 95vw);
   }
 
   .auth-view__card {
-    backdrop-filter: blur(20px);
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border-card);
     border-radius: var(--radius-xl);
     padding: var(--spacing-xl);
     box-shadow: var(--shadow-xl);
-    border: 1px solid var(--color-border-card);
-    width: 100%;
+    backdrop-filter: blur(20px);
     position: relative;
     overflow: hidden;
-    transition: all var(--transition-normal);
-    background: var(--color-surface);
   }
 
     .auth-view__card::before {
@@ -315,28 +305,25 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 3px;
+      height: 0.25rem;
       background: var(--gradient-primary);
-      background-size: 200% 100%;
-      animation: shimmer 3s linear infinite;
     }
 
   .auth-view__header {
-    margin-bottom: var(--spacing-lg);
     display: flex;
-    align-items: flex-start;
     justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-md);
+  }
+
+  .auth-view__brand {
+    display: flex;
+    align-items: center;
     gap: var(--spacing-md);
   }
 
   .auth-view__logo {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    flex: 1;
-  }
-
-  .auth-view__logo-icon {
     width: 3rem;
     height: 3rem;
     display: flex;
@@ -344,77 +331,70 @@
     justify-content: center;
     background: var(--gradient-primary);
     border-radius: var(--radius-lg);
-    flex-shrink: 0;
     color: white;
-    box-shadow: var(--shadow-primary);
+    flex-shrink: 0;
   }
 
-    .auth-view__logo-icon svg {
-      width: 1.5rem;
-      height: 1.5rem;
-      color: currentColor;
+    .auth-view__logo svg {
+      width: 1.75rem;
+      height: 1.75rem;
     }
 
-  .auth-view__logo-text {
+  .auth-view__brand-info {
     flex: 1;
+    min-width: 0;
   }
 
   .auth-view__title {
     font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0 0 var(--spacing-xs) 0;
+    font-weight: var(--font-weight-bold);
+    margin: 0 0 var(--spacing-xs);
     background: var(--gradient-primary);
-    -webkit-background-clip: text;
     background-clip: text;
+    -webkit-background-clip: text;
     color: transparent;
     line-height: 1.2;
   }
 
   .auth-view__subtitle {
     font-size: 0.875rem;
+    color: var(--color-text-muted);
     margin: 0;
-    opacity: 0.8;
-    font-weight: 500;
-    color: var(--color-text-secondary);
     line-height: 1.4;
   }
 
   .auth-view__theme-toggle {
     padding: var(--spacing-sm);
-    background: var(--color-surface);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-normal);
-    width: 2.5rem;
-    height: 2.5rem;
+    color: var(--color-text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
     flex-shrink: 0;
-    color: var(--color-text-primary);
-    box-shadow: var(--shadow-sm);
   }
 
     .auth-view__theme-toggle:hover {
       background: var(--color-surface-hover);
-      border-color: var(--color-primary-light);
+      border-color: var(--color-primary);
       transform: scale(1.05);
-      box-shadow: var(--shadow-md);
     }
 
-    .auth-view__theme-toggle:focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 2px;
+    .auth-view__theme-toggle:active {
+      transform: scale(0.95);
     }
 
-  .auth-view__theme-icon svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: currentColor;
-  }
+    .auth-view__theme-toggle svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
 
-  .auth-view__status {
+  .auth-view__server-status {
     margin-bottom: var(--spacing-lg);
   }
 
@@ -423,74 +403,62 @@
   }
 
   .auth-view__footer {
-    padding-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
     border-top: 1px solid var(--color-border);
-  }
-
-  .auth-view__info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-md);
   }
 
-  .info-item {
+  .auth-view__info {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-md);
-    transition: background-color var(--transition-fast);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
   }
 
-    .info-item:hover {
-      background: var(--color-surface-hover);
-    }
-
-  .info-icon {
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--radius-md);
+  .auth-view__info-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: white;
-  }
-
-    .info-icon.version {
-      background: var(--color-info);
-    }
-
-    .info-icon.environment {
-      background: var(--color-success);
-    }
-
-    .info-icon svg {
-      width: 1rem;
-      height: 1rem;
-    }
-
-  .info-content {
-    display: flex;
-    flex-direction: column;
     gap: var(--spacing-xs);
-  }
-
-  .info-label {
     font-size: 0.75rem;
-    font-weight: 500;
     color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
 
-  .info-value {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
+    .auth-view__info-item svg {
+      width: 0.875rem;
+      height: 0.875rem;
+      opacity: 0.7;
+    }
+
+  .auth-view__links {
+    display: flex;
+    gap: var(--spacing-md);
   }
 
-  @keyframes gradientShift {
+  .auth-view__link {
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+    .auth-view__link:hover {
+      color: var(--color-primary-dark);
+      text-decoration: underline;
+    }
+
+  .auth-view__loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: color-mix(in srgb, var(--color-background) 90%, transparent);
+    backdrop-filter: blur(4px);
+  }
+
+  @keyframes gradient-shift {
     0% {
       background-position: 0% 50%;
     }
@@ -506,7 +474,7 @@
 
   @keyframes float {
     0% {
-      transform: translateY(100vh) translateX(0) rotate(0deg);
+      transform: translateY(0) translateX(0) rotate(0deg);
       opacity: 0;
     }
 
@@ -519,18 +487,8 @@
     }
 
     100% {
-      transform: translateY(-100px) translateX(100px) rotate(360deg);
+      transform: translateY(-120vh) translateX(20px) rotate(360deg);
       opacity: 0;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-
-    100% {
-      background-position: 200% 0;
     }
   }
 
@@ -541,14 +499,30 @@
 
     .auth-view__particle {
       animation: none;
-    }
-
-    .auth-view__card::before {
-      animation: none;
+      display: none;
     }
 
     .auth-view__theme-toggle:hover {
       transform: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .auth-view {
+      padding: var(--spacing-sm);
+    }
+
+    .auth-view__card {
+      padding: var(--spacing-lg);
+    }
+
+    .auth-view__header {
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    .auth-view__theme-toggle {
+      align-self: flex-end;
     }
   }
 </style>
