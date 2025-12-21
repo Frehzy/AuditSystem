@@ -1,12 +1,16 @@
-<!-- src/modules/auth/views/AuthView.vue -->
+<!-- Страница авторизации -->
 <template>
   <div :class="['auth-view', themeClass]">
-    <div class="auth-view__background">
-      <div class="auth-view__gradient"></div>
-      <div class="auth-view__particles">
-        <div v-for="i in 20" :key="i" class="auth-view__particle" :style="getParticleStyle(i)"></div>
-      </div>
+    <!-- Частицы на заднем плане -->
+    <div class="auth-view__particles">
+      <div v-for="particle in particles"
+           :key="particle.id"
+           class="auth-view__particle"
+           :style="getParticleStyle(particle)"></div>
     </div>
+
+    <!-- Фон с градиентом - поверх частиц -->
+    <div class="auth-view__background"></div>
 
     <div class="auth-view__container">
       <div class="auth-view__card">
@@ -21,10 +25,10 @@
             </div>
           </div>
 
-          <button @click="toggleTheme"
-                  class="auth-view__theme-toggle"
+          <button class="auth-view__theme-toggle"
                   :title="themeButtonTitle"
-                  aria-label="Переключить тему">
+                  aria-label="Переключить тему"
+                  @click="toggleTheme">
             <SunIcon v-if="isDarkTheme" />
             <MoonIcon v-else />
           </button>
@@ -36,16 +40,14 @@
                       :response-time="serverResponseTime"
                       :is-checking="isCheckingServer"
                       show-retry
-                      @retry="checkServerHealth"
-                      class="auth-view__server-status" />
+                      class="auth-view__server-status"
+                      @retry="checkServerHealth" />
 
         <AuthForm :is-loading="isLoggingIn"
-                  :error="loginError"
                   :server-available="isServerAvailable"
+                  class="auth-view__form"
                   @submit="handleLogin"
-                  @cancel="cancelLogin"
-                  @clear-error="clearLoginError"
-                  class="auth-view__form" />
+                  @cancel="cancelLogin" />
 
         <footer class="auth-view__footer">
           <div class="auth-view__info">
@@ -53,23 +55,13 @@
               <CodeIcon />
               <span>Версия {{ appVersion }}</span>
             </div>
-
-            <div v-if="isDevelopment" class="auth-view__info-item">
-              <ServerIcon />
-              <span>{{ environment }}</span>
-            </div>
-          </div>
-
-          <div class="auth-view__links">
-            <a href="#" class="auth-view__link">Документация</a>
-            <a href="#" class="auth-view__link">Поддержка</a>
           </div>
         </footer>
       </div>
     </div>
 
     <AuthFormLoading v-if="isLoggingIn"
-                     :message="loginMessage"
+                     message="Выполняется вход в систему..."
                      :fullscreen="false"
                      class="auth-view__loading" />
   </div>
@@ -78,30 +70,27 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted } from 'vue';
   import { useRouter } from 'vue-router';
-  import { useAppStore } from '@/framework/stores/app.store';
-  import { useToast } from '@/framework/ui/composables/useToast';
+  import { useThemeStore } from '@/framework/stores';
   import { AuthForm, ServerStatus } from '../components';
   import AuthFormLoading from '../components/auth-form/AuthFormLoading.vue';
   import { useAuth } from '../composables/use-auth';
   import { useServerHealth } from '../composables/use-server-health';
-  import { RobotIcon, SunIcon, MoonIcon, CodeIcon, ServerIcon } from '@/assets/icons';
+  import { RobotIcon, SunIcon, MoonIcon, CodeIcon } from '@/assets/icons';
   import { APP_CONFIG } from '@/core/config/app.config';
-  import { logger } from '@/core/utils/logger';
+  import { logger } from '@/core/services/logger/logger.service';
 
   const router = useRouter();
-  const appStore = useAppStore();
-  const toast = useToast();
+  const themeStore = useThemeStore();
   const loggerContext = logger.create('AuthView');
 
   // Авторизация
   const auth = useAuth();
   const isLoggingIn = computed(() => auth.isLoading.value);
-  const loginError = computed(() => auth.error.value);
 
   // Здоровье сервера
   const serverHealth = useServerHealth({
     checkInterval: APP_CONFIG.API.HEALTH_CHECK_INTERVAL,
-    notifyOnChange: true,
+    notifyOnChange: true
   });
 
   const serverStatus = computed(() => serverHealth.status.value);
@@ -112,24 +101,130 @@
   const serverUrl = APP_CONFIG.API.BASE_URL;
 
   // Тема
-  const themeClass = computed(() => `theme-${appStore.theme.resolved}`);
-  const isDarkTheme = computed(() => appStore.theme.resolved === 'dark');
+  const themeClass = computed(() => `theme-${themeStore.resolved}`);
+  const isDarkTheme = computed(() => themeStore.resolved === 'dark');
   const themeButtonTitle = computed(() =>
     isDarkTheme.value ? 'Переключить на светлую тему' : 'Переключить на темную тему'
   );
 
-  // Версия и окружение
+  // Версия
   const appVersion = APP_CONFIG.APP.VERSION;
-  const isDevelopment = import.meta.env.DEV;
-  const environment = import.meta.env.MODE || 'development';
 
-  // Локальное состояние
-  const loginMessage = ref('Выполняется вход в систему...');
+  // Частицы
+  interface Particle {
+    id: number;
+    x: number; // позиция X в %
+    y: number; // позиция Y в %
+    size: number; // размер в px
+    speed: number; // скорость подъема (px за анимацию)
+    opacity: number; // прозрачность
+    colorIndex: number; // индекс цвета
+    drift: number; // дрейф по X (px за анимацию)
+    progress: number; // прогресс анимации (0-100%)
+    isActive: boolean; // активна ли частица
+  }
+
+  const particles = ref<Particle[]>([]);
+  const maxParticles = 30;
+  let animationFrameId: number;
+  let lastTimestamp = 0;
+
+  // Создание новой частицы
+  const createParticle = (id: number): Particle => {
+    return {
+      id,
+      x: Math.random() * 100, // случайная позиция X по всей ширине
+      y: Math.random() * 100, // случайная позиция Y по всей высоте
+      size: Math.random() * 5, // размер 2-5px
+      speed: Math.random() * 0.2, // скорость 0.2-0.7 px за кадр
+      opacity: Math.random() * 0.9, // прозрачность 0.3-0.9
+      colorIndex: Math.floor(Math.random() * 5), // один из 5 цветов
+      drift: (Math.random() - 0.5) * 0.3, // дрейф -0.15 до 0.15 px за кадр
+      progress: 0,
+      isActive: true
+    };
+  };
+
+  // Инициализация частиц
+  const initParticles = () => {
+    particles.value = [];
+    for (let i = 0; i < maxParticles; i++) {
+      particles.value.push(createParticle(i));
+    }
+  };
+
+  // Анимация частиц
+  const animateParticles = (timestamp: number) => {
+    if (!lastTimestamp) lastTimestamp = timestamp;
+    const deltaTime = timestamp - lastTimestamp;
+    lastTimestamp = timestamp;
+
+    // Обновляем позиции частиц
+    particles.value.forEach(particle => {
+      if (particle.isActive) {
+        // Увеличиваем прогресс
+        particle.progress += particle.speed;
+
+        // Обновляем позицию Y (поднимаем вверх)
+        particle.y -= particle.speed;
+
+        // Добавляем дрейф по X
+        particle.x += particle.drift;
+
+        // Если частица ушла за верхнюю границу, сбрасываем её
+        if (particle.y < -10) {
+          // Сбрасываем частицу
+          particle.y = 110; // начинаем снизу за пределами экрана
+          particle.x = Math.random() * 100; // случайная позиция X
+          particle.progress = 0;
+          particle.speed = Math.random() * 0.5 + 0.2;
+          particle.opacity = Math.random() * 0.6 + 0.3;
+          particle.colorIndex = Math.floor(Math.random() * 5);
+          particle.drift = (Math.random() - 0.5) * 0.3;
+        }
+
+        // Если частица ушла слишком далеко по X, корректируем
+        if (particle.x < -10) particle.x = 110;
+        if (particle.x > 110) particle.x = -10;
+      }
+    });
+
+    animationFrameId = requestAnimationFrame(animateParticles);
+  };
+
+  const getParticleStyle = (particle: Particle) => {
+    const colors = [
+      'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+      'linear-gradient(45deg, #10b981, #3b82f6)',
+      'linear-gradient(45deg, #8b5cf6, #ec4899)',
+      'linear-gradient(45deg, #f59e0b, #ef4444)',
+      'linear-gradient(45deg, #06b6d4, #10b981)'
+    ];
+
+    const darkColors = [
+      'linear-gradient(45deg, #60a5fa, #a78bfa)',
+      'linear-gradient(45deg, #34d399, #60a5fa)',
+      'linear-gradient(45deg, #a78bfa, #f472b6)',
+      'linear-gradient(45deg, #fbbf24, #f87171)',
+      'linear-gradient(45deg, #22d3ee, #34d399)'
+    ];
+
+    return {
+      width: `${particle.size}px`,
+      height: `${particle.size}px`,
+      left: `${particle.x}%`,
+      top: `${particle.y}%`,
+      opacity: particle.opacity,
+      background: isDarkTheme.value ? darkColors[particle.colorIndex] : colors[particle.colorIndex],
+      transform: `translate(-50%, -50%)`, // центрируем частицу
+      transition: 'opacity 1.5s ease, transform 0.1s linear' // плавное появление
+    };
+  };
 
   // Методы
   const toggleTheme = () => {
-    appStore.theme.toggleTheme();
-    loggerContext.debug('Theme toggled');
+    themeStore.toggleTheme();
+    loggerContext.debug('Тема переключена');
   };
 
   const checkServerHealth = async () => {
@@ -137,155 +232,134 @@
   };
 
   const handleLogin = async (credentials: { username: string; password: string }) => {
-    loggerContext.info('Login attempt', { username: credentials.username });
+    loggerContext.info('Попытка входа', { username: credentials.username });
 
     const success = await auth.login({
       username: credentials.username,
-      password: credentials.password,
+      password: credentials.password
     });
 
     if (success) {
-      toast.success('Вход выполнен успешно');
-      loggerContext.info('Login successful, redirecting...');
+      loggerContext.info('Вход успешен, перенаправление...');
 
       // Даем время на обновление состояния
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       if (auth.isAuthenticated.value) {
         await router.replace('/audit');
       } else {
-        loggerContext.error('Authentication state mismatch after login');
-        toast.error('Ошибка аутентификации');
+        loggerContext.error('Несоответствие состояния аутентификации после входа');
       }
     } else {
-      loggerContext.error('Login failed', { error: auth.error.value });
+      loggerContext.error('Ошибка входа', { error: auth.error.value });
     }
   };
 
   const cancelLogin = () => {
-    loggerContext.info('Login cancelled by user');
-    // В будущем можно добавить отмену запроса через API
-  };
-
-  const clearLoginError = () => {
-    auth.clearError();
-  };
-
-  const getParticleStyle = (index: number) => {
-    const size = Math.random() * 4 + 1;
-    const duration = Math.random() * 20 + 10;
-    const delay = Math.random() * 5;
-    const left = Math.random() * 100;
-
-    return {
-      width: `${size}px`,
-      height: `${size}px`,
-      left: `${left}%`,
-      animationDuration: `${duration}s`,
-      animationDelay: `${delay}s`,
-    };
+    loggerContext.info('Вход отменен пользователем');
   };
 
   // Хуки жизненного цикла
   onMounted(async () => {
-    loggerContext.info('AuthView mounted');
+    loggerContext.info('AuthView смонтирован');
 
     // Проверяем авторизацию
     if (auth.isAuthenticated.value) {
       const isValid = await auth.validateToken();
       if (!isValid) {
-        loggerContext.warn('Token invalid on mount, clearing auth');
-        auth.clearAuth();
+        loggerContext.warn('Токен недействителен при монтировании, очистка аутентификации');
         return;
       }
 
-      loggerContext.info('User already authenticated, redirecting');
+      loggerContext.info('Пользователь уже авторизован, перенаправление');
       await router.replace('/audit');
       return;
     }
 
+    // Инициализируем и запускаем анимацию частиц
+    initParticles();
+    animationFrameId = requestAnimationFrame(animateParticles);
+
     // Запускаем проверку сервера
     await serverHealth.check();
     serverHealth.startPeriodicChecks();
-    loggerContext.info('Server health monitoring started');
+    loggerContext.info('Мониторинг здоровья сервера запущен');
   });
 
   onUnmounted(() => {
     serverHealth.stopPeriodicChecks();
-    loggerContext.info('AuthView unmounted');
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+    loggerContext.info('AuthView размонтирован');
   });
 </script>
 
 <style scoped>
   .auth-view {
-    min-height: 100vh;
-    min-height: 100dvh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: var(--spacing-md);
-    position: relative;
-    overflow: hidden;
+    overflow: auto;
     background: var(--color-background);
     color: var(--color-text-primary);
     transition: background-color var(--transition-normal), color var(--transition-normal);
+    z-index: 1000;
   }
 
-  .auth-view__background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-    overflow: hidden;
-  }
-
-  .auth-view__gradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--gradient-primary);
-    opacity: 0.05;
-    animation: gradient-shift 20s ease infinite;
-    background-size: 200% 200%;
-  }
-
-  .theme-dark .auth-view__gradient {
-    opacity: 0.08;
-  }
-
+  /* Частицы - самый задний слой */
   .auth-view__particles {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1; /* Самый низкий слой */
+    pointer-events: none;
+    overflow: hidden;
   }
 
   .auth-view__particle {
     position: absolute;
-    border-radius: var(--radius-full);
-    animation: float linear infinite;
+    border-radius: 50%;
     pointer-events: none;
-    top: 110%;
-  }
-
-  .theme-light .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    filter: blur(0.8px);
+    will-change: transform, opacity; /* Оптимизация анимации */
   }
 
   .theme-dark .auth-view__particle {
-    background: color-mix(in srgb, var(--color-primary-light) 25%, transparent);
+    filter: blur(0.5px);
+  }
+
+  /* Градиентный фон - поверх частиц, но под контентом */
+  .auth-view__background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+    z-index: 2; /* Между частицами и контентом */
+    pointer-events: none;
+  }
+
+  .theme-dark .auth-view__background {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
   }
 
   .auth-view__container {
     position: relative;
-    z-index: 2;
+    z-index: 3; /* Самый верхний слой */
     width: 100%;
-    max-width: min(26rem, 95vw);
+    max-width: 420px;
+    padding: var(--spacing-sm);
+    margin: auto;
   }
 
   .auth-view__card {
@@ -305,8 +379,9 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 0.25rem;
-      background: var(--gradient-primary);
+      height: 4px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     }
 
   .auth-view__header {
@@ -324,20 +399,20 @@
   }
 
   .auth-view__logo {
-    width: 3rem;
-    height: 3rem;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--gradient-primary);
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     border-radius: var(--radius-lg);
     color: white;
     flex-shrink: 0;
   }
 
     .auth-view__logo svg {
-      width: 1.75rem;
-      height: 1.75rem;
+      width: 24px;
+      height: 24px;
     }
 
   .auth-view__brand-info {
@@ -348,11 +423,7 @@
   .auth-view__title {
     font-size: 1.25rem;
     font-weight: var(--font-weight-bold);
-    margin: 0 0 var(--spacing-xs);
-    background: var(--gradient-primary);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
+    margin: 0 0 4px;
     line-height: 1.2;
   }
 
@@ -364,7 +435,7 @@
   }
 
   .auth-view__theme-toggle {
-    padding: var(--spacing-sm);
+    padding: 8px;
     background: var(--color-surface-hover);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -374,8 +445,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
   }
 
@@ -390,8 +461,8 @@
     }
 
     .auth-view__theme-toggle svg {
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 20px;
+      height: 20px;
     }
 
   .auth-view__server-status {
@@ -405,46 +476,25 @@
   .auth-view__footer {
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
   }
 
   .auth-view__info {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
+    justify-content: center;
   }
 
   .auth-view__info-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 8px;
     font-size: 0.75rem;
     color: var(--color-text-muted);
   }
 
     .auth-view__info-item svg {
-      width: 0.875rem;
-      height: 0.875rem;
+      width: 14px;
+      height: 14px;
       opacity: 0.7;
-    }
-
-  .auth-view__links {
-    display: flex;
-    gap: var(--spacing-md);
-  }
-
-  .auth-view__link {
-    font-size: 0.75rem;
-    color: var(--color-primary);
-    text-decoration: none;
-    transition: color var(--transition-fast);
-  }
-
-    .auth-view__link:hover {
-      color: var(--color-primary-dark);
-      text-decoration: underline;
     }
 
   .auth-view__loading {
@@ -453,53 +503,19 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 3;
-    background: color-mix(in srgb, var(--color-background) 90%, transparent);
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(4px);
   }
 
-  @keyframes gradient-shift {
-    0% {
-      background-position: 0% 50%;
-    }
-
-    50% {
-      background-position: 100% 50%;
-    }
-
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-
-  @keyframes float {
-    0% {
-      transform: translateY(0) translateX(0) rotate(0deg);
-      opacity: 0;
-    }
-
-    10% {
-      opacity: 1;
-    }
-
-    90% {
-      opacity: 1;
-    }
-
-    100% {
-      transform: translateY(-120vh) translateX(20px) rotate(360deg);
-      opacity: 0;
-    }
+  .theme-dark .auth-view__loading {
+    background: rgba(0, 0, 0, 0.9);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .auth-view__gradient {
-      animation: none;
-    }
-
     .auth-view__particle {
-      animation: none;
-      display: none;
+      animation: none !important;
+      opacity: 0.1 !important;
     }
 
     .auth-view__theme-toggle:hover {
@@ -510,6 +526,14 @@
   @media (max-width: 640px) {
     .auth-view {
       padding: var(--spacing-sm);
+      align-items: flex-start;
+      padding-top: 20px;
+    }
+
+    .auth-view__container {
+      max-width: 100%;
+      padding: 0;
+      margin-top: 0;
     }
 
     .auth-view__card {
@@ -523,6 +547,34 @@
 
     .auth-view__theme-toggle {
       align-self: flex-end;
+    }
+
+    .auth-view__logo {
+      width: 40px;
+      height: 40px;
+    }
+
+      .auth-view__logo svg {
+        width: 20px;
+        height: 20px;
+      }
+
+    /* На мобильных уменьшаем количество частиц */
+    .auth-view__particle:nth-child(n+20) {
+      display: none;
+    }
+  }
+
+  @media (max-height: 700px) {
+    .auth-view {
+      align-items: flex-start;
+      padding-top: 20px;
+      overflow-y: auto;
+    }
+
+    .auth-view__card {
+      margin-top: 20px;
+      margin-bottom: 20px;
     }
   }
 </style>

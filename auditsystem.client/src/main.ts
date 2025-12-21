@@ -3,8 +3,11 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
-import { logger } from '@/core/utils/logger';
-import './assets/styles/theme.css'
+import { logger } from '@/core/services/logger/logger.service';
+import { piniaPlugin } from '@/framework/plugins/pinia.plugin';
+import { routerPlugin } from '@/framework/plugins/router.plugin';
+import { i18nPlugin } from '@/framework/plugins/i18n.plugin';
+import './assets/styles/globals.css';
 
 /**
  * Инициализация приложения
@@ -13,15 +16,21 @@ const initializeApp = async () => {
   try {
     // Создание экземпляра приложения
     const app = createApp(App);
+
+    // Инициализация Pinia
     const pinia = createPinia();
+    pinia.use(piniaPlugin);
 
     // Регистрация плагинов
     app.use(pinia);
     app.use(router);
+    app.use(routerPlugin);
+    app.use(i18nPlugin);
 
     // Глобальные свойства для отладки
     if (import.meta.env.DEV) {
       app.config.globalProperties.$logger = logger;
+      app.config.globalProperties.$pinia = pinia;
     }
 
     // Глобальная обработка ошибок Vue

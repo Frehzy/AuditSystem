@@ -1,0 +1,13 @@
+/* Gradient tokens */
+:root {
+  /* Composite gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  --gradient-primary-hover: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-dark) 100%);
+  --gradient-error: linear-gradient(135deg, var(--color-error) 0%, var(--color-error-dark) 100%);
+  --gradient-warning: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
+  --gradient-info: linear-gradient(135deg, var(--color-info) 0%, var(--color-info-dark) 100%);
+  /* Utility gradients */
+  --gradient-surface: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-hover) 100%);
+  --gradient-card: linear-gradient(180deg, var(--color-card-bg) 0%, color-mix(in srgb, var(--color-card-bg) 95%, transparent) 100%);
+}

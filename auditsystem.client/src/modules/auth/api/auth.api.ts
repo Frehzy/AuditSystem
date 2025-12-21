@@ -1,6 +1,10 @@
-// src/modules/auth/api/auth.api.ts
-import { apiClient } from '@/core/services/api/api-client.service';
-import { logger } from '@/core/utils/logger';
+/**
+ * API клиент для модуля авторизации
+ */
+
+import { httpClient } from '@/core/services/api/http-client.service';
+import { ApiErrorHandler } from '@/core/services/api/api-error.handler';
+import { logger } from '@/core/services/logger/logger.service';
 import type {
   LoginRequest,
   LogoutRequest,
@@ -8,80 +12,83 @@ import type {
   RefreshTokenRequest,
   LoginResponse,
   ValidateTokenResponse,
-  ApiResponse,
-} from '../types';
+  RefreshTokenResponse
+} from './types';
 
-class AuthApi {
+export class AuthApi {
   private readonly logger = logger.create('AuthApi');
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      this.logger.info('Login request', { username: credentials.username });
+      this.logger.info('Запрос входа', { username: credentials.username });
 
-      const response = await apiClient.post<LoginResponse>('/auth/login', credentials, {
+      const response = await httpClient.post<LoginResponse>('/Auth/login', credentials, {
         requireAuth: false,
-        timeout: 15000,
+        timeout: 15000
       });
 
-      this.logger.info('Login successful', {
-        userId: response.user?.id,
-        username: response.user?.username
+      this.logger.info('Вход выполнен успешно', {
+        userId: response.data.user?.id,
+        username: response.data.user?.username
       });
 
-      return response;
-    } catch (error) {
-      this.logger.error('Login failed', { error, username: credentials.username });
+      return response.data;
+    } catch (error: any) {
+      ApiErrorHandler.handle(error, 'Auth:Login');
       throw error;
     }
   }
 
   async logout(data: LogoutRequest): Promise<void> {
     try {
-      this.logger.info('Logout request', { userId: data.userId });
+      this.logger.info('Запрос выхода', { userId: data.userId });
 
-      await apiClient.post('/auth/logout', data, {
+      await httpClient.post('/Auth/logout', data, {
         requireAuth: true,
-        timeout: 10000,
+        timeout: 10000
       });
 
-      this.logger.info('Logout successful', { userId: data.userId });
-    } catch (error) {
-      this.logger.warn('Logout error', { error, userId: data.userId });
-      // Не бросаем ошибку, так как выход должен завершиться в любом случае
+      this.logger.info('Выход выполнен успешно', { userId: data.userId });
+    } catch (error: any) {
+      // Не бросаем ошибку для logout, просто логируем
+      this.logger.warn('Ошибка API выхода', { error: error.message, userId: data.userId });
     }
   }
 
   async validateToken(data: ValidateTokenRequest): Promise<ValidateTokenResponse> {
     try {
-      const response = await apiClient.post<ValidateTokenResponse>('/auth/validate', data, {
+      this.logger.debug('Запрос проверки токена');
+
+      const response = await httpClient.post<ValidateTokenResponse>('/Auth/validate', data, {
         requireAuth: false,
-        timeout: 10000,
+        timeout: 10000
       });
 
-      this.logger.debug('Token validation result', { isValid: response.isValid });
-      return response;
-    } catch (error) {
-      this.logger.error('Token validation failed', { error });
+      this.logger.debug('Результат проверки токена', { isValid: response.data.isValid });
+      return response.data;
+    } catch (error: any) {
+      this.logger.error('Ошибка проверки токена', { error: error.message });
       return { isValid: false };
     }
   }
 
-  async refreshToken(data: RefreshTokenRequest): Promise<LoginResponse> {
+  async refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
     try {
-      this.logger.info('Refresh token request');
+      this.logger.info('Запрос обновления токена');
 
-      const response = await apiClient.post<LoginResponse>('/auth/refresh', data, {
+      const response = await httpClient.post<RefreshTokenResponse>('/Auth/refresh', data, {
         requireAuth: false,
-        timeout: 10000,
+        timeout: 10000
       });
 
-      this.logger.info('Token refreshed successfully');
-      return response;
-    } catch (error) {
-      this.logger.error('Token refresh failed', { error });
+      this.logger.info('Токен успешно обновлен');
+      return response.data;
+    } catch (error: any) {
+      ApiErrorHandler.handle(error, 'Auth:RefreshToken');
       throw error;
     }
   }
 }
 
+// Экспортируем синглтон
 export const authApi = new AuthApi();

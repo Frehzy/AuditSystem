@@ -1,12 +1,12 @@
 <template>
-  <teleport to="body">
-    <transition-group name="toast-list" tag="div" class="base-toast-container">
-      <div v-for="toast in toasts"
+  <Teleport to="body">
+    <TransitionGroup name="toast-list" tag="div" :class="['base-toast-container', positionClass]">
+      <div v-for="toast in visibleToasts"
            :key="toast.id"
            :class="['base-toast', `base-toast--${toast.type}`]"
            role="alert"
            :aria-live="getAriaLive(toast.type)"
-           :aria-atomic="true"
+           aria-atomic="true"
            @mouseenter="pauseToast(toast.id)"
            @mouseleave="resumeToast(toast.id)">
         <div class="base-toast__content">
@@ -15,7 +15,7 @@
           </div>
 
           <div class="base-toast__body">
-            <div class="base-toast__title" v-if="toast.title">
+            <div v-if="toast.title" class="base-toast__title">
               {{ toast.title }}
             </div>
             <div class="base-toast__message">
@@ -24,9 +24,9 @@
           </div>
 
           <button v-if="toast.dismissible"
-                  @click="handleDismissToast(toast.id)"
                   class="base-toast__close"
-                  :aria-label="`Закрыть ${getToastTypeName(toast.type)} уведомление`">
+                  :aria-label="`Закрыть ${getToastTypeName(toast.type)} уведомление`"
+                  @click="handleDismissToast(toast.id)">
             <CloseIcon />
           </button>
         </div>
@@ -34,19 +34,19 @@
         <!-- Прогресс-бар с улучшенной видимостью -->
         <div v-if="toast.duration && toast.duration > 0" class="base-toast__progress">
           <div class="base-toast__progress-bar"
-               :style="getProgressBarStyle(toast)"
-               :class="{ 'base-toast__progress-bar--paused': isToastPaused(toast.id) }"></div>
+               :class="{ 'base-toast__progress-bar--paused': isToastPaused(toast.id) }"
+               :style="getProgressBarStyle(toast)"></div>
         </div>
       </div>
-    </transition-group>
-  </teleport>
+    </TransitionGroup>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-  import { ref, onUnmounted, defineAsyncComponent } from 'vue'
+  import { ref, onUnmounted, defineAsyncComponent, computed } from 'vue';
   import type { Component } from 'vue';
-  import { notificationService } from '@/core/services/ui/notification.service';
-  import type { Notification } from '@/core/types/services';
+  import { notificationService } from '@/core/services/notification/notification.service';
+  import type { Notification } from '@/core/services/notification/notification.types';
 
   // Асинхронные импорты иконок
   const SuccessIcon = defineAsyncComponent(() => import('@/assets/icons/status/SuccessIcon.vue'));
@@ -61,12 +61,21 @@
   const progressIntervals = new Map<string, number>();
   const progressStates = ref<Map<string, number>>(new Map());
 
+  // Позиция уведомлений
+  const position = ref<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
+  const positionClass = computed(() => `base-toast-container--${position.value}`);
+
+  // Видимые тосты с ограничением по количеству
+  const visibleToasts = computed(() => {
+    return toasts.value.slice(0, 5); // Максимум 5 уведомлений
+  });
+
   // Подписка на изменения уведомлений
   const unsubscribe = notificationService.subscribe((notifications: Notification[]) => {
     toasts.value = notifications;
 
     // Управление таймерами для новых уведомлений
-    notifications.forEach(notification => {
+    notifications.forEach((notification) => {
       if (!toastTimers.has(notification.id) && notification.duration && notification.duration > 0) {
         startToastTimer(notification.id, notification.duration);
         startProgressAnimation(notification.id, notification.duration);
@@ -74,7 +83,7 @@
     });
 
     // Очистка таймеров для удаленных уведомлений
-    const currentIds = new Set(notifications.map(n => n.id));
+    const currentIds = new Set(notifications.map((n) => n.id));
     toastTimers.forEach((timer, id) => {
       if (!currentIds.has(id)) {
         clearToastTimer(id);
@@ -87,21 +96,31 @@
   // Функция для получения компонента иконки по типу
   const getIconComponent = (type: Notification['type']): Component => {
     switch (type) {
-      case 'success': return SuccessIcon;
-      case 'error': return ErrorIcon;
-      case 'warning': return WarningIcon;
-      case 'info': return InfoIcon;
-      default: return InfoIcon;
+      case 'success':
+        return SuccessIcon;
+      case 'error':
+        return ErrorIcon;
+      case 'warning':
+        return WarningIcon;
+      case 'info':
+        return InfoIcon;
+      default:
+        return InfoIcon;
     }
   };
 
   const getToastTypeName = (type: Notification['type']): string => {
     switch (type) {
-      case 'success': return 'успех';
-      case 'error': return 'ошибка';
-      case 'warning': return 'предупреждение';
-      case 'info': return 'информация';
-      default: return 'уведомление';
+      case 'success':
+        return 'успех';
+      case 'error':
+        return 'ошибка';
+      case 'warning':
+        return 'предупреждение';
+      case 'info':
+        return 'информация';
+      default:
+        return 'уведомление';
     }
   };
 
@@ -110,7 +129,7 @@
     clearProgressInterval(id);
     pausedToasts.delete(id);
     progressStates.value.delete(id);
-    notificationService.dismiss(id);
+    notificationService.removeNotification(id);
   };
 
   const startToastTimer = (id: string, duration: number) => {
@@ -162,15 +181,16 @@
   };
 
   const pauseToast = (id: string) => {
-    const toast = toasts.value.find(t => t.id === id);
+    const toast = toasts.value.find((t) => t.id === id);
     if (toast && toast.duration) {
-      const elapsed = Date.now() - toast.createdAt;
+      const elapsed = Date.now() - toast.createdAt.getTime();
       const remainingTime = toast.duration - elapsed;
 
       if (remainingTime > 0) {
         pausedToasts.set(id, remainingTime);
         clearToastTimer(id);
         clearProgressInterval(id);
+        notificationService.pauseNotification(id);
       }
     }
   };
@@ -178,10 +198,11 @@
   const resumeToast = (id: string) => {
     const remainingTime = pausedToasts.get(id);
     if (remainingTime && remainingTime > 0) {
-      const toast = toasts.value.find(t => t.id === id);
+      const toast = toasts.value.find((t) => t.id === id);
       if (toast) {
         startToastTimer(id, remainingTime);
         startProgressAnimation(id, remainingTime);
+        notificationService.resumeNotification(id);
       }
     }
     pausedToasts.delete(id);
@@ -210,10 +231,10 @@
   onUnmounted(() => {
     unsubscribe();
 
-    toastTimers.forEach(timer => clearTimeout(timer));
+    toastTimers.forEach((timer) => clearTimeout(timer));
     toastTimers.clear();
 
-    progressIntervals.forEach(interval => clearInterval(interval));
+    progressIntervals.forEach((interval) => clearInterval(interval));
     progressIntervals.clear();
 
     pausedToasts.clear();
@@ -224,14 +245,37 @@
 <style scoped>
   .base-toast-container {
     position: fixed;
-    top: var(--spacing-xl, 20px);
-    right: var(--spacing-xl, 20px);
-    z-index: 1000;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm, 12px);
     max-width: 400px;
     width: calc(100vw - 40px);
+    pointer-events: none;
+  }
+
+  .base-toast-container--top-right {
+    top: var(--spacing-xl, 20px);
+    right: var(--spacing-xl, 20px);
+    align-items: flex-end;
+  }
+
+  .base-toast-container--top-left {
+    top: var(--spacing-xl, 20px);
+    left: var(--spacing-xl, 20px);
+    align-items: flex-start;
+  }
+
+  .base-toast-container--bottom-right {
+    bottom: var(--spacing-xl, 20px);
+    right: var(--spacing-xl, 20px);
+    align-items: flex-end;
+  }
+
+  .base-toast-container--bottom-left {
+    bottom: var(--spacing-xl, 20px);
+    left: var(--spacing-xl, 20px);
+    align-items: flex-start;
   }
 
   .base-toast {
@@ -244,6 +288,7 @@
     border: 1px solid var(--color-border);
     backdrop-filter: blur(10px);
     transition: transform var(--transition-fast, 0.15s), box-shadow var(--transition-fast, 0.15s);
+    pointer-events: auto;
   }
 
     .base-toast:hover {
@@ -470,6 +515,15 @@
       left: var(--spacing-sm, 10px);
       width: auto;
       max-width: none;
+    }
+
+    .base-toast-container--top-right,
+    .base-toast-container--top-left,
+    .base-toast-container--bottom-right,
+    .base-toast-container--bottom-left {
+      left: var(--spacing-sm, 10px);
+      right: var(--spacing-sm, 10px);
+      align-items: stretch;
     }
 
     .base-toast__content {

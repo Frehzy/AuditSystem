@@ -1,14 +1,20 @@
-// src/modules/auth/services/auth.service.ts
-import { authApi } from '../api';
-import { logger } from '@/core/utils/logger';
-import type { LoginRequest, UserDto } from '../types';
+/**
+ * Сервис бизнес-логики авторизации
+ */
 
-class AuthService {
+import { authApi } from '../api';
+import { logger } from '@/core/services/logger/logger.service';
+import type { LoginRequest, UserDto } from '../api/types';
+
+export class AuthService {
   private readonly logger = logger.create('AuthService');
 
   async login(credentials: LoginRequest) {
     try {
+      // Валидация перед отправкой
       this.validateCredentials(credentials);
+
+      // Вызов API
       return await authApi.login(credentials);
     } catch (error) {
       this.handleLoginError(error);
@@ -21,12 +27,14 @@ class AuthService {
       await authApi.logout({ userId, token });
     } catch (error) {
       this.logger.warn('Logout completed with errors', { error });
+      // Не бросаем ошибку, так как logout должен завершиться в любом случае
     }
   }
 
   async validateToken(token: string): Promise<boolean> {
     try {
       if (!token) return false;
+
       const response = await authApi.validateToken({ token });
       return response.isValid;
     } catch (error) {
@@ -36,17 +44,26 @@ class AuthService {
   }
 
   private validateCredentials(credentials: LoginRequest) {
+    const errors: string[] = [];
+
     if (!credentials.username?.trim()) {
-      throw new Error('Имя пользователя обязательно');
+      errors.push('Имя пользователя обязательно');
     }
+
     if (!credentials.password?.trim()) {
-      throw new Error('Пароль обязателен');
+      errors.push('Пароль обязателен');
     }
-    if (credentials.username.length < 2) {
-      throw new Error('Имя пользователя слишком короткое');
+
+    if (credentials.username && credentials.username.length < 2) {
+      errors.push('Имя пользователя слишком короткое');
     }
-    if (credentials.password.length < 3) {
-      throw new Error('Пароль слишком короткий');
+
+    if (credentials.password && credentials.password.length < 3) {
+      errors.push('Пароль слишком короткий');
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join(', '));
     }
   }
 
@@ -70,4 +87,5 @@ class AuthService {
   }
 }
 
+// Экспортируем синглтон
 export const authService = new AuthService();

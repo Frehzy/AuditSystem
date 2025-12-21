@@ -1,4 +1,4 @@
-<!-- src/modules/auth/components/icons/StatusIcon.vue -->
+<!-- Иконка статуса -->
 <template>
   <div :class="['status-icon', `status-icon--${status}`, `status-icon--${size}`]">
     <CheckCircleIcon v-if="status === 'online'" class="status-icon__svg" />
@@ -8,37 +8,19 @@
   </div>
 </template>
 
-<script lang="ts">
-  import { defineComponent } from 'vue';
-  import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@/assets/icons';
+<script setup lang="ts">
+import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@/assets/icons';
 
-  export default defineComponent({
-    name: 'StatusIcon',
+interface Props {
+  status: 'checking' | 'online' | 'offline';
+  size?: 'sm' | 'md' | 'lg';
+  withPulse?: boolean;
+}
 
-    components: {
-      CheckCircleIcon,
-      XCircleIcon,
-      ClockIcon,
-    },
-
-    props: {
-      status: {
-        type: String,
-        required: true,
-        default: 'checking',
-        validator: (value: string) => ['checking', 'online', 'offline'].includes(value),
-      },
-      size: {
-        type: String,
-        default: 'md',
-        validator: (value: string) => ['sm', 'md', 'lg'].includes(value),
-      },
-      withPulse: {
-        type: Boolean,
-        default: false,
-      },
-    },
-  });
+withDefaults(defineProps<Props>(), {
+  size: 'md',
+  withPulse: false
+});
 </script>
 
 <style scoped>

@@ -1,0 +1,89 @@
+/*!
+ * CSS Variables Export
+ * Use with JavaScript/TypeScript via:
+ * import styles from './styles/_exports.css?inline';
+ * 
+ * Or use CSS Modules with :import
+ */
+
+:root {
+  /* Re-export all CSS custom properties for easy access */
+  /* Color Tokens */
+  --export-color-primary: var(--color-primary);
+  --export-color-primary-light: var(--color-primary-light);
+  --export-color-primary-dark: var(--color-primary-dark);
+  --export-color-primary-rgb: var(--color-primary-rgb);
+  --export-color-success: var(--color-success);
+  --export-color-success-light: var(--color-success-light);
+  --export-color-success-dark: var(--color-success-dark);
+  --export-color-success-rgb: var(--color-success-rgb);
+  --export-color-error: var(--color-error);
+  --export-color-error-light: var(--color-error-light);
+  --export-color-error-dark: var(--color-error-dark);
+  --export-color-error-rgb: var(--color-error-rgb);
+  --export-color-warning: var(--color-warning);
+  --export-color-warning-light: var(--color-warning-light);
+  --export-color-warning-dark: var(--color-warning-dark);
+  --export-color-warning-rgb: var(--color-warning-rgb);
+  --export-color-info: var(--color-info);
+  --export-color-info-light: var(--color-info-light);
+  --export-color-info-dark: var(--color-info-dark);
+  --export-color-info-rgb: var(--color-info-rgb);
+  /* Theme Colors */
+  --export-color-background: var(--color-background);
+  --export-color-surface: var(--color-surface);
+  --export-color-surface-hover: var(--color-surface-hover);
+  --export-color-text-primary: var(--color-text-primary);
+  --export-color-text-secondary: var(--color-text-secondary);
+  --export-color-text-muted: var(--color-text-muted);
+  --export-color-border: var(--color-border);
+  /* Spacing */
+  --export-spacing-unit: 0.25rem;
+  --export-spacing-xs: var(--space-2);
+  --export-spacing-sm: var(--space-3);
+  --export-spacing-md: var(--space-4);
+  --export-spacing-lg: var(--space-6);
+  --export-spacing-xl: var(--space-8);
+  /* Typography */
+  --export-font-family-sans: var(--font-family-sans);
+  --export-font-family-mono: var(--font-family-mono);
+  --export-font-size-base: var(--text-base);
+  --export-font-size-sm: var(--text-sm);
+  --export-font-size-lg: var(--text-lg);
+  /* Font Weights */
+  --export-font-weight-normal: var(--font-weight-normal);
+  --export-font-weight-medium: var(--font-weight-medium);
+  --export-font-weight-semibold: var(--font-weight-semibold);
+  --export-font-weight-bold: var(--font-weight-bold);
+  /* Breakpoints (for JS) */
+  --export-breakpoint-sm: 640px;
+  --export-breakpoint-md: 768px;
+  --export-breakpoint-lg: 1024px;
+  --export-breakpoint-xl: 1280px;
+  --export-breakpoint-2xl: 1536px;
+  /* Transitions */
+  --export-transition-fast: var(--transition-fast);
+  --export-transition-normal: var(--transition-normal);
+  --export-transition-slow: var(--transition-slow);
+  /* Shadows */
+  --export-shadow-sm: var(--shadow-sm);
+  --export-shadow-md: var(--shadow-md);
+  --export-shadow-lg: var(--shadow-lg);
+  --export-shadow-xl: var(--shadow-xl);
+  /* Border Radius */
+  --export-radius-sm: var(--radius-sm);
+  --export-radius-md: var(--radius-md);
+  --export-radius-lg: var(--radius-lg);
+  --export-radius-xl: var(--radius-xl);
+  --export-radius-full: var(--radius-full);
+  /* Z-index */
+  --export-z-dropdown: var(--z-dropdown);
+  --export-z-modal: var(--z-modal);
+  --export-z-tooltip: var(--z-tooltip);
+  --export-z-toast: var(--z-toast);
+}
+
+/* Utility class to check if CSS custom properties are loaded */
+.css-variables-loaded {
+  --check-var: loaded;
+}

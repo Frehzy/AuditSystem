@@ -1,0 +1,13 @@
+/* Transition tokens */
+:root {
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  /* Specific transitions */
+  --transition-fade: opacity var(--transition-normal) ease;
+  --transition-slide: transform var(--transition-normal) ease;
+  --transition-scale: transform var(--transition-normal) var(--transition-bounce);
+  --transition-color: color var(--transition-normal) ease, background-color var(--transition-normal) ease;
+  --transition-shadow: box-shadow var(--transition-normal) ease;
+}

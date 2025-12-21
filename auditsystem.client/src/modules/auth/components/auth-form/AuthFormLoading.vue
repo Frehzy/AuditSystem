@@ -1,4 +1,4 @@
-<!-- src/modules/auth/components/auth-form/AuthFormLoading.vue -->
+<!-- Компонент загрузки формы авторизации -->
 <template>
   <div :class="['auth-loading', { 'auth-loading--fullscreen': fullscreen }]">
     <div class="auth-loading__spinner">
@@ -35,7 +35,7 @@
 
   withDefaults(defineProps<Props>(), {
     progress: undefined,
-    fullscreen: false,
+    fullscreen: false
   });
 </script>
 

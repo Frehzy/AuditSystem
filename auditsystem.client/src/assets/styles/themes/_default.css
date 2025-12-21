@@ -1,0 +1,29 @@
+/* Default theme (same as light but without class requirement) */
+:root {
+  /* These are already defined in base/_root.css but included for clarity */
+  /* Ensure all required variables have defaults */
+  --color-primary: var(--color-primary-500);
+  --color-primary-light: var(--color-primary-400);
+  --color-primary-dark: var(--color-primary-600);
+  --color-primary-rgb: 14, 165, 233;
+  --color-success: var(--color-success-500);
+  --color-success-light: var(--color-success-400);
+  --color-success-dark: var(--color-success-600);
+  --color-success-rgb: 16, 185, 129;
+  --color-error: var(--color-error-500);
+  --color-error-light: var(--color-error-400);
+  --color-error-dark: var(--color-error-600);
+  --color-error-rgb: 239, 68, 68;
+  --color-warning: var(--color-warning-500);
+  --color-warning-light: var(--color-warning-400);
+  --color-warning-dark: var(--color-warning-600);
+  --color-warning-rgb: 245, 158, 11;
+  --color-info: var(--color-info-500);
+  --color-info-light: var(--color-info-400);
+  --color-info-dark: var(--color-info-600);
+  --color-info-rgb: 59, 130, 246;
+  /* Border tokens */
+  --border-default: var(--border-width-1) var(--border-style-solid) var(--color-border);
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}

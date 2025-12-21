@@ -1,43 +1,67 @@
 <!-- src/App.vue -->
 <template>
   <div id="app" :class="[themeClass, { 'theme-transition': enableTransitions }]">
-    <RouterView />
+    <RouterView v-slot="{ Component, route }">
+      <transition :name="route.meta?.transition || 'fade'" mode="out-in">
+        <div v-if="shouldUseLayout(route)" :class="getLayoutClass(route)">
+          <component :is="Component" />
+        </div>
+        <component v-else :is="Component" />
+      </transition>
+    </RouterView>
     <BaseToast />
   </div>
 </template>
 
 <script setup lang="ts">
   import { onMounted, onUnmounted, computed, ref } from 'vue';
-  import { RouterView, useRouter } from 'vue-router';
+  import { RouterView, useRoute } from 'vue-router';
   import BaseToast from '@/framework/ui/components/feedback/BaseToast.vue';
-  import { useAppStore } from '@/framework/stores/app.store';
-  import { provideToast, createToastApi } from '@/framework/ui/composables/useToast';
-  import { logger } from '@/core/utils/logger';
-  import './assets/styles/theme.css'
+  import { useThemeStore } from '@/framework/stores';
+  import { logger } from '@/core/services/logger/logger.service';
+  import './assets/styles/globals.css';
 
-  // Предоставление toast API всему приложению
-  provideToast(createToastApi());
-
-  const appStore = useAppStore();
-  const router = useRouter();
+  const route = useRoute();
+  const themeStore = useThemeStore();
   const loggerContext = logger.create('App');
   const enableTransitions = ref(true);
 
   /**
    * Текущий класс темы
    */
-  const themeClass = computed(() => `theme-${appStore.currentTheme}`);
+  const themeClass = computed(() => `theme-${themeStore.resolved}`);
+
+  /**
+   * Определяет, нужно ли использовать layout для текущего маршрута
+   */
+  const shouldUseLayout = (route: any): boolean => {
+    // Для страницы авторизации не используем layout
+    return route.meta?.layout !== false && route.name !== 'Login';
+  };
+
+  /**
+   * Возвращает CSS класс для layout
+   */
+  const getLayoutClass = (route: any): string => {
+    const layout = route.meta?.layout || 'default';
+
+    switch (layout) {
+      case 'auth':
+        return 'auth-layout';
+      case 'default':
+      default:
+        return 'main-layout';
+    }
+  };
 
   /**
    * Обработчик онлайн/офлайн статуса
    */
   const handleOnline = () => {
-    appStore.setOnlineStatus(true);
     loggerContext.info('Application came online');
   };
 
   const handleOffline = () => {
-    appStore.setOnlineStatus(false);
     loggerContext.warn('Application went offline');
   };
 
@@ -57,11 +81,11 @@
    */
   const handleSystemThemeChange = (e: MediaQueryListEvent) => {
     const systemTheme = e.matches ? 'dark' : 'light';
-    loggerContext.debug('System theme preference changed:', systemTheme);
+    loggerContext.debug('System theme preference changed');
 
     // Автоматическое следование системной теме, если не выбрана пользовательская
-    if (appStore.themePreference === 'auto') { // Исправлено с 'system' на 'auto'
-      appStore.setTheme(systemTheme);
+    if (themeStore.preference === 'auto') {
+      themeStore.setTheme(systemTheme);
     }
   };
 
@@ -70,17 +94,12 @@
    */
   const handleReducedMotionChange = (e: MediaQueryListEvent) => {
     enableTransitions.value = !e.matches;
-    loggerContext.debug('Reduced motion preference:', e.matches ? 'enabled' : 'disabled');
+    loggerContext.debug('Reduced motion preference changed');
   };
 
   onMounted(() => {
     // Инициализация темы
-    appStore.initializeTheme();
-
-    // Сохранение router в глобальной области для navigation.service
-    if (import.meta.env.DEV) {
-      (window as Window & { __VUE_ROUTER__?: typeof router }).__VUE_ROUTER__ = router;
-    }
+    themeStore.initialize();
 
     // Добавляем слушатель системных предпочтений темы
     const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -98,9 +117,8 @@
 
     loggerContext.info('Application mounted', {
       online: navigator.onLine,
-      userAgent: navigator.userAgent,
-      theme: appStore.currentTheme,
-      themePreference: appStore.themePreference,
+      theme: themeStore.resolved,
+      themePreference: themeStore.preference,
       reducedMotion: !enableTransitions.value
     });
 
@@ -144,6 +162,28 @@
   }
 
   #app {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Layout styles */
+  .auth-layout {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+    padding: var(--spacing-lg);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .theme-dark .auth-layout {
+    background: linear-gradient(135deg, var(--color-gray-900) 0%, var(--color-gray-800) 100%);
+  }
+
+  .main-layout {
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
@@ -248,19 +288,6 @@
     transform: translateX(100%);
     opacity: 0;
   }
-
-  /* Card-like surfaces для консистентности */
-  .surface-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    transition: all var(--transition-fast);
-  }
-
-    .surface-card:hover {
-      box-shadow: var(--shadow-md);
-    }
 
   /* Status indicators */
   .status-online {

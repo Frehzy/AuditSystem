@@ -1,41 +1,62 @@
-// src/modules/auth/api/health.api.ts
-import { apiClient } from '@/core/services/api/api-client.service';
-import { logger } from '@/core/utils/logger';
-import type { HealthCheckResponse, ServerStatus } from '../types';
+/**
+ * API клиент для проверки здоровья сервера
+ */
 
-class HealthApi {
+import { httpClient } from '@/core/services/api/http-client.service';
+import { ApiErrorHandler } from '@/core/services/api/api-error.handler';
+import { logger } from '@/core/services/logger/logger.service';
+
+export interface HealthCheckResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  services: Array<{
+    name: string;
+    status: string;
+    responseTime?: number;
+  }>;
+}
+
+export class HealthApi {
   private readonly logger = logger.create('HealthApi');
 
   async check(): Promise<HealthCheckResponse> {
     try {
-      const response = await apiClient.get<HealthCheckResponse>('/health', {
+      this.logger.debug('Запрос проверки здоровья');
+
+      const response = await httpClient.get<HealthCheckResponse>('/health', {
         requireAuth: false,
-        timeout: 8000,
+        timeout: 8000
       });
 
-      this.logger.debug('Health check completed', {
-        status: response.status,
-        services: response.services?.length
+      this.logger.debug('Проверка здоровья завершена', {
+        status: response.data.status,
+        services: response.data.services?.length
       });
 
-      return response;
-    } catch (error) {
-      this.logger.error('Health check failed', { error });
+      return response.data;
+    } catch (error: any) {
+      ApiErrorHandler.handle(error, 'Health:Check');
       throw error;
     }
   }
 
   async quickCheck(): Promise<boolean> {
     try {
-      await apiClient.get('/health/quick', {
+      this.logger.debug('Быстрая проверка здоровья');
+
+      await httpClient.head('/health', {
         requireAuth: false,
-        timeout: 3000,
+        timeout: 3000
       });
+
+      this.logger.debug('Быстрая проверка здоровья пройдена');
       return true;
-    } catch {
+    } catch (error: any) {
+      this.logger.warn('Быстрая проверка здоровья не пройдена', { error: error.message });
       return false;
     }
   }
 }
 
+// Экспортируем синглтон
 export const healthApi = new HealthApi();

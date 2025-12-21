@@ -1,0 +1,65 @@
+/* High contrast theme */
+.theme-high-contrast {
+  /* Background colors */
+  --color-background: #000000;
+  --color-background-card: #000000;
+  --color-background-subtle: #111111;
+  /* Surface colors */
+  --color-surface: #000000;
+  --color-surface-hover: #222222;
+  --color-surface-active: #333333;
+  --color-surface-disabled: #000000;
+  /* Text colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cccccc;
+  --color-text-muted: #999999;
+  --color-text-disabled: #666666;
+  --color-text-on-primary: #000000;
+  --color-text-on-surface: #ffffff;
+  /* Border colors */
+  --color-border: #ffffff;
+  --color-border-hover: #ffffff;
+  --color-border-active: #ffffff;
+  --color-border-focus: #ffff00;
+  --color-border-disabled: #666666;
+  --color-border-card: #ffffff;
+  --color-border-divider: #ffffff;
+  /* Primary colors with high contrast */
+  --color-primary: #00ffff;
+  --color-primary-light: #80ffff;
+  --color-primary-dark: #008080;
+  /* Status colors */
+  --status-online-bg: #003300;
+  --status-online-border: #00ff00;
+  --status-online-text: #00ff00;
+  --status-online-dot: #00ff00;
+  --status-offline-bg: #330000;
+  --status-offline-border: #ff0000;
+  --status-offline-text: #ff0000;
+  --status-offline-dot: #ff0000;
+  --status-checking-bg: #333300;
+  --status-checking-border: #ffff00;
+  --status-checking-text: #ffff00;
+  --status-checking-dot: #ffff00;
+  /* Shadows become outlines */
+  --shadow-sm: 0 0 0 1px #ffffff;
+  --shadow-md: 0 0 0 2px #ffffff;
+  --shadow-lg: 0 0 0 3px #ffffff;
+  --shadow-xl: 0 0 0 4px #ffffff;
+  /* Focus rings are more prominent */
+  --ring-width: 4px;
+  --ring-color: #ffff00;
+}
+
+/* Apply high contrast only when user prefers it */
+@media (prefers-contrast: high) {
+  :root:not(.theme-light):not(.theme-dark) {
+    --color-border: var(--color-text-primary);
+    --shadow-md: 0 0 0 1px var(--color-text-primary);
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    border: 2px solid;
+  }
+}

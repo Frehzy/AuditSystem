@@ -1,0 +1,211 @@
+/* Button base styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: var(--border-width-1) solid transparent;
+  font-family: var(--font-family-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--leading-none);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  min-height: 2.5rem;
+}
+
+  .btn:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+/* Button sizes */
+.btn--xs {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  min-height: 1.75rem;
+}
+
+.btn--sm {
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--text-sm);
+  min-height: 2rem;
+}
+
+.btn--md {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  min-height: 2.5rem;
+}
+
+.btn--lg {
+  padding: var(--space-2-5) var(--space-5);
+  font-size: var(--text-base);
+  min-height: 3rem;
+}
+
+.btn--xl {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-lg);
+  min-height: 3.5rem;
+}
+
+/* Button variants */
+.btn--primary {
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-primary);
+}
+
+  .btn--primary:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+  }
+
+  .btn--primary:active:not(:disabled) {
+    background: var(--color-primary-700);
+    border-color: var(--color-primary-700);
+  }
+
+.btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+  .btn--secondary:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  .btn--secondary:active:not(:disabled) {
+    background: var(--color-surface-active);
+    border-color: var(--color-border-active);
+  }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+  border-color: transparent;
+}
+
+  .btn--ghost:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+
+  .btn--ghost:active:not(:disabled) {
+    background: var(--color-surface-active);
+  }
+
+.btn--outline {
+  background: transparent;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+  .btn--outline:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  .btn--outline:active:not(:disabled) {
+    background: var(--color-surface-active);
+    border-color: var(--color-border-active);
+  }
+
+/* Semantic button variants */
+.btn--success {
+  background: var(--color-success);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-success);
+}
+
+  .btn--success:hover:not(:disabled) {
+    background: var(--color-success-dark);
+    border-color: var(--color-success-dark);
+  }
+
+.btn--error {
+  background: var(--color-error);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-error);
+}
+
+  .btn--error:hover:not(:disabled) {
+    background: var(--color-error-dark);
+    border-color: var(--color-error-dark);
+  }
+
+.btn--warning {
+  background: var(--color-warning);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-warning);
+}
+
+  .btn--warning:hover:not(:disabled) {
+    background: var(--color-warning-dark);
+    border-color: var(--color-warning-dark);
+  }
+
+.btn--info {
+  background: var(--color-info);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-info);
+}
+
+  .btn--info:hover:not(:disabled) {
+    background: var(--color-info-dark);
+    border-color: var(--color-info-dark);
+  }
+
+/* Button with loading state */
+.btn--loading {
+  position: relative;
+  color: transparent !important;
+}
+
+  .btn--loading::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid;
+    border-color: currentColor transparent currentColor transparent;
+    border-radius: var(--radius-full);
+    animation: var(--animate-spin);
+  }
+
+/* Button groups */
+.btn-group {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+  .btn-group .btn {
+    border-radius: 0;
+    margin-left: -1px;
+  }
+
+    .btn-group .btn:first-child {
+      margin-left: 0;
+      border-top-left-radius: var(--radius-md);
+      border-bottom-left-radius: var(--radius-md);
+    }
+
+    .btn-group .btn:last-child {
+      border-top-right-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+    }

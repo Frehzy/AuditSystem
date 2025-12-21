@@ -1,4 +1,4 @@
-<!-- src/modules/auth/components/auth-form/AuthFormField.vue -->
+<!-- Поле формы авторизации -->
 <template>
   <div :class="['form-field', { 'form-field--error': hasError, 'form-field--disabled': disabled }]">
     <label v-if="label" :for="id" class="form-field__label">
@@ -15,7 +15,7 @@
              ref="inputRef"
              v-bind="$attrs"
              :value="modelValue"
-             :type="fieldType"
+             :type="inputType"
              :placeholder="placeholder"
              :disabled="disabled"
              :autocomplete="autocomplete"
@@ -66,7 +66,7 @@
     type: 'text',
     required: false,
     disabled: false,
-    autocomplete: 'off',
+    autocomplete: 'off'
   });
 
   const emit = defineEmits<Emits>();
@@ -78,8 +78,8 @@
   const hasError = computed(() => !!props.error);
   const showError = computed(() => props.touched || hasError.value);
 
-  // Переименуем prop type в fieldType, чтобы избежать конфликта
-  const fieldType = computed(() => props.type);
+  // Используем локальную переменную чтобы избежать конфликта с пропсом
+  const inputType = computed(() => props.type);
 
   const handleInput = (event: Event) => {
     const target = event.target as HTMLInputElement;
@@ -112,7 +112,7 @@
 
   defineExpose({
     focus,
-    select,
+    select
   });
 </script>
 
@@ -124,7 +124,7 @@
   }
 
   .form-field__label {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-primary);
     display: flex;
@@ -140,7 +140,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    border: 1px solid var(--color-border);
+    border: var(--border-width-1) solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-background);
     transition: all var(--transition-fast);
@@ -163,6 +163,10 @@
     cursor: not-allowed;
   }
 
+  .form-field--disabled .form-field__input {
+    cursor: not-allowed;
+  }
+
   .form-field__prefix,
   .form-field__suffix {
     display: flex;
@@ -174,11 +178,11 @@
   }
 
   .form-field__prefix {
-    border-right: 1px solid var(--color-border);
+    border-right: var(--border-width-1) solid var(--color-border);
   }
 
   .form-field__suffix {
-    border-left: 1px solid var(--color-border);
+    border-left: var(--border-width-1) solid var(--color-border);
   }
 
   .form-field__input {
@@ -188,7 +192,7 @@
     background: none;
     color: var(--color-text-primary);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: var(--text-base);
     outline: none;
     width: 100%;
     min-height: 2.5rem;
@@ -196,6 +200,7 @@
 
     .form-field__input:disabled {
       cursor: not-allowed;
+      opacity: 0.7;
     }
 
     .form-field__input::placeholder {
@@ -204,13 +209,13 @@
     }
 
   .form-field__error {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--color-error);
     margin-top: var(--spacing-xs);
   }
 
   .form-field__hint {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
     margin-top: var(--spacing-xs);
   }

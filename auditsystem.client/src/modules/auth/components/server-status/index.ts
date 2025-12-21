@@ -1,3 +1,6 @@
-// src/modules/auth/components/server-status/index.ts
+/**
+ * Экспорт компонентов статуса сервера
+ */
+
 export { default as ServerStatus } from './ServerStatus.vue';
 export { default as StatusIndicator } from './StatusIndicator.vue';

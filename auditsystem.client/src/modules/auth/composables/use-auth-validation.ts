@@ -1,6 +1,16 @@
-// src/modules/auth/composables/use-auth-validation.ts
+/**
+ * Composable для валидации форм авторизации
+ */
+
 import { reactive, computed } from 'vue';
-import type { AuthValidationErrors } from '../types';
+
+export interface AuthValidationErrors {
+  username?: string;
+  password?: string;
+  email?: string;
+  confirmPassword?: string;
+  general?: string;
+}
 
 export const useAuthValidation = () => {
   const state = reactive<{
@@ -8,7 +18,7 @@ export const useAuthValidation = () => {
     touched: Record<string, boolean>;
   }>({
     errors: {},
-    touched: {},
+    touched: {}
   });
 
   const rules = {
@@ -16,25 +26,18 @@ export const useAuthValidation = () => {
       required: (value: string) => !!value.trim() || 'Имя пользователя обязательно',
       minLength: (value: string) => value.length >= 2 || 'Минимум 2 символа',
       maxLength: (value: string) => value.length <= 50 || 'Максимум 50 символов',
-      pattern: (value: string) => /^[a-zA-Z0-9_]+$/.test(value) || 'Только буквы, цифры и подчеркивания',
+      pattern: (value: string) => /^[a-zA-Z0-9_]+$/.test(value) || 'Только буквы, цифры и подчеркивания'
     },
     password: {
       required: (value: string) => !!value.trim() || 'Пароль обязателен',
       minLength: (value: string) => value.length >= 3 || 'Минимум 3 символа',
-      maxLength: (value: string) => value.length <= 100 || 'Максимум 100 символов',
-    },
-    email: {
-      required: (value: string) => !!value.trim() || 'Email обязателен',
-      pattern: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Неверный формат email',
-    },
-    confirmPassword: {
-      required: (value: string) => !!value.trim() || 'Подтверждение пароля обязательно',
-      match: (value: string, password: string) => value === password || 'Пароли не совпадают',
-    },
+      maxLength: (value: string) => value.length <= 100 || 'Максимум 100 символов'
+    }
   };
 
   const validateField = (field: keyof typeof rules, value: string, extra?: any) => {
     const fieldRules = rules[field];
+
     for (const [ruleName, validator] of Object.entries(fieldRules)) {
       const error = typeof validator === 'function'
         ? validator(value, extra)
@@ -79,7 +82,7 @@ export const useAuthValidation = () => {
     validateField,
     validateForm,
     markAsTouched,
-    reset,
+    reset
   };
 };
 

@@ -1,119 +1,110 @@
-// src/modules/auth/services/token.service.ts
-import { storageService } from '@/core/services/auth/storage.service';
-import { logger } from '@/core/utils/logger';
+/**
+ * Сервис для работы с токенами авторизации
+ */
 
-class TokenService {
+import { logger } from '@/core/services/logger/logger.service';
+
+export interface TokenData {
+  token: string;
+  refreshToken: string;
+  expiresAt: Date;
+  issuedAt: Date;
+  userId: string;
+}
+
+export class TokenService {
   private readonly logger = logger.create('TokenService');
-  private readonly TOKEN_KEY = 'auth_token';
-  private readonly REFRESH_TOKEN_KEY = 'refresh_token';
-  private readonly USER_KEY = 'user_data';
 
-  getToken(): string | null {
-    return storageService.get<string>(this.TOKEN_KEY);
-  }
-
-  setToken(token: string): void {
-    storageService.set(this.TOKEN_KEY, token);
-    this.logger.debug('Token saved to storage');
-  }
-
-  getRefreshToken(): string | null {
-    return storageService.get<string>(this.REFRESH_TOKEN_KEY);
-  }
-
-  setRefreshToken(token: string): void {
-    storageService.set(this.REFRESH_TOKEN_KEY, token);
-    this.logger.debug('Refresh token saved to storage');
-  }
-
-  getUser<T = any>(): T | null {
+  decodeToken(token: string): any {
     try {
-      const user = storageService.get<string>(this.USER_KEY);
-      return user ? JSON.parse(user) : null;
-    } catch (error) {
-      this.logger.error('Failed to parse user data from storage', { error });
-      return null;
-    }
-  }
-
-  setUser<T = any>(user: T): void {
-    try {
-      storageService.set(this.USER_KEY, JSON.stringify(user));
-      this.logger.debug('User data saved to storage');
-    } catch (error) {
-      this.logger.error('Failed to save user data to storage', { error });
-    }
-  }
-
-  clear(): void {
-    storageService.remove(this.TOKEN_KEY);
-    storageService.remove(this.REFRESH_TOKEN_KEY);
-    storageService.remove(this.USER_KEY);
-    this.logger.info('Auth data cleared from storage');
-  }
-
-  parseToken(token: string): any | null {
-    try {
+      // JWT токен состоит из трех частей: header.payload.signature
       const parts = token.split('.');
       if (parts.length !== 3) {
+        throw new Error('Invalid token format');
+      }
+
+      const payload = parts[1];
+      const decoded = JSON.parse(atob(payload));
+
+      return decoded;
+    } catch (error) {
+      this.logger.error('Failed to decode token', { error });
+      return null;
+    }
+  }
+
+  getTokenClaims(token?: string): Record<string, any> {
+    if (!token) {
+      return {};
+    }
+
+    return this.decodeToken(token) || {};
+  }
+
+  isTokenValid(token: string): boolean {
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const claims = this.getTokenClaims(token);
+      if (!claims.exp) {
+        return true; // Если нет даты истечения, считаем токен валидным
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const isValid = claims.exp > now;
+
+      if (!isValid) {
+        this.logger.debug('Token expired', { expiresAt: new Date(claims.exp * 1000), now: new Date() });
+      }
+
+      return isValid;
+    } catch {
+      return false;
+    }
+  }
+
+  isTokenExpiringSoon(token: string, thresholdMinutes: number = 5): boolean {
+    try {
+      const claims = this.getTokenClaims(token);
+      if (!claims.exp) {
+        return false;
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = claims.exp - now;
+      const thresholdSeconds = thresholdMinutes * 60;
+
+      return timeUntilExpiry > 0 && timeUntilExpiry <= thresholdSeconds;
+    } catch {
+      return false;
+    }
+  }
+
+  getTokenLifetime(token: string): { total: number; remaining: number; percentage: number } | null {
+    try {
+      const claims = this.getTokenClaims(token);
+
+      if (!claims.iat || !claims.exp) {
         return null;
       }
-      const payload = parts[1];
-      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(decoded);
-    } catch (error) {
-      this.logger.error('Failed to parse token', { error });
-      return null;
-    }
-  }
 
-  isTokenExpired(token: string): boolean {
-    try {
-      const payload = this.parseToken(token);
-      if (!payload?.exp) return true;
+      const now = Math.floor(Date.now() / 1000);
+      const total = claims.exp - claims.iat;
+      const remaining = claims.exp - now;
+      const percentage = Math.max(0, Math.min(100, (remaining / total) * 100));
 
-      const expiresAt = payload.exp * 1000;
-      const now = Date.now();
-      const isExpired = now >= expiresAt;
-
-      if (isExpired) {
-        this.logger.debug('Token expired', {
-          expiresAt: new Date(expiresAt),
-          currentTime: new Date(now)
-        });
-      }
-
-      return isExpired;
-    } catch {
-      return true;
-    }
-  }
-
-  getTokenExpiration(token: string): number | null {
-    try {
-      const payload = this.parseToken(token);
-      return payload?.exp ? payload.exp * 1000 : null;
+      return {
+        total: total * 1000,
+        remaining: remaining * 1000,
+        percentage
+      };
     } catch {
       return null;
     }
-  }
-
-  getTokenRemainingTime(token: string): number {
-    const expiration = this.getTokenExpiration(token);
-    if (!expiration) return 0;
-
-    const remaining = expiration - Date.now();
-    return Math.max(0, remaining);
-  }
-
-  shouldRefresh(token: string): boolean {
-    if (!token) return false;
-    if (this.isTokenExpired(token)) return true;
-
-    const remainingTime = this.getTokenRemainingTime(token);
-    // Обновляем если осталось меньше 5 минут
-    return remainingTime < 5 * 60 * 1000;
   }
 }
 
+// Экспортируем синглтон
 export const tokenService = new TokenService();

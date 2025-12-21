@@ -1,4 +1,4 @@
-<!-- src/modules/auth/components/server-status/StatusIndicator.vue -->
+<!-- Индикатор статуса сервера -->
 <template>
   <div :class="['status-indicator', `status-indicator--${status}`]">
     <span class="status-indicator__dot"></span>
@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import type { ServerStatus } from '../../types';
+  import type { ServerStatus } from '../../services/health.service';
 
   interface Props {
     status: ServerStatus;
@@ -16,14 +16,14 @@
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    showText: true,
+    showText: true
   });
 
   const statusText = computed(() => {
     const texts: Record<ServerStatus, string> = {
       online: 'Доступен',
       offline: 'Недоступен',
-      checking: 'Проверка...',
+      checking: 'Проверка...'
     };
     return texts[props.status];
   });
@@ -33,14 +33,14 @@
   .status-indicator {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 4px;
     font-size: 0.75rem;
     font-weight: var(--font-weight-medium);
   }
 
   .status-indicator__dot {
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 8px;
+    height: 8px;
     border-radius: var(--radius-full);
     flex-shrink: 0;
   }

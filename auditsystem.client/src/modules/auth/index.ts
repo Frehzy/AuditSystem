@@ -1,21 +1,26 @@
-// src/modules/auth/index.ts
-// Типы
-export * from './types';
+/**
+ * Public API модуля авторизации
+ */
 
-// API
-export { authApi, healthApi } from './api';
+// Экспорт компонентов
+export { default as AuthForm } from './components/auth-form/AuthForm.vue';
+export { default as AuthFormField } from './components/auth-form/AuthFormField.vue';
+export { default as AuthFormLoading } from './components/auth-form/AuthFormLoading.vue';
+export { default as ServerStatus } from './components/server-status/ServerStatus.vue';
+export { default as StatusIndicator } from './components/server-status/StatusIndicator.vue';
 
-// Сервисы
-export { authService, tokenService, healthService } from './services';
+// Экспорт composables
+export { useAuth } from './composables/use-auth';
+export { useAuthValidation } from './composables/use-auth-validation';
+export { useServerHealth } from './composables/use-server-health';
 
-// Композаблы
-export { useAuth, useAuthValidation, useServerHealth } from './composables';
+// Экспорт сервисов
+export { authService } from './services/auth.service';
+export { healthService } from './services/health.service';
+export { tokenService } from './services/token.service';
 
-// Компоненты
-export { AuthForm, ServerStatus, StatusIcon } from './components';
+// Экспорт API
+export * from './api';
 
-// Views
-export { AuthView } from './views';
-
-// Store
-export { useAuthStore } from './stores/use-auth.store';
+// Экспорт представлений
+export { default as AuthView } from './views/AuthView.vue';

@@ -1,0 +1,22 @@
+/* Z-index scale */
+:root {
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-auto: auto;
+}
+
+/* Specific z-index tokens */
+:root {
+  --z-dropdown: var(--z-10);
+  --z-sticky: var(--z-20);
+  --z-fixed: var(--z-30);
+  --z-modal-backdrop: var(--z-40);
+  --z-modal: var(--z-50);
+  --z-popover: var(--z-50);
+  --z-tooltip: var(--z-50);
+  --z-toast: var(--z-50);
+}

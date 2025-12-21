@@ -1,0 +1,31 @@
+/* Shadow tokens */
+:root {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-none: 0 0 #0000;
+}
+
+/* Colored shadows */
+:root {
+  --shadow-primary: 0 4px 12px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  --shadow-success: 0 4px 12px color-mix(in srgb, var(--color-success) 25%, transparent);
+  --shadow-error: 0 4px 12px color-mix(in srgb, var(--color-error) 25%, transparent);
+  --shadow-warning: 0 4px 12px color-mix(in srgb, var(--color-warning) 25%, transparent);
+  --shadow-info: 0 4px 12px color-mix(in srgb, var(--color-info) 25%, transparent);
+}
+
+/* Focus rings */
+:root {
+  --ring-width: 3px;
+  --ring-offset: 2px;
+  --ring-color: var(--color-primary);
+  --ring-offset-color: var(--color-background);
+  --ring-shadow: 0 0 0 var(--ring-width) var(--ring-color);
+  --ring-shadow-offset: 0 0 0 calc(var(--ring-width) + var(--ring-offset)) var(--ring-offset-color);
+  --focus-ring: var(--ring-shadow-offset), var(--ring-shadow);
+}

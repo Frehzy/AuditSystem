@@ -1,101 +1,83 @@
-// src/modules/auth/composables/use-server-health.ts
+/**
+ * Композабл для проверки здоровья сервера
+ */
+
 import { ref, computed, onUnmounted } from 'vue';
-import { healthService } from '../services';
-import { logger } from '@/core/utils/logger';
-import type { HealthCheckConfig, ServerStatus } from '../types';
+import { healthService, type ServerStatus, type HealthCheckConfig } from '../services/health.service';
 
-export const useServerHealth = (config?: Partial<HealthCheckConfig>) => {
-  const loggerContext = logger.create('useServerHealth');
+export function useServerHealth(config?: Partial<HealthCheckConfig>) {
+  const status = ref<ServerStatus>(healthService.getStatus());
+  const lastCheck = ref<Date | null>(healthService.getLastCheck());
+  const lastResponseTime = ref<number | null>(healthService.getLastResponseTime());
+  const isChecking = ref(false);
 
-  // Используем сервис с возможностью кастомизации конфига
-  const service = healthService;
+  // Обновляем конфигурацию если передана
   if (config) {
-    service.updateConfig(config);
+    healthService.updateConfig(config);
   }
 
-  // Реактивное состояние
-  const isChecking = ref(false);
-  const lastResponseTime = ref<number | null>(null);
-
-  // Проксируем методы сервиса с реактивными обертками
-  const check = async () => {
+  const check = async (): Promise<void> => {
     isChecking.value = true;
-    const startTime = Date.now();
-
     try {
-      const status = await service.check();
-      lastResponseTime.value = Date.now() - startTime;
-      return status;
+      await healthService.check();
+      updateState();
     } finally {
       isChecking.value = false;
     }
   };
 
-  const manualCheck = async () => {
-    loggerContext.info('Manual check requested');
-    return await check();
+  const manualCheck = async (): Promise<void> => {
+    isChecking.value = true;
+    try {
+      await healthService.manualCheck();
+      updateState();
+    } finally {
+      isChecking.value = false;
+    }
   };
 
-  // Вычисляемые свойства
-  const status = computed(() => service.getStatus());
-  const isOnline = computed(() => service.isOnline());
-  const isOffline = computed(() => status.value === 'offline');
-  const lastCheck = computed(() => service.getLastCheck());
-  const lastOnline = computed(() => service.getLastOnline());
-  const retryCount = computed(() => service.getRetryCount());
+  const startPeriodicChecks = (interval?: number): void => {
+    healthService.startPeriodicChecks(interval);
+  };
 
-  const formattedResponseTime = computed(() => {
-    if (!lastResponseTime.value) return null;
-    return `${lastResponseTime.value}ms`;
+  const stopPeriodicChecks = (): void => {
+    healthService.stopPeriodicChecks();
+  };
+
+  const updateState = (): void => {
+    status.value = healthService.getStatus();
+    lastCheck.value = healthService.getLastCheck();
+
+    const responseTime = healthService.getLastResponseTime();
+    // Убеждаемся что это число, не строка
+    lastResponseTime.value = typeof responseTime === 'number' ? responseTime : null;
+  };
+
+  // Добавлено правильное вычисление isOnline
+  const isOnline = computed(() => {
+    return status.value === 'online';
   });
 
-  // Управление периодическими проверками
-  const startPeriodicChecks = (interval?: number) => {
-    service.startPeriodicChecks(interval);
-  };
+  // Подписываемся на обновления статуса
+  const statusSubscription = healthService.onStatusChange((newStatus: ServerStatus) => {
+    status.value = newStatus;
+  });
 
-  const stopPeriodicChecks = () => {
-    service.stopPeriodicChecks();
-  };
-
-  // Очистка
   onUnmounted(() => {
     stopPeriodicChecks();
-    loggerContext.debug('Server health composable unmounted');
+    statusSubscription.unsubscribe();
   });
 
   return {
-    // Состояние
-    status,
-    isOnline,
-    isOffline,
+    status: computed(() => status.value),
+    lastCheck: computed(() => lastCheck.value),
+    lastResponseTime: computed(() => lastResponseTime.value),
+    isOnline: isOnline,
     isChecking: computed(() => isChecking.value),
-    lastCheck,
-    lastOnline,
-    retryCount,
-    lastResponseTime,
-    formattedResponseTime,
-
-    // Методы
     check,
     manualCheck,
     startPeriodicChecks,
     stopPeriodicChecks,
-
-    // Конфигурация
-    updateConfig: (newConfig: Partial<HealthCheckConfig>) => {
-      service.updateConfig(newConfig);
-    },
-
-    // Статистика
-    getStats: () => ({
-      status: status.value,
-      lastCheck: lastCheck.value,
-      lastOnline: lastOnline.value,
-      retryCount: retryCount.value,
-      responseTime: formattedResponseTime.value,
-    }),
+    updateState
   };
-};
-
-export type UseServerHealthReturn = ReturnType<typeof useServerHealth>;
+}

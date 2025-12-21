@@ -1,0 +1,185 @@
+/* Print styles */
+@media print {
+  /* Reset backgrounds and colors for printing */
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Set base font size for print */
+  html {
+    font-size: 12pt;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Improve readability */
+  h1 {
+    font-size: 2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    page-break-after: avoid;
+  }
+
+  /* Page breaks */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  p, blockquote, ul, ol, dl, table {
+    page-break-inside: avoid;
+  }
+
+  /* Links */
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+    a[href]::after {
+      content: " (" attr(href) ")";
+      font-size: 0.875rem;
+      font-weight: normal;
+    }
+
+    /* Don't show links for JavaScript or internal links */
+    a[href^="javascript:"]::after,
+    a[href^="#"]::after {
+      content: "";
+    }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 0.25rem 0.5rem;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Forms */
+  input,
+  textarea,
+  select {
+    border: 1px solid #000;
+    background: #fff;
+  }
+
+  /* Hide unnecessary elements */
+  .no-print,
+  .print-hide,
+  nav,
+  footer,
+  .sidebar,
+  .navbar,
+  .actions,
+  .btn,
+  button,
+  .form-actions {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print-only,
+  .print-show {
+    display: block !important;
+  }
+
+  /* Margins and padding for print */
+  @page {
+    margin: 2cm;
+  }
+
+  @page :first {
+    margin-top: 3cm;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Remove animations and transitions */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Force background colors for specific elements */
+  .print-bg-white {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-bg-black {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Keep colors for important elements */
+  .print-color-primary {
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* QR codes and barcodes */
+  .barcode,
+  .qrcode {
+    filter: contrast(100%) brightness(0%);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

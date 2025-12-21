@@ -1,0 +1,5 @@
+/* Light theme - just sets the theme class */
+.theme-light {
+  /* All light theme variables are already defaults in :root */
+  /* This file is kept for consistency and explicit theming */
+}

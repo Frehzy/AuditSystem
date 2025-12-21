@@ -1,6 +1,6 @@
-<!-- src/modules/auth/components/server-status/ServerStatus.vue -->
+<!-- Компонент статуса сервера -->
 <template>
-  <div :class="['server-status', statusClass]" @click="handleClick">
+  <div :class="['server-status', statusClass]">
     <div class="server-status__inner">
       <div class="server-status__icon">
         <ServerIcon />
@@ -20,16 +20,16 @@
           Последняя проверка: {{ formatTime(lastCheck) }}
         </div>
 
-        <div v-if="responseTime" class="server-status__response">
+        <div v-if="responseTime !== null && responseTime !== undefined" class="server-status__response">
           Время ответа: {{ responseTime }}мс
         </div>
       </div>
 
       <button v-if="showRetry"
-              @click.stop="handleRetry"
-              :disabled="isChecking"
               :class="['server-status__retry', { 'server-status__retry--disabled': isChecking }]"
-              :title="retryTitle">
+              :title="retryTitle"
+              :disabled="isChecking"
+              @click="handleRetry">
         <RefreshIcon v-if="!isChecking" class="server-status__retry-icon" />
         <LoadingSpinner v-else class="server-status__retry-loading" />
       </button>
@@ -41,29 +41,27 @@
   import { computed } from 'vue';
   import { ServerIcon, RefreshIcon, LoadingSpinner } from '@/assets/icons';
   import StatusIndicator from './StatusIndicator.vue';
-  import type { ServerStatus } from '../../types';
+  import type { ServerStatus as ServerStatusType } from '../../services/health.service';
 
   interface Props {
     serverUrl: string;
-    status: ServerStatus;
+    status: ServerStatusType;
     showUrl?: boolean;
     showRetry?: boolean;
-    lastCheck?: Date;
-    responseTime?: number;
+    lastCheck?: Date | null;
+    responseTime?: number | null;
     isChecking?: boolean;
-    clickable?: boolean;
   }
 
   interface Emits {
     (e: 'retry'): void;
-    (e: 'click'): void;
   }
 
   const props = withDefaults(defineProps<Props>(), {
     showUrl: true,
     showRetry: true,
     isChecking: false,
-    clickable: false,
+    responseTime: null
   });
 
   const emit = defineEmits<Emits>();
@@ -83,19 +81,13 @@
     return date.toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
+      second: '2-digit'
     });
   };
 
   const handleRetry = () => {
     if (!props.isChecking) {
       emit('retry');
-    }
-  };
-
-  const handleClick = () => {
-    if (props.clickable) {
-      emit('click');
     }
   };
 </script>
@@ -109,21 +101,21 @@
   }
 
   .server-status--online {
-    background: var(--status-online-bg);
-    border-color: var(--status-online-border);
-    color: var(--status-online-text);
+    background: color-mix(in srgb, var(--color-success) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+    color: var(--color-success-dark);
   }
 
   .server-status--offline {
-    background: var(--status-offline-bg);
-    border-color: var(--status-offline-border);
-    color: var(--status-offline-text);
+    background: color-mix(in srgb, var(--color-error) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+    color: var(--color-error-dark);
   }
 
   .server-status--checking {
-    background: var(--status-checking-bg);
-    border-color: var(--status-checking-border);
-    color: var(--status-checking-text);
+    background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+    color: var(--color-warning-dark);
   }
 
   .server-status__inner {
@@ -137,10 +129,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-md);
-    padding: var(--spacing-xs);
+    padding: 8px;
   }
 
   .server-status--online .server-status__icon {
@@ -159,8 +151,8 @@
   }
 
   .server-status__icon svg {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 24px;
+    height: 24px;
   }
 
   .server-status__content {
@@ -171,8 +163,8 @@
   .server-status__header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-xs);
+    gap: 8px;
+    margin-bottom: 4px;
   }
 
   .server-status__title {
@@ -185,7 +177,7 @@
   .server-status__url {
     font-size: 0.875rem;
     font-family: var(--font-family-mono);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -198,7 +190,7 @@
   }
 
   .server-status__timestamp {
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 2px;
   }
 
   .server-status__response {
@@ -210,15 +202,15 @@
     background: none;
     border: 1px solid currentColor;
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm);
+    padding: 8px;
     cursor: pointer;
     color: inherit;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 40px;
+    height: 40px;
   }
 
     .server-status__retry:hover:not(.server-status__retry--disabled) {
@@ -231,10 +223,15 @@
     cursor: not-allowed;
   }
 
+    .server-status__retry--disabled:hover {
+      transform: none;
+      background: none;
+    }
+
   .server-status__retry-icon,
   .server-status__retry-loading {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 20px;
+    height: 20px;
   }
 
   .server-status__retry-loading {
