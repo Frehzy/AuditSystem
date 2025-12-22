@@ -339,7 +339,7 @@
 
   /* Градиентный фон - поверх частиц, но под контентом */
   .auth-view__background {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
@@ -498,7 +498,7 @@
     }
 
   .auth-view__loading {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
