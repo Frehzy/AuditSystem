@@ -1,10 +1,14 @@
 /**
  * Навигационный гард для проверки прав доступа
+ * Оптимизирована логика проверки и добавлено кэширование
  */
 
-import type { NavigationGuard, RouteLocationNormalized } from 'vue-router';
+import type { NavigationGuard } from 'vue-router';
 import { logger } from '@/core/services/logger/logger.service';
 import { notificationService } from '@/core/services/notification/notification.service';
+
+// Кэш для хранения результатов проверки прав (ускоряет повторные проверки)
+const permissionCache = new Map<string, boolean>();
 
 export const permissionGuard: NavigationGuard = async (to, from, next) => {
   const loggerContext = logger.create('PermissionGuard');
@@ -19,11 +23,26 @@ export const permissionGuard: NavigationGuard = async (to, from, next) => {
     return;
   }
 
+  // Создаем ключ кэша для маршрута и пользователя
+  const cacheKey = `${to.path}-${JSON.stringify(requiresRoles)}-${JSON.stringify(requiresPermissions)}`;
+
   // Динамический импорт чтобы избежать циклических зависимостей
   const { useAuthStore } = await import('@/framework/stores');
   const authStore = useAuthStore();
 
+  // ОПТИМИЗАЦИЯ: Проверяем кэш
+  if (permissionCache.has(cacheKey)) {
+    const hasAccess = permissionCache.get(cacheKey);
+    if (hasAccess) {
+      loggerContext.debug('Permission check passed (from cache)');
+      next();
+      return;
+    }
+  }
+
   // Проверка ролей
+  let hasAccess = true;
+
   if (requiresRoles && requiresRoles.length > 0) {
     const hasAnyRole = authStore.hasAnyRole(requiresRoles);
     if (!hasAnyRole) {
@@ -65,6 +84,14 @@ export const permissionGuard: NavigationGuard = async (to, from, next) => {
       next(fallbackRoute);
       return;
     }
+  }
+
+  // Сохраняем результат в кэш (только для успешных проверок)
+  permissionCache.set(cacheKey, true);
+
+  // Очищаем кэш при выходе из системы
+  if (to.name === 'Logout') {
+    permissionCache.clear();
   }
 
   loggerContext.debug('Permission check passed');

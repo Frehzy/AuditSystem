@@ -1,5 +1,6 @@
 /**
  * Сбор всех маршрутов приложения
+ * Добавлен улучшенный обработчик 404 ошибок
  */
 
 import type { RouteRecordRaw } from 'vue-router';
@@ -20,7 +21,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    redirect: '/audit/monitoring'
+    component: () => import('@/modules/common/views/NotFoundView.vue'), // Рекомендуется создать
+    meta: {
+      title: 'Страница не найдена - AuditSystem Client',
+      requiresAuth: false
+    }
   }
 ];
 

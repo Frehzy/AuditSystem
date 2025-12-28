@@ -8,6 +8,7 @@ interface AppConfig {
     VERSION: string;
     ENV: 'development' | 'production' | 'test';
     BASE_URL: string;
+    ADMIN_EMAIL: string;
   };
   API: {
     BASE_URL: string;
@@ -41,7 +42,8 @@ export const APP_CONFIG: AppConfig = {
     NAME: import.meta.env.VITE_APP_NAME || 'AuditSystem Client',
     VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
     ENV: (import.meta.env.MODE as 'development' | 'production' | 'test') || 'development',
-    BASE_URL: import.meta.env.BASE_URL || '/'
+    BASE_URL: import.meta.env.BASE_URL || '/',
+    ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || 'arm_obi@meteor.mil.zs'
   },
   API: {
     BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://localhost:7282/api',
